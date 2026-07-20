@@ -54,7 +54,7 @@ export const TopNav: React.FC<TopNavProps> = ({
         </div>
         <div>
           <div style={{ fontWeight: 800, fontSize: '1.1rem', letterSpacing: '-0.3px' }}>
-            해외선교부 <span style={{ color: '#3b82f6' }}>교회 진단서</span>
+            해외선교부 <span style={{ color: '#3b82f6' }}>업무포탈</span>
           </div>
           <div style={{ fontSize: '0.7rem', color: '#94a3b8', fontWeight: 600 }}>GLOBAL MISSION DASHBOARD</div>
         </div>

@@ -1,8 +1,10 @@
 import React, { useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { diagnosisService } from '../../services/diagnosisService';
 
 export const DiagnosisPage: React.FC = () => {
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const navigate = useNavigate();
 
   const filterByAssignedLocation = (records: any[]) => {
     const userStr = localStorage.getItem('user');
@@ -27,10 +29,46 @@ export const DiagnosisPage: React.FC = () => {
   };
 
   useEffect(() => {
+    // 0-1. Strict Auth Guard: Redirect to /login if unauthenticated
+    const token = localStorage.getItem('accessToken');
+    const userStr = localStorage.getItem('user');
+
+    if (!token && !userStr) {
+      navigate('/login', { replace: true });
+      return;
+    }
+
     const baseUrl = (import.meta as any).env?.BASE_URL || '/OverseasPortal/';
     const getUrl = (path: string) => baseUrl.endsWith('/') ? baseUrl + path : baseUrl + '/' + path;
 
-    // 0. Dynamic CSS Loader
+    // Global Window Functions for Logout & Admin System Buttons
+    (window as any).handleUserLogout = () => {
+      if (window.confirm("정말 로그아웃 하시겠습니까?")) {
+        localStorage.removeItem('accessToken');
+        localStorage.removeItem('user');
+        navigate('/login', { replace: true });
+      }
+    };
+
+    (window as any).handleGoToAdminSystem = () => {
+      navigate('/adminsetting/dashboard');
+    };
+
+    // Show Admin System Button if logged in as Admin
+    setTimeout(() => {
+      try {
+        if (userStr) {
+          const u = JSON.parse(userStr);
+          const role = u.role || '';
+          if (role === 'ROLE_ADMIN' || role === 'ADMIN' || role === '관리자') {
+            const adminBtn = document.getElementById('btnAdminSystem');
+            if (adminBtn) adminBtn.style.display = 'inline-flex';
+          }
+        }
+      } catch (e) {}
+    }, 200);
+
+    // 0-2. Dynamic CSS Loader
     const loadCss = (id: string, href: string) => {
       if (!document.getElementById(id)) {
         const link = document.createElement('link');
@@ -106,7 +144,7 @@ export const DiagnosisPage: React.FC = () => {
       .then(() => {
         initEngine();
       });
-  }, []);
+  }, [navigate]);
 
   return (
     <div
@@ -145,7 +183,7 @@ export const DiagnosisPage: React.FC = () => {
 <div class="topbar">
   <div class="logo">🌐</div>
   <div class="brandwrap">
-    <div class="brand" id="tbBrand">해외선교부 <b>교회 진단서</b></div>
+    <div class="brand" id="tbBrand">해외선교부 <b>업무포탈</b></div>
     <div class="brandsub">GLOBAL MISSION DASHBOARD</div>
   </div>
   <span class="spacer"></span>
@@ -161,6 +199,8 @@ export const DiagnosisPage: React.FC = () => {
   <button class="repbtn" id="btnCover" onclick="showIntro()" title="인트로 화면으로 돌아가기">🏠 인트로</button>
   <button class="repbtn" id="btnShare" onclick="openShareModal()" title="선택한 교회/구역의 데이터를 포함한 Standalone HTML 파일을 생성합니다">📤 공유</button>
   <button class="repbtn" id="btnPrint" onclick="window.print()" title="선택한 교회의 진단서만 컬러로 인쇄 — 인쇄창에서 '대상: PDF로 저장'을 고르면 컬러 PDF로 저장됩니다">📄 출력 · PDF 저장</button>
+  <button class="repbtn" id="btnAdminSystem" onclick="handleGoToAdminSystem()" style="display:none;background:#2563eb;color:white;border:none;font-weight:700" title="관리자 시스템으로 이동">⚙️ 관리자 시스템</button>
+  <button class="repbtn" id="btnLogout" onclick="handleUserLogout()" style="background:#ef4444;color:white;border:none;font-weight:700" title="로그아웃">🔒 로그아웃</button>
 </div>
 
 <div class="shell">

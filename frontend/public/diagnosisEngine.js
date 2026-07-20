@@ -218,7 +218,7 @@ const UI_TR={
   pw:{ko:'접속 암호를 입력하세요',en:'Enter access password',zh:'请输入访问密码',ja:'アクセスパスワードを入力'},
   pwErr:{ko:'암호가 올바르지 않습니다',en:'Incorrect password',zh:'密码不正确',ja:'パスワードが正しくありません'},
   enter:{ko:'들어가기 &rarr;',en:'Enter &rarr;',zh:'进入 &rarr;',ja:'入る &rarr;'},
-  brand:{ko:'해외선교부 <b>교회 진단서</b>',en:'Overseas Mission · <b>Church Diagnosis</b>',zh:'海外宣教部 · <b>教会诊断书</b>',ja:'海外宣教部 · <b>教会診断書</b>'},
+  brand:{ko:'해외선교부 <b>업무포탈</b>',en:'Overseas Mission · <b>portal</b>',zh:'海外宣教部 · <b>업무포탈</b>',ja:'海外宣教部 · <b>업무포탈</b>'},
   moLabel:{ko:'📅 기준월',en:'📅 Month',zh:'📅 月份',ja:'📅 基準月'},
   cover:{ko:'🏠 인트로',en:'🏠 Intro',zh:'🏠 首页',ja:'🏠 イントロ'},
   print:{ko:'📄 출력 · PDF 저장',en:'📄 Print · PDF',zh:'📄 打印 · PDF',ja:'📄 印刷 · PDF'},

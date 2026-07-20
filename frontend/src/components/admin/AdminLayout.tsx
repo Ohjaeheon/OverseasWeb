@@ -135,7 +135,7 @@ export const AdminLayout: React.FC = () => {
         {/* Brand Title */}
         <div>
           <div style={{ fontSize: '1.05rem', fontWeight: 800, color: '#1f2a44', letterSpacing: '-0.3px', lineHeight: 1.2 }}>
-            해외선교부 <span style={{ color: '#2563eb' }}>교회 진단서</span>
+            해외선교부 <span style={{ color: '#2563eb' }}>업무포탈</span>
           </div>
           <div style={{ fontSize: '0.65rem', fontWeight: 800, color: '#6b7a99', letterSpacing: '1px', textTransform: 'uppercase', marginTop: '1px' }}>
             GLOBAL MISSION DASHBOARD · ADMIN SYSTEM
