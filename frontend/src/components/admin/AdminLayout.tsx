@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { roleService } from '../../services/roleService';
+import { logService } from '../../services/logService';
 import {
   ChevronDown,
   ChevronRight,
@@ -77,12 +78,14 @@ export const AdminLayout: React.FC = () => {
     return access.read;
   });
 
-  // URL Direct Access Guard
+  // URL Direct Access Guard & Access Logging
   useEffect(() => {
-    if (currentUserRole === 'ROLE_ADMIN' || currentUserRole === 'ADMIN') return;
-
     const currentPath = location.pathname;
     const currentItem = RAW_SIDEBAR.find(item => item.path === currentPath || (item.children && item.children.some(c => c.path === currentPath)));
+    const pageName = currentItem?.label || '관리자 시스템';
+    logService.addAccessLog(pageName, currentPath);
+
+    if (currentUserRole === 'ROLE_ADMIN' || currentUserRole === 'ADMIN') return;
 
     if (currentItem && currentItem.s) {
       const access = roleService.canRoleAccessMenu(currentUserRole, currentItem.s);

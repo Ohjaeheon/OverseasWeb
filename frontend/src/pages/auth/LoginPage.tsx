@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { authService } from '../../services/authService';
+import { logService } from '../../services/logService';
 
 export const LoginPage: React.FC = () => {
   const navigate = useNavigate();
@@ -36,6 +37,8 @@ export const LoginPage: React.FC = () => {
         };
         localStorage.setItem('user', JSON.stringify(userInfo));
 
+        logService.addLoginLog(response.username, 'SUCCESS', '192.168.0.53', '로그인 성공');
+
         // 역할(Role)에 따른 페이지 자동 분기
         if (response.role === 'ROLE_ADMIN' || response.role === 'ADMIN') {
           navigate('/adminsetting/dashboard');
@@ -43,10 +46,14 @@ export const LoginPage: React.FC = () => {
           navigate('/'); // 일반 사용자는 사용자 진단서 포탈로 이동
         }
       } else {
-        setErrorMsg(response.message || '로그인에 실패했습니다.');
+        const msg = response.message || '로그인에 실패했습니다.';
+        setErrorMsg(msg);
+        logService.addLoginLog(username.trim(), 'FAILED', '192.168.0.53', msg);
       }
     } catch (err: any) {
-      setErrorMsg(err.response?.data?.message || err.message || '아이디 또는 비밀번호가 일치하지 않습니다.');
+      const msg = err.response?.data?.message || err.message || '아이디 또는 비밀번호가 일치하지 않습니다.';
+      setErrorMsg(msg);
+      logService.addLoginLog(username.trim(), 'FAILED', '192.168.0.53', msg);
     } finally {
       setLoading(false);
     }
