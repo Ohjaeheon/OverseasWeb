@@ -1,0 +1,37 @@
+{
+  "brand": "해외선교부 교회 진단서",
+  "subBrand": "GLOBAL MISSION DASHBOARD",
+  "months": {
+    "may": "5월",
+    "june": "6월"
+  },
+  "searchPlaceholder": "교회명 검색...",
+  "login": {
+    "title": "해선부 업무포탈 로그인",
+    "username": "아이디",
+    "password": "비밀번호",
+    "submit": "로그인",
+    "otpTitle": "텔레그램 2차 인증 (OTP)",
+    "otpNotice": "등록된 텔레그램으로 6자리 인증번호가 발송되었습니다.",
+    "otpInput": "인증번호 6자리",
+    "verifyOtp": "인증 완료",
+    "telegramWebAppNotice": "텔레그램 웹앱(Telegram WebApp) 접속이 감지되었습니다. 2차 인증 없이 바로 로그인됩니다."
+  },
+  "dashboard": {
+    "evangelism": "① 전도 현황",
+    "center": "② 선교센터 현황",
+    "internal": "③ 교적 / 내무 현황",
+    "worship": "④ 주일예배 현황",
+    "churches": "등록 교회",
+    "totalRegistered": "총 재적 수",
+    "attTotal": "총 출석 수",
+    "absTotal": "총 결석 수"
+  },
+  "admin": {
+    "dashboard": "대시보드",
+    "users": "회원(텔레그램 연동) 관리",
+    "faithRecords": "진단서/신앙프로세스 관리",
+    "i18n": "다국어 사전 관리",
+    "systemSettings": "시스템 설정"
+  }
+}

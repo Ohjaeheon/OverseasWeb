@@ -1,0 +1,10 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/tel_bot?currentSchema=overseas
+    username: ${DB_USER:overseas_m}
+    password: ${DB_PASSWORD:gotjsnakeldk}
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true

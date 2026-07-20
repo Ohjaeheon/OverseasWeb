@@ -1,0 +1,37 @@
+{
+  "brand": "Overseas Mission Church Diagnosis",
+  "subBrand": "GLOBAL MISSION DASHBOARD",
+  "months": {
+    "may": "May",
+    "june": "June"
+  },
+  "searchPlaceholder": "Search church name...",
+  "login": {
+    "title": "Overseas Portal Login",
+    "username": "Username",
+    "password": "Password",
+    "submit": "Sign In",
+    "otpTitle": "Telegram 2FA Verification (OTP)",
+    "otpNotice": "A 6-digit OTP code has been sent to your registered Telegram account.",
+    "otpInput": "6-digit OTP Code",
+    "verifyOtp": "Verify OTP",
+    "telegramWebAppNotice": "Telegram WebApp environment detected. Logging in without 2FA."
+  },
+  "dashboard": {
+    "evangelism": "① Evangelism",
+    "center": "② Mission Center",
+    "internal": "③ Membership",
+    "worship": "④ Sunday Worship",
+    "churches": "Total Churches",
+    "totalRegistered": "Total Registered",
+    "attTotal": "Total Attendance",
+    "absTotal": "Total Absences"
+  },
+  "admin": {
+    "dashboard": "Dashboard",
+    "users": "Users & Telegram Mapping",
+    "faithRecords": "Faith Process Records",
+    "i18n": "Multi-language Dictionary",
+    "systemSettings": "System Settings"
+  }
+}

@@ -1,0 +1,26 @@
+server:
+  port: 3001
+  servlet:
+    context-path: /
+
+spring:
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:local}
+  application:
+    name: overseas-portal
+  jpa:
+    open-in-view: false
+    properties:
+      hibernate:
+        default_schema: overseas
+        format_sql: true
+        show_sql: true
+
+jwt:
+  secret: 9a2f8c4e7b1a3d6f8e5c2b0a4f9e1d7c3b8a5f2e6d9c1b4a7f0e3d6c9b2a5f8e
+  expiration-ms: 1800000 # 30분 (1,800,000 ms)
+  pre-auth-expiration-ms: 300000 # 5분 (OTP 입력 대기용)
+
+telegram:
+  bot-token: ${TELEGRAM_BOT_TOKEN:7894561230:AAExampleTokenForOverseasPortal}
+  bot-username: ${TELEGRAM_BOT_USERNAME:OverseasPortal_Bot}

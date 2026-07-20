@@ -1,0 +1,33 @@
+version: '3.8'
+
+services:
+  backend:
+    build: ./backend
+    container_name: Overseas_Portal-backend
+    environment:
+      # 외부 PostgreSQL DB 연결 설정 (운영/로컬 환경별)
+      SPRING_DATASOURCE_URL: ${SPRING_DATASOURCE_URL:-jdbc:postgresql://192.168.0.53:15432/india?currentSchema=overseas}
+      SPRING_DATASOURCE_USERNAME: ${DB_USER:-overseas_m}
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:-gotjsnakeldk}
+      SERVER_PORT: 3001
+      SPRING_PROFILES_ACTIVE: prod
+      TZ: Asia/Seoul
+    volumes:
+      - uploads_data:/app/uploads
+      - logs_data:/app/logs
+    ports:
+      - "3001:3001"
+    restart: always
+
+  frontend:
+    build: ./frontend
+    container_name: Overseas_Portal-frontend
+    ports:
+      - "3000:80" # 외부 3000번 포트를 컨테이너 내부 Nginx 80번 포트와 연결
+    depends_on:
+      - backend
+    restart: always
+
+volumes:
+  uploads_data:
+  logs_data:

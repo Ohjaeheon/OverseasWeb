@@ -1,0 +1,10 @@
+spring:
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://192.168.0.53:15432/india?currentSchema=overseas}
+    username: ${DB_USER:overseas_m}
+    password: ${DB_PASSWORD:gotjsnakeldk}
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
