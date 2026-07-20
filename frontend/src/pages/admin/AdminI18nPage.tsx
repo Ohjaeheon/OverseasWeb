@@ -23,7 +23,7 @@ export const AdminI18nPage: React.FC = () => {
           <tbody>
             <tr>
               <td><code>brand</code></td>
-              <td>해외선교부 교회 진단서</td>
+              <td>해외선교부 업무포탈</td>
               <td>Overseas Mission Church Diagnosis</td>
               <td><span className="badge badge-green">정상</span></td>
             </tr>

@@ -37,7 +37,7 @@ export const ShareModal: React.FC<ShareModalProps> = ({
   </style>
 </head>
 <body>
-  <h1>해외선교부 교회 진단서 (${selectedMonth})</h1>
+  <h1>해외선교부 업무포탈 (${selectedMonth})</h1>
   <p>생성일시: ${new Date().toLocaleString()}</p>
   <table>
     <thead>
