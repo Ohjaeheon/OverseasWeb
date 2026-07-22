@@ -95,25 +95,20 @@ export const logService = {
         const u = localStorage.getItem('user');
         if (u) {
           const parsed = JSON.parse(u);
-          currentUsername = parsed.username || 'guest';
+          currentUsername = parsed.username || parsed.name || 'guest';
         }
       } catch (e) {}
     }
 
     const newLog: AccessLogItem = {
-      id: Date.now(),
+      id: Date.now() + Math.floor(Math.random() * 1000),
       timestamp: formatTimestampWithMs(),
       username: currentUsername,
       pageName,
       path
     };
 
-    // Avoid duplicate log if last log was same path within 2 seconds
-    if (logs.length > 0 && logs[0].path === path && logs[0].username === currentUsername) {
-      return logs[0];
-    }
-
-    const updated = [newLog, ...logs].slice(0, 100);
+    const updated = [newLog, ...logs].slice(0, 500);
     try {
       localStorage.setItem(ACCESS_LOGS_KEY, JSON.stringify(updated));
     } catch (e) {}
@@ -124,3 +119,8 @@ export const logService = {
     localStorage.removeItem(ACCESS_LOGS_KEY);
   }
 };
+
+if (typeof window !== 'undefined') {
+  (window as any).addAccessLog = logService.addAccessLog;
+  (window as any).addLoginLog = logService.addLoginLog;
+}

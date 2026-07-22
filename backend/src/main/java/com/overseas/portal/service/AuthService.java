@@ -38,6 +38,7 @@ public class AuthService {
         private String username;
         private String name;
         private String role;
+        private String assignedCountry;
         private String message;
     }
 
@@ -62,6 +63,7 @@ public class AuthService {
                 .username(user.getUsername())
                 .name(user.getName())
                 .role(user.getRole())
+                .assignedCountry(user.getAssignedCountry())
                 .message("로그인 성공!")
                 .build();
     }
@@ -104,6 +106,7 @@ public class AuthService {
                 .username(user.getUsername())
                 .name(user.getName())
                 .role(user.getRole())
+                .assignedCountry(user.getAssignedCountry())
                 .message("2차 텔레그램 OTP 인증 성공!")
                 .build();
     }

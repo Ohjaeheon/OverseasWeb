@@ -24,22 +24,36 @@ export const DEFAULT_ROLES: RoleDefinition[] = [
 ];
 
 export const DEFAULT_MENUS: { menuKey: string; menuName: string; category: string; path: string }[] = [
-  { menuKey: 'home', menuName: '🏠 홈 (종합 현황)', category: '사용자 진단서', path: '/' },
-  { menuKey: 'diag', menuName: '🩺 교회 진단서', category: '사용자 진단서', path: '/' },
-  { menuKey: 'inspect', menuName: '🚨 점검 (양·질)', category: '사용자 진단서', path: '/' },
-  { menuKey: 'funnel', menuName: '🚦 관문별 통과율', category: '사용자 진단서', path: '/' },
-  { menuKey: 'p1', menuName: '① 전도 · 가개강', category: '신앙 프로세스', path: '/' },
-  { menuKey: 'p2', menuName: '② 센터', category: '신앙 프로세스', path: '/' },
-  { menuKey: 'p3', menuName: '③ 내무', category: '신앙 프로세스', path: '/' },
-  { menuKey: 'p4', menuName: '④ 예배', category: '신앙 프로세스', path: '/' },
-  { menuKey: 'map', menuName: '🌐 지도 · 지구본', category: '보기 및 공유', path: '/' },
-  { menuKey: 'trend', menuName: '📈 추이 · 비교', category: '보기 및 공유', path: '/' },
-  { menuKey: 'export', menuName: '📥 엑셀 내보내기', category: '보기 및 공유', path: '/' },
-  { menuKey: 'users', menuName: '🌍 회원 및 텔레그램 연동 관리', category: '관리자 전용', path: '/adminsetting/users' },
-  { menuKey: 'roles', menuName: '📈 권한 목록 및 소속 회원 관리', category: '관리자 전용', path: '/adminsetting/roles' },
-  { menuKey: 'perm', menuName: '🔑 권한별 접근 메뉴 설정', category: '관리자 전용', path: '/adminsetting/permissions' },
-  { menuKey: 'i18n', menuName: '🌐 다국어 사전 관리', category: '관리자 전용', path: '/adminsetting/i18n' },
-  { menuKey: 'sys', menuName: '⚙️ 시스템 설정', category: '관리자 전용', path: '/adminsetting/settings' }
+  // User Diagnosis Portal Menus
+  { menuKey: 'home', menuName: '🏠 해외 총괄 요약', category: '🖥️ 일반 사용자 진단서 포탈', path: '/' },
+  { menuKey: 'diag', menuName: '🩺 교회 진단서', category: '🖥️ 일반 사용자 진단서 포탈', path: '/diag' },
+  { menuKey: 'inspect', menuName: '🚨 점검 (양·질)', category: '🖥️ 일반 사용자 진단서 포탈', path: '/inspect' },
+  { menuKey: 'funnel', menuName: '🚦 관문별 통과율', category: '🖥️ 일반 사용자 진단서 포탈', path: '/funnel' },
+  { menuKey: 'trend', menuName: '📈 12개월 추이', category: '🖥️ 일반 사용자 진단서 포탈', path: '/trend' },
+  { menuKey: 'map', menuName: '🗺️ 지리적 분포 (지도)', category: '🖥️ 일반 사용자 진단서 포탈', path: '/map' },
+  { menuKey: 'globe', menuName: '🌐 3D 지구본', category: '🖥️ 일반 사용자 진단서 포탈', path: '/globe' },
+  { menuKey: 'p1', menuName: '① 전도 · 가개강 (전체)', category: '🖥️ 일반 사용자 진단서 포탈', path: '/evangelism' },
+  { menuKey: 'p1_check', menuName: '   ㄴ ①-1. 교회별 데이터 확인', category: '🖥️ 일반 사용자 진단서 포탈', path: '/evangelism/check' },
+  { menuKey: 'p1_agg', menuName: '   ㄴ ①-2. 취합 및 실적 입력', category: '🖥️ 일반 사용자 진단서 포탈', path: '/evangelism/aggregate' },
+  { menuKey: 'p2', menuName: '② 센터', category: '🖥️ 일반 사용자 진단서 포탈', path: '/center' },
+  { menuKey: 'p3', menuName: '③ 내무', category: '🖥️ 일반 사용자 진단서 포탈', path: '/membership' },
+  { menuKey: 'p4', menuName: '④ 예배 · 전성도', category: '🖥️ 일반 사용자 진단서 포탈', path: '/worship' },
+
+  // Admin Portal Menus
+  { menuKey: 'admin_dash', menuName: '📊 관리자 대시보드', category: '⚙️ 관리자 전용 (adminsetting)', path: '/adminsetting/dashboard' },
+  { menuKey: 'admin_faith', menuName: '🩺 해외교회 · 지역 · 개척지 관리', category: '⚙️ 관리자 전용 (adminsetting)', path: '/adminsetting/faith-records' },
+  { menuKey: 'admin_detail', menuName: '🔍 교회 상세 정밀 진단 [구현예정]', category: '⚙️ 관리자 전용 (adminsetting)', path: '/adminsetting/church-detail' },
+  { menuKey: 'admin_p1', menuName: '① 전도 현황 관리 [구현예정]', category: '⚙️ 관리자 전용 (adminsetting)', path: '/adminsetting/evangelism' },
+  { menuKey: 'admin_p2', menuName: '② 센터 운영 관리 [구현예정]', category: '⚙️ 관리자 전용 (adminsetting)', path: '/adminsetting/center' },
+  { menuKey: 'admin_p3', menuName: '③ 재적 및 입교 관리 [구현예정]', category: '⚙️ 관리자 전용 (adminsetting)', path: '/adminsetting/membership' },
+  { menuKey: 'admin_p4', menuName: '④ 예배 및 출석 관리 [구현예정]', category: '⚙️ 관리자 전용 (adminsetting)', path: '/adminsetting/worship' },
+  { menuKey: 'users', menuName: '🌍 회원 및 담당 범위 관리', category: '⚙️ 관리자 전용 (adminsetting)', path: '/adminsetting/users' },
+  { menuKey: 'roles', menuName: '📈 권한 그룹 및 회원 할당', category: '⚙️ 관리자 전용 (adminsetting)', path: '/adminsetting/roles' },
+  { menuKey: 'perm', menuName: '🔑 권한별 접근 메뉴 설정', category: '⚙️ 관리자 전용 (adminsetting)', path: '/adminsetting/permissions' },
+  { menuKey: 'login_logs', menuName: '📥 로그인 로그 관리', category: '⚙️ 관리자 전용 (adminsetting)', path: '/adminsetting/login-logs' },
+  { menuKey: 'access_logs', menuName: '📥 접근 로그 관리', category: '⚙️ 관리자 전용 (adminsetting)', path: '/adminsetting/access-logs' },
+  { menuKey: 'i18n', menuName: '🌐 다국어 사전 관리', category: '⚙️ 관리자 전용 (adminsetting)', path: '/adminsetting/i18n' },
+  { menuKey: 'sys', menuName: '⚙️ 시스템 설정', category: '⚙️ 관리자 전용 (adminsetting)', path: '/adminsetting/settings' }
 ];
 
 export const roleService = {
@@ -192,18 +206,66 @@ export const roleService = {
   },
 
   canRoleAccessMenu: (roleId: string, menuKey: string): { read: boolean; write: boolean } => {
-    if (roleId === 'ROLE_ADMIN' || roleId === 'ADMIN' || roleId === '관리자') {
+    const cleanRole = (roleId || '').toUpperCase();
+    let cleanRoleId = cleanRole.startsWith('ROLE_') ? cleanRole : `ROLE_${cleanRole}`;
+
+    if (cleanRoleId === 'ROLE_ADMIN' || cleanRoleId === 'ADMIN' || cleanRoleId === '관리자' || cleanRoleId === 'ROLE_관리자') {
       return { read: true, write: true };
     }
+
+    if (cleanRoleId === 'ROLE_해외선교부 담당자' || cleanRoleId === 'ROLE_USER') {
+      cleanRoleId = 'ROLE_USER';
+    } else if (cleanRoleId === 'ROLE_지파 담당자' || cleanRoleId === 'ROLE_JIPA') {
+      cleanRoleId = 'ROLE_JIPA';
+    } else if (cleanRoleId === 'ROLE_일반 회원' || cleanRoleId === 'ROLE_GUEST') {
+      cleanRoleId = 'ROLE_GUEST';
+    }
+
+    let normKey = menuKey;
+    if (menuKey === 'evangelism/check') normKey = 'p1_check';
+    if (menuKey === 'evangelism/aggregate') normKey = 'p1_agg';
+    if (menuKey === 'evangelism') normKey = 'p1';
+
     const permissions = roleService.getMenuPermissions();
-    const matchedMenu = permissions.find(m => m.menuKey === menuKey || m.path.includes(menuKey));
+    const matchedMenu = permissions.find(m => m.menuKey === normKey || m.path.includes(normKey));
     if (matchedMenu && matchedMenu.permissions) {
       const roleKeys = Object.keys(matchedMenu.permissions);
-      const matchedKey = roleKeys.find(k => k === roleId || k === `ROLE_${roleId}`);
+      const matchedKey = roleKeys.find(k => k === cleanRoleId);
       if (matchedKey && matchedMenu.permissions[matchedKey]) {
         return matchedMenu.permissions[matchedKey];
       }
     }
+
+    // Default fallbacks if permissions matrix is uninitialized
+    if (cleanRoleId === 'ROLE_USER') {
+      return { read: true, write: !['users', 'roles', 'perm', 'sys'].includes(normKey) };
+    } else if (cleanRoleId === 'ROLE_GUEST') {
+      return { read: ['home', 'diag', 'inspect', 'funnel', 'map', 'p1_check'].includes(normKey), write: false };
+    }
     return { read: true, write: false };
+  },
+
+  getLoginRedirectPath: (role: string): string => {
+    const cleanRole = (role || '').toUpperCase();
+    const roleId = cleanRole.startsWith('ROLE_') ? cleanRole : `ROLE_${cleanRole}`;
+
+    if (roleId === 'ROLE_ADMIN' || roleId === 'ADMIN' || roleId === '관리자') {
+      return '/adminsetting/dashboard';
+    }
+
+    try {
+      const rawPerms = localStorage.getItem('OVERSEAS_PORTAL_PERMISSIONS');
+      if (rawPerms) {
+        const perms = JSON.parse(rawPerms);
+        const homePerm = perms['home']?.[roleId] || { read: true };
+        const checkPerm = perms['p1_check']?.[roleId] || { read: false };
+        
+        if (!homePerm.read && checkPerm.read) {
+          return '/evangelism/check';
+        }
+      }
+    } catch (e) {}
+
+    return '/';
   }
 };

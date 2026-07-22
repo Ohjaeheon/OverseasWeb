@@ -1179,10 +1179,7 @@ function weakPoints(q){
   ].filter(x=>x.v!=null).sort((a,b)=>a.v-b.v);
 }
 function buildChurchScores(){
-  let recs=recordsFor(ST.month,"전체");
-  if (recs.filter(r=>r.gubun==="지역").length > 0) {
-    recs = recs.filter(r=>r.gubun==="지역");
-  }
+  let recs=recordsFor(ST.month, ST.gubun || "전체");
   const aggs=recs.map(r=>aggregate([r]));
   const prior=qualityPrior(aggs); // 소수보정 기준(당월 전체 교회 평균)
   return recs.map((r,i)=>{ const a=aggs[i]; const q=churchQuality(a,r.name,prior),n=churchQuantity(a);
@@ -1480,6 +1477,11 @@ function renderFunnel(){
 // ── render ──
 function render(){
   const sec=ST.section||"home";
+  if (sec === 'evangelism/check' || sec === 'evangelism/aggregate') {
+    buildSidebar();
+    return;
+  }
+  ST.month = getSecMonth(sec);
   const dv=document.getElementById("dataview"), mv=document.getElementById("mapview"), gv=document.getElementById("globeview");
   const hv=document.getElementById("homeview"), dgv=document.getElementById("diagview");
   const kpiEl=document.getElementById("kpis"), chipEl=document.getElementById("chips"), mgt=document.getElementById("mapGlobeToggle");
@@ -1525,16 +1527,62 @@ const CAT_SUB={"④예배·전월입교자":"예배 출석 · 전월 입교자",
 const CAT_LABEL={"④예배·전월입교자":"전월입교자","④예배·전성도":"전성도 출석","④예배·결석":"전성도 결석"};
 const CAT_HEAD={"④예배·결석":"④ 예배 (결석)"};
 const GROUPS=["개별","지파별","대륙별"];
+
+// ── Section-Independent Reference Month State & Helpers ──
+ST.sectionMonths = ST.sectionMonths || {};
+
+function getSecMonth(sec) {
+  const target = sec || ST.section || 'home';
+  if (!ST.sectionMonths) ST.sectionMonths = {};
+  if (!ST.sectionMonths[target]) {
+    const defaultM = (typeof DATA !== "undefined" && DATA.months && DATA.months.length > 0) ? DATA.months[DATA.months.length - 1] : '6월';
+    ST.sectionMonths[target] = defaultM;
+  }
+  return ST.sectionMonths[target];
+}
+
+function setSecMonth(sec, m) {
+  if (!ST.sectionMonths) ST.sectionMonths = {};
+  ST.sectionMonths[sec] = m;
+  ST.month = m;
+  render();
+}
+
+function renderMonthSelectorHTML(sec) {
+  const targetSec = sec || ST.section || 'home';
+  const curM = getSecMonth(targetSec);
+  const months = (typeof DATA !== "undefined" && DATA.months) ? DATA.months : ['5월', '6월'];
+  const opts = months.map(m => `<option value="${m}" ${m === curM ? 'selected' : ''}>${m}</option>`).join('');
+  return `
+    <div class="sec-month-box" style="display:inline-flex;align-items:center;gap:6px;background:#ffffff;border:1.5px solid #cbd5e1;padding:5px 12px;border-radius:10px;font-size:12.5px;font-weight:700;box-shadow:0 2px 8px rgba(0,0,0,0.04);margin-left:auto">
+      <span style="color:#64748b;font-weight:700">📅 메뉴별 기준월</span>
+      <select style="border:none;background:transparent;font-weight:800;color:#2563eb;cursor:pointer;outline:none;font-size:13px" onchange="setSecMonth('${targetSec}', this.value)">
+        ${opts}
+      </select>
+    </div>
+  `;
+}
+
 function renderCtrlbar(sec){
   const si=document.getElementById("secinfo"), ctl=document.getElementById("ctrlbar");
   const info=SEC_INFO[sec]||["",""];
   const head=(typeof CAT_HEAD!=="undefined"&&CAT_HEAD[ST.cat])?CAT_HEAD[ST.cat]:info[0];
   const sub=(typeof CAT_SUB!=="undefined"&&CAT_SUB[ST.cat]!==undefined)?CAT_SUB[ST.cat]:info[1];
   si.innerHTML=head?`<div class="sechead">${head}</div>${sub?`<div class="secsub">${sub}</div>`:''}`:"";
+  const monthHtml = renderMonthSelectorHTML(sec);
   if(PROC_CATS[sec]){
-    let h=`<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px"><span style="font-size:12px;color:var(--muted);font-weight:700">묶어보기</span><div class="grouptoggle" style="margin:0">`+GROUPS.map(g=>`<button class="gbtn ${ST.group===g?'on':''}" onclick="setGroup('${g}')">${g}</button>`).join("")+`</div></div>`;
+    let h=`<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:4px">
+            <div style="display:flex;align-items:center;gap:8px">
+              <span style="font-size:12px;color:var(--muted);font-weight:700">묶어보기</span>
+              <div class="grouptoggle" style="margin:0">`+GROUPS.map(g=>`<button class="gbtn ${ST.group===g?'on':''}" onclick="setGroup('${g}')">${g}</button>`).join("")+`</div>
+            </div>
+            ${monthHtml}
+          </div>`;
     ctl.innerHTML=h; ctl.style.display="block";
-  } else { ctl.innerHTML=""; ctl.style.display="none"; }
+  } else {
+    ctl.innerHTML=`<div style="display:flex;justify-content:flex-end;margin-bottom:4px">${monthHtml}</div>`;
+    ctl.style.display="block";
+  }
 }
 function setGroup(g){ ST.group=g; ST.sortIdx=null; render(); }
 function setCatV(c){ ST.cat=c; ST.sortIdx=null; render(); }
@@ -1542,7 +1590,48 @@ function setSection(sec, cat){
   if (typeof IS_SHARE_FILE !== "undefined" && IS_SHARE_FILE) {
     sec = 'diag';
   }
+  if (sec && sec.startsWith('evangelism') && sec !== 'evangelism/check' && sec !== 'evangelism/aggregate') {
+    sec = 'p1';
+  }
   ST.section=sec;
+  try {
+    const routePaths = {
+      home: '',
+      diag: 'diag',
+      inspect: 'inspect',
+      funnel: 'funnel',
+      trend: 'trend',
+      map: 'map',
+      globe: 'globe',
+      p1: 'evangelism',
+      p2: 'center',
+      p3: 'membership',
+      p4: 'worship'
+    };
+    const targetSub = routePaths[sec] !== undefined ? routePaths[sec] : sec;
+    const targetUrl = '/OverseasPortal/' + targetSub;
+    if (window.location.pathname !== targetUrl && window.history && window.history.pushState) {
+      window.history.pushState(null, '', targetUrl);
+    }
+
+    if (typeof window !== "undefined" && typeof window.addAccessLog === "function") {
+      const labels = {
+        home: "🏠 홈 (종합 현황)",
+        diag: "🩺 교회 진단서",
+        inspect: "🚨 점검 (양·질)",
+        funnel: "🚦 관문별 통과율",
+        trend: "📈 12개월 추이",
+        map: "🗺️ 지리적 분포 (지도)",
+        globe: "🌐 3D 지구본",
+        p1: "① 전도 · 가개강",
+        p2: "② 센터",
+        p3: "③ 내무",
+        p4: "④ 예배 · 전성도"
+      };
+      const name = labels[sec] || ("📌 " + (sec || "포탈 메뉴"));
+      window.addAccessLog(name, targetUrl);
+    }
+  } catch(e){}
   if(sec==="inspect"){ ST.mode="data"; ST.view="🚨 점검(양·질)"; }
   else if(sec==="funnel"){ ST.mode="data"; ST.view="🔬 전환율"; }
   else if(sec==="trend"){ ST.mode="data"; ST.view="📈 지파 추이"; ST.cat="종합"; }
@@ -1559,7 +1648,10 @@ var SIDEBAR=[
   {s:"inspect",ico:"🚨",label:"점검 (양·질)"},
   {s:"funnel",ico:"🚦",label:"관문별 통과율"},
   {grp:"신앙 프로세스"},
-  {s:"p1",ico:"①",label:"전도·가개강"},
+  {s:"p1",ico:"①",label:"전도·가개강",path:"/evangelism",children:[
+    {tab:"check",label:"교회별 데이터 확인",path:"/evangelism/check"},
+    {tab:"aggregate",label:"취합 및 실적 입력",path:"/evangelism/aggregate"}
+  ]},
   {s:"p2",ico:"②",label:"센터"},
   {s:"p3",ico:"③",label:"내무"},
   {s:"p4",ico:"④",label:"예배",children:[
@@ -1581,43 +1673,110 @@ function checkMenuAccess(menuKey){
       const u = JSON.parse(userStr);
       userRole = u.role || 'ROLE_USER';
     }
-    if(userRole === 'ROLE_ADMIN' || userRole === 'ADMIN' || userRole === '관리자') return true;
+    const cleanRole = userRole.toUpperCase();
+    if(cleanRole.includes('ADMIN') || cleanRole.includes('관리자')) return true;
+
+    let normRole = cleanRole.startsWith('ROLE_') ? cleanRole : 'ROLE_' + cleanRole;
+    if(normRole === 'ROLE_해외선교부 담당자' || normRole === 'ROLE_USER') {
+      normRole = 'ROLE_USER';
+    } else if(normRole === 'ROLE_지파 담당자' || normRole === 'ROLE_JIPA') {
+      normRole = 'ROLE_JIPA';
+    } else if(normRole === 'ROLE_일반 회원' || normRole === 'ROLE_GUEST') {
+      normRole = 'ROLE_GUEST';
+    }
 
     const rawPerms = localStorage.getItem('OVERSEAS_PORTAL_PERMISSIONS');
     if(rawPerms){
       const perms = JSON.parse(rawPerms);
-      if(perms[menuKey]){
-        const roleKeys = Object.keys(perms[menuKey]);
-        const matched = roleKeys.find(k => k === userRole || k === 'ROLE_' + userRole);
-        if(matched && perms[menuKey][matched]){
-          return perms[menuKey][matched].read;
+      let keys = [menuKey];
+      if(menuKey === 'p1') {
+        keys = ['p1', 'p1_check', 'p1_agg'];
+      }
+      for(let i=0; i<keys.length; i++){
+        const k = keys[i];
+        if(perms[k] && perms[k][normRole] && perms[k][normRole].read){
+          return true;
         }
       }
+      return false;
     }
   } catch(e){}
   return true;
 }
 
+function isGroupVisible(grpIdx){
+  for(let i=grpIdx+1; i<SIDEBAR.length; i++){
+    const item = SIDEBAR[i];
+    if(item.grp) break;
+    if(item.s && checkMenuAccess(item.s)) return true;
+  }
+  return false;
+}
+
 function buildSidebar(){
   let html="";
-  SIDEBAR.forEach(it=>{
-    if(it.grp){ html+=`<div class="grp">${it.grp}</div>`; return; }
+  SIDEBAR.forEach((it, idx)=>{
+    if(it.grp){
+      if(isGroupVisible(idx)){
+        html+=`<div class="grp">${it.grp}</div>`;
+      }
+      return;
+    }
     if(it.s && !checkMenuAccess(it.s)) return;
 
-    const on=(!it.children && it.s===ST.section && (!it.cat||it.cat===ST.cat))?'on':'';
-    const arrow=it.children?`<span style="margin-left:auto;color:var(--muted);font-size:11px">${it.s===ST.section?'▾':'▸'}</span>`:'';
+    const isParentActive = (it.s===ST.section || (it.s==='p1' && ST.section && ST.section.startsWith('evangelism')));
+    const on=isParentActive?'on':'';
+    const arrow=it.children?`<span style="margin-left:auto;color:var(--muted);font-size:11px">${isParentActive?'▾':'▸'}</span>`:'';
+
     html+=`<div class="mitem ${on}" data-s="${it.s}" data-cat="${it.cat||''}"><span class="ico">${it.ico}</span>${it.label}${it.tag?`<span class="tag">${it.tag}</span>`:''}${arrow}</div>`;
-    if(it.children && it.s===ST.section){
-      it.children.forEach(ch=>{ html+=`<div class="mitem ${ch.cat===ST.cat?'on':''}" style="padding-left:36px;font-size:13px" data-s="${it.s}" data-cat="${ch.cat}"><span class="ico" style="font-size:10px;color:var(--muted)">·</span>${ch.label}</div>`; });
+
+    if(it.children && isParentActive){
+      it.children.forEach(ch=>{
+        const isChildOn = (ch.path && window.location.pathname.endsWith(ch.path)) || (ch.cat && ch.cat===ST.cat);
+        html+=`<div class="mitem ${isChildOn?'on':''}" style="padding-left:36px;font-size:13px" data-s="${it.s}" data-path="${ch.path||''}" data-cat="${ch.cat||''}"><span class="ico" style="font-size:10px;color:var(--muted)">·</span>${ch.label}</div>`;
+      });
     }
   });
+
   document.getElementById("side").innerHTML=html;
-  document.querySelectorAll(".mitem").forEach(m=>m.onclick=()=>{
+
+  document.querySelectorAll(".mitem").forEach(m=>m.onclick=(e)=>{
+    e.stopPropagation();
     if(!checkMenuAccess(m.dataset.s)){
       alert("해당 메뉴에 대한 접근 권한이 없습니다.");
       return;
     }
-    if(m.dataset.s==="export"){ openExportModal(); } else { setSection(m.dataset.s, m.dataset.cat||null); }
+    if(m.dataset.path){
+      if (window.reactNavigate) {
+        window.reactNavigate(m.dataset.path);
+      } else {
+        window.location.href = '/OverseasPortal' + m.dataset.path;
+      }
+      return;
+    }
+    if(m.dataset.s==="export"){
+      openExportModal();
+    } else {
+      if (window.reactNavigate) {
+        const routePaths = {
+          home: '',
+          diag: 'diag',
+          inspect: 'inspect',
+          funnel: 'funnel',
+          trend: 'trend',
+          map: 'map',
+          globe: 'globe',
+          p1: 'evangelism',
+          p2: 'center',
+          p3: 'membership',
+          p4: 'worship'
+        };
+        const targetSub = routePaths[m.dataset.s] !== undefined ? routePaths[m.dataset.s] : m.dataset.s;
+        window.reactNavigate(targetSub);
+      } else {
+        setSection(m.dataset.s, m.dataset.cat||null);
+      }
+    }
   });
 }
 // ========== 📥 공유용 엑셀 내보내기 (담임강사 공유) — 항목 선택 + 순위 ==========
@@ -2127,7 +2286,7 @@ function renderDiag(){
   const host=document.getElementById("diagview");
   const EN = ST.diagLang==='en';
   if(!all.length){ host.innerHTML=`<div class='card'>${({ko:'해당 월의 교회 데이터가 없습니다.',en:'No church data for this month.',zh:'该月没有教会数据。',ja:'該当月の教会データがありません。'})[ST.diagLang||'ko']||'해당 월의 교회 데이터가 없습니다.'}</div>`; return; }
-  const inScope=x=> !JIPA_FILTER || x.jipa===JIPA_FILTER;
+  const inScope=x=> (!JIPA_FILTER || x.jipa===JIPA_FILTER) && checkAssignedLocationAccess(x);
   if(!ST.diagChurch || !all.find(c=>c.name===ST.diagChurch && inScope(c))){ const f=all.find(inScope)||all[0]; ST.diagChurch=f.name; }
   const c=all.find(x=>x.name===ST.diagChurch);
   const cont=CONT_KO[c.rec.continent]||c.rec.continent||"-";
@@ -2278,9 +2437,12 @@ function renderDiag(){
   host.innerHTML=`
     <div class="sechead">🩺 ${P('교회 진단서','Church Diagnosis','教会诊断书','教会診断書')} <span onclick="var e=document.getElementById('diagLegend');e.style.display=(e.style.display==='none'?'block':'none')" style="font-size:12px;font-weight:700;color:var(--blue);cursor:pointer;vertical-align:middle;user-select:none">${P('ⓘ 색 기준','ⓘ Color guide','ⓘ 颜色标准','ⓘ 色の基準')}</span>${langBtn}</div>
     <div id="diagLegend" style="display:none;margin-bottom:14px;font-size:12.5px;color:var(--muted);line-height:1.6">${P(`<b style="color:#16a34a">🟢 상위</b> · <b style="color:#b5811f">🟡 중위</b> · <b style="color:#e1503e">🔴 하위</b> — ${all.length}개 교회 중 <b>상위 25% / 중위 / 하위 25%</b>로 판정함(평균 아님). <b style="color:#2f54eb">양</b>=규모, <b style="color:#2f9e6e">질</b>=실력.`,`<b style="color:#16a34a">🟢 Top</b> · <b style="color:#b5811f">🟡 Mid</b> · <b style="color:#e1503e">🔴 Bottom</b> — ranked as <b>top 25% / mid / bottom 25%</b> among ${all.length} churches (not an average). <b style="color:#2f54eb">Qty</b> = scale, <b style="color:#2f9e6e">Qual</b> = skill.`,`<b style="color:#16a34a">🟢 上游</b> · <b style="color:#b5811f">🟡 中游</b> · <b style="color:#e1503e">🔴 下游</b> — 在${all.length}间教会中按<b>前25% / 中位 / 后25%</b>判定(非平均)。<b style="color:#2f54eb">量</b>=规模,<b style="color:#2f9e6e">质</b>=实力。`,`<b style="color:#16a34a">🟢 上位</b> · <b style="color:#b5811f">🟡 中位</b> · <b style="color:#e1503e">🔴 下位</b> — ${all.length}教会中で<b>上位25% / 中位 / 下位25%</b>と判定(平均ではありません)。<b style="color:#2f54eb">量</b>=規模、<b style="color:#2f9e6e">質</b>=実力。`)}</div>
-    <div class="dpicker">
-      <span style="font-weight:700;color:var(--muted)">${P('교회 선택','Select church','选择教会','教会を選択')}</span>
-      <select onchange="setDiagChurch(this.value)">${opts}</select>
+    <div class="dpicker" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+      <div style="display:flex;align-items:center;gap:8px">
+        <span style="font-weight:700;color:var(--muted)">${P('교회 선택','Select church','选择教会','教会を選択')}</span>
+        <select onchange="setDiagChurch(this.value)">${opts}</select>
+      </div>
+      ${renderMonthSelectorHTML('diag')}
       <span style="font-size:12px;color:var(--muted)"><b style="color:${c.color}">${jpName(c.jipa)}${P('지파',' Tribe',' 支派',' 支派')}</b> · ${contName(c.rec.continent)} · ${ctyName(c.country)}</span>
     </div>
     <div class="dwrap">
@@ -2396,11 +2558,11 @@ function renderJipaTrend(){
 
 // ── UI build ──
 function buildUI(){
-  ST.month=DATA.months[DATA.months.length-1];
+  ST.month = getSecMonth(ST.section);
   document.getElementById("months").innerHTML=
-    `<span id="moLabel" style="font-size:13px;color:var(--muted);font-weight:600">📅 기준월</span>
-     <select id="monthSel" title="현재는 6월 기준만 제공됩니다">${DATA.months.map(m=>`<option value="${m}" ${m===ST.month?'selected':'abled'}>${m}${m===ST.month?'':' 🔒'}</option>`).join("")}</select>`;
-  document.getElementById("monthSel").onchange=function(){ ST.month=this.value; render(); };
+    `<span style="font-size:12.5px;color:#2563eb;font-weight:800;background:#eff6ff;padding:5px 12px;border-radius:10px;border:1.5px solid #bfdbfe;display:inline-flex;align-items:center;gap:6px">
+       🌐 해외선교 포탈 통합 진단
+     </span>`;
 
   const gubuns=["전체","교회","지역","개척지"];
   document.getElementById("chips").innerHTML=gubuns.map(g=>

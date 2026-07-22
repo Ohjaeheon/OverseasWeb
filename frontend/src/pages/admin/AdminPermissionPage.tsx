@@ -48,9 +48,18 @@ export const AdminPermissionPage: React.FC = () => {
     }, 400);
   };
 
+  // Helper to distinguish Admin Portal menus from User Portal menus
+  const isAdminMenu = (menu: MenuPermission) => {
+    return menu.category.includes('관리자') ||
+           menu.category.includes('adminsetting') ||
+           menu.path.startsWith('/adminsetting') ||
+           menu.menuKey.startsWith('admin_') ||
+           ['users', 'roles', 'perm', 'i18n', 'sys', 'login_logs', 'access_logs'].includes(menu.menuKey);
+  };
+
   // Group menus by User Portal vs Admin Portal
-  const userPortalMenus = menus.filter(m => m.category !== '관리자 전용');
-  const adminPortalMenus = menus.filter(m => m.category === '관리자 전용');
+  const userPortalMenus = menus.filter(m => !isAdminMenu(m));
+  const adminPortalMenus = menus.filter(m => isAdminMenu(m));
 
   return (
     <div>
@@ -140,7 +149,7 @@ export const AdminPermissionPage: React.FC = () => {
             </tr>
 
             {menus.map((menu, mIdx) => {
-              if (menu.category === '관리자 전용') return null;
+              if (isAdminMenu(menu)) return null;
               return (
                 <tr key={menu.menuKey} style={{ borderBottom: '1px solid #f1f5f9', transition: 'background 0.15s ease' }}>
                   <td style={{ padding: '14px 20px', textAlign: 'left', fontWeight: 700, color: '#1f2a44' }}>
@@ -196,7 +205,7 @@ export const AdminPermissionPage: React.FC = () => {
             </tr>
 
             {menus.map((menu, mIdx) => {
-              if (menu.category !== '관리자 전용') return null;
+              if (!isAdminMenu(menu)) return null;
               return (
                 <tr key={menu.menuKey} style={{ borderBottom: '1px solid #f1f5f9', transition: 'background 0.15s ease' }}>
                   <td style={{ padding: '14px 20px', textAlign: 'left', fontWeight: 700, color: '#1f2a44' }}>

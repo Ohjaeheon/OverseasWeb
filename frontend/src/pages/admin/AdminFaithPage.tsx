@@ -104,13 +104,18 @@ export const AdminFaithPage: React.FC = () => {
 
   // Map 21 default churches from defaultChurches.json
   const defaultList: ChurchItem[] = defaultChurchesData.map((c: any, i: number) => ({
-    churchId: i + 1,
+    churchId: c.churchId || i + 1,
     gubun: c.gubun || '교회',
     jipa: c.jipa || '맛디아',
     continent: c.continent || '아시아',
     country: c.country || '해외',
     name: c.name,
-    leaderName: '담임/담당 사역자',
+    leaderName: c.leaderName || '담임/담당 사역자',
+    flightTime: c.flightTime,
+    distanceKm: c.distanceKm,
+    timeDiff: c.timeDiff,
+    language: c.language,
+    religion: c.religion,
     lat: c.lat || 35.68,
     lon: c.lon || 139.76
   }));

@@ -1,8 +1,18 @@
 import React, { useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { diagnosisService } from '../../services/diagnosisService';
+import { logService } from '../../services/logService';
+import { sessionService } from '../../services/sessionService';
+import { EvangelismModule } from '../../components/user/EvangelismModule';
+import { roleService } from '../../services/roleService';
+import api from '../../services/api';
 
-export const DiagnosisPage: React.FC = () => {
+interface DiagnosisPageProps {
+  section?: string;
+  tab?: 'check' | 'aggregate';
+}
+
+export const DiagnosisPage: React.FC<DiagnosisPageProps> = ({ section = 'home', tab = 'check' }) => {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const navigate = useNavigate();
 
@@ -29,14 +39,122 @@ export const DiagnosisPage: React.FC = () => {
   };
 
   useEffect(() => {
-    // 0-1. Strict Auth Guard: Redirect to /login if unauthenticated
-    const token = localStorage.getItem('accessToken');
-    const userStr = localStorage.getItem('user');
-
-    if (!token && !userStr) {
+    // 0-1. Strict 30-Minute Session Guard: Redirect to /login if unauthenticated or expired
+    if (!sessionService.isSessionValid()) {
       navigate('/login', { replace: true });
       return;
     }
+
+    const userStr = localStorage.getItem('user');
+    let userRole = 'ROLE_USER';
+    if (userStr) {
+      try {
+        const u = JSON.parse(userStr);
+        userRole = u.role || 'ROLE_USER';
+      } catch (e) {}
+    }
+
+    (window as any).reactNavigate = (path: string) => {
+      const cleanPath = path.startsWith('/') ? path : '/' + path;
+      navigate(cleanPath);
+    };
+
+    // Redirect /evangelism to /evangelism/check or /evangelism/aggregate ONLY IF user lacks access to the main p1 dashboard
+    if (section === 'evangelism') {
+      const cleanRole = userRole.toUpperCase().startsWith('ROLE_') ? userRole.toUpperCase() : `ROLE_${userRole.toUpperCase()}`;
+      let normRole = cleanRole;
+      if (cleanRole === 'ROLE_해외선교부 담당자' || cleanRole === 'ROLE_USER') {
+        normRole = 'ROLE_USER';
+      } else if (cleanRole === 'ROLE_지파 담당자' || cleanRole === 'ROLE_JIPA') {
+        normRole = 'ROLE_JIPA';
+      } else if (cleanRole === 'ROLE_일반 회원' || cleanRole === 'ROLE_GUEST') {
+        normRole = 'ROLE_GUEST';
+      }
+
+      const isAdmin = normRole === 'ROLE_ADMIN' || normRole === 'ADMIN' || normRole === 'ROLE_관리자';
+      const hasMainAccess = isAdmin || roleService.canRoleAccessMenu(userRole, 'p1').read;
+
+      if (!hasMainAccess) {
+        const canCheck = roleService.canRoleAccessMenu(userRole, 'p1_check').read;
+        const canAgg = roleService.canRoleAccessMenu(userRole, 'p1_agg').read;
+        if (canCheck) {
+          navigate('/evangelism/check', { replace: true });
+        } else if (canAgg) {
+          navigate('/evangelism/aggregate', { replace: true });
+        } else {
+          alert("해당 메뉴에 대한 접근 권한이 없습니다.");
+          navigate('/', { replace: true });
+        }
+        return;
+      }
+    }
+
+    const sectionToMenuKey: Record<string, string> = {
+      'home': 'home',
+      'diag': 'diag',
+      'inspect': 'inspect',
+      'funnel': 'funnel',
+      'trend': 'trend',
+      'map': 'map',
+      'globe': 'globe',
+      'evangelism': 'p1',
+      'evangelism/check': 'p1_check',
+      'evangelism/aggregate': 'p1_agg',
+      'center': 'p2',
+      'membership': 'p3',
+      'worship': 'p4'
+    };
+
+    const targetKey = sectionToMenuKey[section] || section;
+    const cleanRole = userRole.toUpperCase().startsWith('ROLE_') ? userRole.toUpperCase() : `ROLE_${userRole.toUpperCase()}`;
+    let normRole = cleanRole;
+    if (cleanRole === 'ROLE_해외선교부 담당자' || cleanRole === 'ROLE_USER') {
+      normRole = 'ROLE_USER';
+    } else if (cleanRole === 'ROLE_지파 담당자' || cleanRole === 'ROLE_JIPA') {
+      normRole = 'ROLE_JIPA';
+    } else if (cleanRole === 'ROLE_일반 회원' || cleanRole === 'ROLE_GUEST') {
+      normRole = 'ROLE_GUEST';
+    }
+
+    console.warn("DiagnosisPage Auth Guard Check:", { section, targetKey, userRole, normRole });
+
+    if (normRole !== 'ROLE_ADMIN' && normRole !== 'ADMIN' && normRole !== 'ROLE_관리자') {
+      const access = roleService.canRoleAccessMenu(userRole, targetKey);
+      console.warn("canRoleAccessMenu result:", access);
+      if (!access.read) {
+        alert("해당 메뉴에 대한 접근 권한이 없습니다.");
+        const permissions = roleService.getMenuPermissions();
+        const accessible = permissions.find(m => {
+          const mPerm = m.permissions[normRole] || { read: false };
+          return mPerm.read && !m.path.startsWith('/adminsetting');
+        });
+        if (accessible) {
+          navigate(accessible.path, { replace: true });
+        } else {
+          sessionService.clearSession();
+          navigate('/login', { replace: true });
+        }
+        return;
+      }
+    }
+
+    // Record Access Log for User Diagnosis Portal Section Page
+    const sectionLabels: Record<string, string> = {
+      home: '🏠 해외 총괄 요약',
+      diag: '🩺 교회 진단서',
+      inspect: '🚨 점검 (양·질)',
+      funnel: '🚦 관문별 통과율',
+      trend: '📈 12개월 추이',
+      map: '🗺️ 지리적 분포 (지도)',
+      globe: '🌐 3D 지구본',
+      evangelism: '① 전도 · 가개강 종합 포탈',
+      center: '② 센터',
+      membership: '③ 내무',
+      worship: '④ 예배 · 전성도'
+    };
+    const currentLabel = sectionLabels[section] || '🏠 사용자 진단서 포탈';
+    const currentPath = section === 'home' ? '/' : `/${section}`;
+    logService.addAccessLog(currentLabel, currentPath);
 
     const baseUrl = (import.meta as any).env?.BASE_URL || '/OverseasPortal/';
     const getUrl = (path: string) => baseUrl.endsWith('/') ? baseUrl + path : baseUrl + '/' + path;
@@ -44,8 +162,7 @@ export const DiagnosisPage: React.FC = () => {
     // Global Window Functions for Logout & Admin System Buttons
     (window as any).handleUserLogout = () => {
       if (window.confirm("정말 로그아웃 하시겠습니까?")) {
-        localStorage.removeItem('accessToken');
-        localStorage.removeItem('user');
+        sessionService.clearSession();
         navigate('/login', { replace: true });
       }
     };
@@ -81,6 +198,82 @@ export const DiagnosisPage: React.FC = () => {
 
     loadCss('diag-engine-css', getUrl('assets/diagnosisEngine.css'));
 
+    const syncEvangelismDbData = async (rawDataRecords: any[]) => {
+      try {
+        const res = await api.get<any[]>('/evangelism/records');
+        const weeklyRecords = res.data || [];
+        if (weeklyRecords.length === 0) return rawDataRecords;
+
+        const getMonthFromWeekKey = (weekKey: string): string => {
+          const match = weekKey.match(/^(\d+월)/);
+          return match ? match[1] : '';
+        };
+
+        const getMonthNum = (mStr: string): number => {
+          const match = mStr.match(/^(\d+)월/);
+          return match ? parseInt(match[1]) : 0;
+        };
+
+        const grouped: Record<string, Record<string, any[]>> = {};
+        weeklyRecords.forEach(r => {
+          const church = r.churchName;
+          const m = getMonthFromWeekKey(r.weekKey);
+          if (!m) return;
+
+          if (!grouped[church]) grouped[church] = {};
+          if (!grouped[church][m]) grouped[church][m] = [];
+          grouped[church][m].push(r);
+        });
+
+        const updatedRecords = rawDataRecords.map(rec => {
+          const church = rec.name;
+          const m = rec.month;
+
+          const churchGroup = grouped[church];
+          if (!churchGroup) return rec;
+
+          const matchedMonthKey = Object.keys(churchGroup).find(k => 
+            k === m || k.replace('월','') === m.replace('월','')
+          );
+
+          if (!matchedMonthKey) return rec;
+
+          const weeksInMonth = churchGroup[matchedMonthKey];
+
+          const sortedWeeks = [...new Set(weeksInMonth.map(w => w.weekKey))].sort((a, b) => b.localeCompare(a));
+          const lastWeek = sortedWeeks[0];
+          const lastWeekRecs = weeksInMonth.filter(w => w.weekKey === lastWeek);
+          
+          const evangRegSum = lastWeekRecs.reduce((sum, w) => sum + (w.regCount || 0), 0);
+          const bibleMonthRegSum = weeksInMonth.reduce((sum, w) => sum + (w.admitCount || 0), 0);
+          const bibleCurAttSum = lastWeekRecs.reduce((sum, w) => sum + (w.gospelCount || 0), 0);
+
+          const allChurchWeeklyRecs = weeklyRecords.filter(w => w.churchName === church);
+          const limitMonthNum = getMonthNum(matchedMonthKey);
+          const bibleCumRegSum = allChurchWeeklyRecs.reduce((sum, w) => {
+            const wMonth = getMonthFromWeekKey(w.weekKey);
+            if (getMonthNum(wMonth) <= limitMonthNum) {
+              return sum + (w.admitCount || 0);
+            }
+            return sum;
+          }, 0);
+
+          return {
+            ...rec,
+            evangReg: evangRegSum || rec.evangReg,
+            bibleMonthReg: bibleMonthRegSum || rec.bibleMonthReg,
+            bibleCumReg: bibleCumRegSum || rec.bibleCumReg,
+            bibleCurAtt: bibleCurAttSum || rec.bibleCurAtt
+          };
+        });
+
+        return updatedRecords;
+      } catch (err) {
+        console.error("Failed to sync database evangelism records", err);
+        return rawDataRecords;
+      }
+    };
+
     const initEngine = async () => {
       // 1. Try to fetch live records from Spring Boot API (/api/v1/diagnosis/records)
       try {
@@ -91,15 +284,18 @@ export const DiagnosisPage: React.FC = () => {
 
           if (apiRecords && apiRecords.length > 0) {
             const filteredApiRecords = filterByAssignedLocation(apiRecords);
+            const mappedRecords = filteredApiRecords.map((r: any) => ({
+              ...r,
+              month: r.month ? (r.month.endsWith('월') ? r.month : r.month.substring(5) + '월') : '5월'
+            }));
+
+            const syncedRecords = await syncEvangelismDbData(mappedRecords);
 
             (window as any).DATA = {
               months: (window as any).DATA?.months || months.map((m: string) => m.endsWith('월') ? m : m.substring(5) + '월'),
               jipaOrder: (window as any).DATA?.jipaOrder || ["맛디아", "서울", "무등", "베드로", "요한"],
               jipaColors: (window as any).DATA?.jipaColors || { "맛디아": "#6FBA2C", "서울": "#6FBA2C", "무등": "#3b82f6", "베드로": "#06b6d4", "요한": "#f59e0b" },
-              records: filteredApiRecords.map((r: any) => ({
-                ...r,
-                month: r.month ? (r.month.endsWith('월') ? r.month : r.month.substring(5) + '월') : '5월'
-              }))
+              records: syncedRecords
             };
           }
         }
@@ -115,6 +311,9 @@ export const DiagnosisPage: React.FC = () => {
       // 2. Trigger Diagnosis Engine Initialization
       if (typeof (window as any).startDiagnosisApp === 'function') {
         (window as any).startDiagnosisApp();
+      }
+      if (typeof (window as any).setSection === 'function') {
+        (window as any).setSection(section);
       }
       if (typeof (window as any).buildSidebar === 'function') {
         (window as any).buildSidebar();
@@ -144,7 +343,50 @@ export const DiagnosisPage: React.FC = () => {
       .then(() => {
         initEngine();
       });
-  }, [navigate]);
+
+    return () => {
+      delete (window as any).reactNavigate;
+    };
+  }, [navigate, section]);
+
+  useEffect(() => {
+    if (typeof (window as any).setSection === 'function') {
+      (window as any).setSection(section);
+    }
+  }, [section]);
+
+  if (section === 'evangelism/check' || section === 'evangelism/aggregate') {
+    return (
+      <div style={{ minHeight: '100vh', background: '#f8fafc' }}>
+        <div className="topbar">
+          <div className="logo">🌐</div>
+          <div className="brandwrap">
+            <div className="brand">해외선교부 <b>업무포탈</b></div>
+            <div className="brandsub">GLOBAL MISSION DASHBOARD</div>
+          </div>
+          <span className="spacer"></span>
+          <button className="repbtn" onClick={() => navigate('/')}>🏠 인트로</button>
+          <button className="repbtn" id="btnLogout" onClick={() => {
+            if (window.confirm("정말 로그아웃 하시겠습니까?")) {
+              sessionService.clearSession();
+              navigate('/login', { replace: true });
+            }
+          }} style={{ background: '#ef4444', color: 'white', border: 'none', fontWeight: 700 }}>🔒 로그아웃</button>
+        </div>
+        <div className="shell">
+          <nav className="side" id="side" style={{ display: 'block' }}></nav>
+          <main className="main" style={{ flex: 1, padding: '20px', overflowY: 'auto' }}>
+            <EvangelismModule initialTab={section === 'evangelism/check' ? 'check' : 'aggregate'} />
+            <div id="homeview" style={{ display: 'none' }}></div>
+            <div id="diagview" style={{ display: 'none' }}></div>
+            <div id="dataview" style={{ display: 'none' }}></div>
+            <div id="mapview" style={{ display: 'none' }}></div>
+            <div id="globeview" style={{ display: 'none' }}></div>
+          </main>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div

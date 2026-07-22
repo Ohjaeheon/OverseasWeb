@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { authService } from '../../services/authService';
 import { logService } from '../../services/logService';
+import { sessionService } from '../../services/sessionService';
+import { roleService } from '../../services/roleService';
 
 export const LoginPage: React.FC = () => {
   const navigate = useNavigate();
@@ -10,6 +12,10 @@ export const LoginPage: React.FC = () => {
   const [password, setPassword] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    logService.addAccessLog('🔑 로그인 페이지', '/login', 'guest');
+  }, []);
 
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -29,22 +35,19 @@ export const LoginPage: React.FC = () => {
       });
 
       if (response.accessToken) {
-        localStorage.setItem('accessToken', response.accessToken);
         const userInfo = {
           username: response.username,
           name: response.name,
-          role: response.role
+          role: response.role,
+          assignedCountry: response.assignedCountry
         };
-        localStorage.setItem('user', JSON.stringify(userInfo));
+        sessionService.startSession(userInfo, response.accessToken);
 
         logService.addLoginLog(response.username, 'SUCCESS', '192.168.0.53', '로그인 성공');
 
-        // 역할(Role)에 따른 페이지 자동 분기
-        if (response.role === 'ROLE_ADMIN' || response.role === 'ADMIN') {
-          navigate('/adminsetting/dashboard');
-        } else {
-          navigate('/'); // 일반 사용자는 사용자 진단서 포탈로 이동
-        }
+        // 역할(Role) 및 세부 권한별 페이지 자동 분기
+        const redirectPath = roleService.getLoginRedirectPath(response.role);
+        navigate(redirectPath);
       } else {
         const msg = response.message || '로그인에 실패했습니다.';
         setErrorMsg(msg);

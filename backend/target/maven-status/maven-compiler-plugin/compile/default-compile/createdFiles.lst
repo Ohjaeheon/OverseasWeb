@@ -1,11 +1,13 @@
 com\overseas\portal\service\DiagnosisService$RecordDTO.class
 com\overseas\portal\config\DataInitializer.class
+com\overseas\portal\domain\EvangelismWeeklyRecord.class
 com\overseas\portal\service\AdminService$AdminDashboardSummary.class
 com\overseas\portal\domain\User$UserBuilder.class
 com\overseas\portal\OverseasPortalApplication.class
 com\overseas\portal\service\TelegramBotService.class
 com\overseas\portal\controller\AuthController.class
 com\overseas\portal\repository\ChurchRepository.class
+com\overseas\portal\domain\EvangelismWeeklyRecord$EvangelismWeeklyRecordBuilder.class
 com\overseas\portal\domain\SystemConfig$SystemConfigBuilder.class
 com\overseas\portal\service\DiagnosisService$SummaryMetric$SummaryMetricBuilder.class
 com\overseas\portal\security\JwtAuthenticationFilter.class
@@ -40,6 +42,8 @@ com\overseas\portal\service\AdminService.class
 com\overseas\portal\domain\AuditLog.class
 com\overseas\portal\service\AuthService.class
 com\overseas\portal\service\DiagnosisService.class
+com\overseas\portal\repository\EvangelismWeeklyRecordRepository.class
+com\overseas\portal\controller\EvangelismController.class
 com\overseas\portal\controller\AuthController$VerifyOtpRequest.class
 com\overseas\portal\domain\I18nDictionary.class
 com\overseas\portal\repository\TelegramOtpLogRepository.class

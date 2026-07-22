@@ -3,6 +3,7 @@ import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { roleService } from '../../services/roleService';
 import { logService } from '../../services/logService';
+import { sessionService } from '../../services/sessionService';
 import {
   ChevronDown,
   ChevronRight,
@@ -70,9 +71,18 @@ export const AdminLayout: React.FC = () => {
     { s: "access_log", ico: "📥", label: "접근로그", path: "/adminsetting/access-logs" }
   ];
 
-  // Filter sidebar items according to current user's role permissions
-  const SIDEBAR = RAW_SIDEBAR.filter((item) => {
-    if (item.grp) return true; // Keep headers
+  // Filter sidebar items according to current user's role permissions (hide headers if no children accessible)
+  const SIDEBAR = RAW_SIDEBAR.filter((item, idx) => {
+    if (item.grp) {
+      for (let i = idx + 1; i < RAW_SIDEBAR.length; i++) {
+        const child = RAW_SIDEBAR[i];
+        if (child.grp) break;
+        if (child.s && roleService.canRoleAccessMenu(currentUserRole, child.s).read) {
+          return true;
+        }
+      }
+      return false;
+    }
     if (!item.s) return true;
     const access = roleService.canRoleAccessMenu(currentUserRole, item.s);
     return access.read;
@@ -97,8 +107,7 @@ export const AdminLayout: React.FC = () => {
   }, [location.pathname, currentUserRole, navigate]);
 
   const handleLogout = () => {
-    localStorage.removeItem('accessToken');
-    localStorage.removeItem('user');
+    sessionService.clearSession();
     navigate('/login');
   };
 
