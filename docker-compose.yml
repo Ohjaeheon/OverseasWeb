@@ -23,7 +23,7 @@ services:
     build: ./frontend
     container_name: Overseas_Portal-frontend
     ports:
-      - "3000:3000" # 외부 3000번 포트를 컨테이너 내부 Nginx 80번 포트와 연결
+      - "3000:80" # 외부 3000번 포트를 컨테이너 내부 Nginx 80번 포트와 연결
     depends_on:
       - backend
     restart: always
