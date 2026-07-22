@@ -260,10 +260,10 @@ export const DiagnosisPage: React.FC<DiagnosisPageProps> = ({ section = 'home', 
 
           return {
             ...rec,
-            evangReg: evangRegSum || rec.evangReg,
-            bibleMonthReg: bibleMonthRegSum || rec.bibleMonthReg,
-            bibleCumReg: bibleCumRegSum || rec.bibleCumReg,
-            bibleCurAtt: bibleCurAttSum || rec.bibleCurAtt
+            evangReg: evangRegSum,
+            bibleMonthReg: bibleMonthRegSum,
+            bibleCumReg: bibleCumRegSum,
+            bibleCurAtt: bibleCurAttSum
           };
         });
 
@@ -274,25 +274,34 @@ export const DiagnosisPage: React.FC<DiagnosisPageProps> = ({ section = 'home', 
       }
     };
 
+    const formatMonth = (mStr: string) => {
+      if (!mStr) return '2026년 5월';
+      if (mStr.includes('년') && mStr.includes('월')) return mStr;
+      const match = mStr.match(/^(\d{4})-(\d{2})$/);
+      if (match) {
+        return `${match[1]}년 ${parseInt(match[2])}월`;
+      }
+      return mStr;
+    };
+
     const initEngine = async () => {
-      // 1. Try to fetch live records from Spring Boot API (/api/v1/diagnosis/records)
+      // 1. Try to fetch live records from Spring Boot API (/api/v1/diagnosis/records?month=all)
       try {
         const months = await diagnosisService.getMonths();
         if (months && months.length > 0) {
-          const currentMonth = months[0];
-          const apiRecords = await diagnosisService.getRecords(currentMonth);
+          const apiRecords = await diagnosisService.getRecords("all");
 
           if (apiRecords && apiRecords.length > 0) {
             const filteredApiRecords = filterByAssignedLocation(apiRecords);
             const mappedRecords = filteredApiRecords.map((r: any) => ({
               ...r,
-              month: r.month ? (r.month.endsWith('월') ? r.month : r.month.substring(5) + '월') : '5월'
+              month: formatMonth(r.month)
             }));
 
             const syncedRecords = await syncEvangelismDbData(mappedRecords);
 
             (window as any).DATA = {
-              months: (window as any).DATA?.months || months.map((m: string) => m.endsWith('월') ? m : m.substring(5) + '월'),
+              months: (window as any).DATA?.months || months.map((m: string) => formatMonth(m)),
               jipaOrder: (window as any).DATA?.jipaOrder || ["맛디아", "서울", "무등", "베드로", "요한"],
               jipaColors: (window as any).DATA?.jipaColors || { "맛디아": "#6FBA2C", "서울": "#6FBA2C", "무등": "#3b82f6", "베드로": "#06b6d4", "요한": "#f59e0b" },
               records: syncedRecords

@@ -43,6 +43,12 @@ export const LoginPage: React.FC = () => {
         };
         sessionService.startSession(userInfo, response.accessToken);
 
+        try {
+          await roleService.fetchMenuPermissionsFromDb();
+        } catch (e) {
+          console.warn("Failed to fetch menu permissions from DB on login", e);
+        }
+
         logService.addLoginLog(response.username, 'SUCCESS', '192.168.0.53', '로그인 성공');
 
         // 역할(Role) 및 세부 권한별 페이지 자동 분기

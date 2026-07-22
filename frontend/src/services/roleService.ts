@@ -1,3 +1,5 @@
+import api from './api';
+
 export interface RoleDefinition {
   roleId: string;
   roleName: string;
@@ -193,15 +195,35 @@ export const roleService = {
     });
   },
 
-  saveMenuPermissions: (menus: MenuPermission[]) => {
+  fetchMenuPermissionsFromDb: async (): Promise<void> => {
+    try {
+      const res = await api.get<{ permissions: string }>('/diagnosis/permissions');
+      if (res.data && res.data.permissions) {
+        localStorage.setItem(PERM_STORAGE_KEY, res.data.permissions);
+      }
+    } catch (e) {
+      console.warn("Failed to fetch menu permissions from DB", e);
+    }
+  },
+
+  saveMenuPermissions: async (menus: MenuPermission[]): Promise<void> => {
     const matrixToSave: Record<string, Record<string, { read: boolean; write: boolean }>> = {};
     menus.forEach((m) => {
       matrixToSave[m.menuKey] = m.permissions;
     });
+    const jsonStr = JSON.stringify(matrixToSave);
     try {
-      localStorage.setItem(PERM_STORAGE_KEY, JSON.stringify(matrixToSave));
+      localStorage.setItem(PERM_STORAGE_KEY, jsonStr);
     } catch (e) {
-      console.warn("Failed to save permissions matrix", e);
+      console.warn("Failed to save permissions matrix locally", e);
+    }
+    try {
+      await api.put('/admin/configs', {
+        configKey: 'menu_permissions_matrix',
+        configValue: jsonStr
+      });
+    } catch (e) {
+      console.warn("Failed to save permissions matrix to DB", e);
     }
   },
 

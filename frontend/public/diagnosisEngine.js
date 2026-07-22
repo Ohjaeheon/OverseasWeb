@@ -349,6 +349,17 @@ const CATS = {
 const CAT_NAMES = Object.keys(CATS);
 const VIEWS = ["🚨 점검(양·질)","🔬 전환율","대륙별","지파별","교회별","지역별","개척지별","📈 지파 추이"];
 
+function getMonthNumFromStr(mStr) {
+  if (!mStr) return 0;
+  const match = String(mStr).match(/(\d+)월/);
+  return match ? parseInt(match[1]) : parseInt(mStr) || 0;
+}
+function getYearNumFromStr(mStr) {
+  if (!mStr) return 2026;
+  const match = String(mStr).match(/(\d+)년/);
+  return match ? parseInt(match[1]) : 2026;
+}
+
 // sum numeric fields across a set of records
 const SUM_FIELDS = ["yearStartReg","retroReg","prevReg","newAdmit","transIn","transOut","moveIn","moveOut",
   "discipline","dupReg","registered","regChange","cumNewAdmit","cumDiscipline","prevNewAdmitCnt",
@@ -2109,7 +2120,7 @@ function forecastCardHTML(){
   const L=DATA.months.length; if(L<2) return "";
   const avgAd=Math.round(fmAd.slice(-3).reduce((a,b)=>a+b,0)/Math.min(3,L));
   const curLU=aggregate(recordsFor(DATA.months[L-1],"전체")).absLongUnmanage;
-  const smallDisc=150, base=fmA[L-1], lastNum=parseInt(DATA.months[L-1])||L;
+  const smallDisc=150, base=fmA[L-1], lastNum=getMonthNumFromStr(DATA.months[L-1])||L;
   const fNums=[lastNum+1,lastNum+2,lastNum+3], fLab=fNums.map(n=>n+"월");
   const qmLab=fLab[fNums.findIndex(n=>n%3===0)];
   let prev=base; const fVals=fNums.map(n=>{ const d=(n%3===0)?curLU:smallDisc; prev=Math.round(prev+avgAd-d); return prev; });
@@ -2294,7 +2305,7 @@ function renderDiag(){
   // 가등록대비 센터등록율: 개강현황(해외)에서 추출한 GAEGANG[교회명]={cum,mon}. 최신 업로드(누적/당월) 스냅샷.
   const GG=(x,k)=>{ const g=(typeof GAEGANG!=='undefined')?GAEGANG[x.name]:null; if(!g||!g[k])return null; const v=g[k][ST.month]; return (v!=null)?v:null; };
   // 전월 센터등록자 출석율: 해외주간보고서 초/중/고에서 '전월(기준월-1)' 등록자의 전체출석수÷총등록. THEOLOGY[교회][YYYY-MM].
-  const PREVREG=x=>{ const m=parseInt(ST.month); if(!m||m<2)return null; const key="2026-"+String(m-1).padStart(2,'0'); const t=(typeof THEOLOGY!=='undefined')?THEOLOGY[x.name]:null; return (t&&t[key]!=null)?t[key]:null; };
+  const PREVREG=x=>{ const m=getMonthNumFromStr(ST.month); const y=getYearNumFromStr(ST.month); if(!m||m<2)return null; const key=y+"-"+String(m-1).padStart(2,'0'); const t=(typeof THEOLOGY!=='undefined')?THEOLOGY[x.name]:null; return (t&&t[key]!=null)?t[key]:null; };
   // ── 지표: 양(量)=규모 / 질(質)=실력. 색=73교회 백분위(상위25%🟢/중위🟡/하위25%🔴). 값+순위(73교회 중, 값 높을수록 1위) ──
   // 정식출석율 = 대면(정식)+온라인(정식) ÷ 분모. 대면·온라인·기타 셋 다 0인데 총>0이면=구분 미입력으로 보고 null. 기타(정식외)만 있으면 정식=0(정당한 0%). (2026-07-07)
   const jeongseok=(on,ol,etc,tot,den)=>{ on=+on||0; ol=+ol||0; etc=+etc||0; tot=+tot||0; if(tot>0&&on+ol+etc===0) return null; return (den>0)?(on+ol)/den:null; };
@@ -2316,10 +2327,10 @@ function renderDiag(){
     {cat:"종강(입교)", q:"양", sub:"재적 대비 입교율", l:"당월", fn:x=>rate(x.agg.newAdmit,x.agg.retroReg)},
     {cat:"예배", q:"양", sub:"전월입교자", l:"예배출석율", fn:x=>rate(x.agg.newAttTotal,x.agg.prevNewAdmitCnt)},
     {cat:"예배", q:"질", sub:"전월입교자", l:"정식예배출석율", fn:x=>jeongseok(x.agg.newAttOnsite,x.agg.newAttOnline,x.agg.newAttEtc,x.agg.newAttTotal,x.agg.prevNewAdmitCnt)},
-    {cat:"예배", q:"질", ref:true, sub:"전월입교자", l:"대면예배출석율", fn:x=>(parseInt(ST.month)>=4)?rate(x.agg.newAttOnsite,x.agg.prevNewAdmitCnt):null},
+    {cat:"예배", q:"질", ref:true, sub:"전월입교자", l:"대면예배출석율", fn:x=>(getMonthNumFromStr(ST.month)>=4)?rate(x.agg.newAttOnsite,x.agg.prevNewAdmitCnt):null},
     {cat:"예배", q:"양", sub:"전성도", l:"예배출석율", fn:x=>rate(x.agg.attTotal,x.agg.attReg)},
     {cat:"예배", q:"질", sub:"전성도", l:"정식예배출석율", fn:x=>jeongseok(x.agg.attOnsite,x.agg.attOnline,x.agg.attEtc,x.agg.attTotal,x.agg.attReg)},
-    {cat:"예배", q:"질", ref:true, sub:"전성도", l:"대면예배출석율", fn:x=>(parseInt(ST.month)>=4)?rate(x.agg.attOnsite,x.agg.attReg):null},
+    {cat:"예배", q:"질", ref:true, sub:"전성도", l:"대면예배출석율", fn:x=>(getMonthNumFromStr(ST.month)>=4)?rate(x.agg.attOnsite,x.agg.attReg):null},
   ];
   const fracOf=(v,vals)=>{ if(v==null||!vals.length)return null; let b=0,e=0; vals.forEach(x=>{ if(x<v)b++; else if(x===v)e++; }); return (b+e/2)/vals.length; };
   const TIER={"상위":{c:"#16a34a",bar:"#22a06b"},"중위":{c:"#b5811f",bar:"#f2c037"},"하위":{c:"#e1503e",bar:"#e75c48"}};
@@ -2337,7 +2348,7 @@ function renderDiag(){
   const strong=M.filter(m=>m.tier==="상위"), weak=M.filter(m=>m.tier==="하위");
 
   // 12지파 평균(각 지파 합산율의 단순평균) → 대면 참고선 (2026-07-07 부장 요청)
-  const jipaAvg=(numFn,denFn)=>{ if(parseInt(ST.month)<4) return null; const byJ={}; all.forEach(x=>{ (byJ[x.jipa]=byJ[x.jipa]||[]).push(x); });
+  const jipaAvg=(numFn,denFn)=>{ if(getMonthNumFromStr(ST.month)<4) return null; const byJ={}; all.forEach(x=>{ (byJ[x.jipa]=byJ[x.jipa]||[]).push(x); });
     const rs=Object.keys(byJ).map(j=>{ let n=0,d=0; byJ[j].forEach(x=>{ n+=(+numFn(x)||0); d+=(+denFn(x)||0); }); return d>0?n/d:null; }).filter(v=>v!=null&&!isNaN(v));
     return rs.length? rs.reduce((a,b)=>a+b,0)/rs.length : null; };
   // ── 다국어 사전 (KO/EN/ZH/JA 초안) · 2026-07-07 ──
@@ -2352,7 +2363,7 @@ function renderDiag(){
   const qL=q=> ({ko:q,en:(q==='질'?'Qual':'Qty'),zh:(q==='질'?'质':'量'),ja:(q==='질'?'質':'量')})[LANG];
   const LVt=({ko:{"상위":"강함","중위":"보통","하위":"약함"},en:{"상위":"Strong","중위":"Fair","하위":"Weak"},zh:{"상위":"强","중위":"中","하위":"弱"},ja:{"상위":"強い","중위":"普通","하위":"弱い"}})[LANG];
   const trLbls=({ko:{qNew:"전월입교자 예배출석율",qAtt:"전성도 예배출석율",qFace:"전성도 대면출석율"},en:{qNew:"New-member worship",qAtt:"All-member worship",qFace:"In-person worship"},zh:{qNew:"上月入教者礼拜出席",qAtt:"全体圣徒礼拜出席",qFace:"面对面礼拜出席"},ja:{qNew:"前月入教者の礼拝出席",qAtt:"全信徒の礼拝出席",qFace:"対面礼拝出席"}})[LANG];
-  const moL=mm=>{ if(LANG==='ko')return mm; const n=parseInt(mm); if(LANG==='en')return ["","Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][n]||mm; return n+'月'; };
+  const moL=mm=>{ if(LANG==='ko')return mm; const n=getMonthNumFromStr(mm); if(LANG==='en')return ["","Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][n]||mm; return n+'月'; };
   const JIPA={"요한":{en:"John",zh:"约翰",ja:"ヨハネ"},"베드로":{en:"Peter",zh:"彼得",ja:"ペテロ"},"부산야고보":{en:"James (Busan)",zh:"雅各(釜山)",ja:"ヤコブ(釜山)"},"안드레":{en:"Andrew",zh:"安得烈",ja:"アンデレ"},"다대오":{en:"Thaddaeus",zh:"达太",ja:"タダイ"},"빌립":{en:"Philip",zh:"腓力",ja:"ピリポ"},"시몬":{en:"Simon",zh:"西门",ja:"シモン"},"바돌로매":{en:"Bartholomew",zh:"巴多罗买",ja:"バルトロマイ"},"마태":{en:"Matthew",zh:"马太",ja:"マタイ"},"맛디아":{en:"Matthias",zh:"马提亚",ja:"マッテヤ"},"서울야고보":{en:"James (Seoul)",zh:"雅各(首尔)",ja:"ヤコブ(ソウル)"},"도마":{en:"Thomas",zh:"多马",ja:"トマス"}};
   const jpName=j=> (LANG==='ko'||!JIPA[j])? j : JIPA[j][LANG];
   const CHN={"가나아크라교회":{en:"Accra, Ghana Church",zh:"加纳阿克拉教会",ja:"ガーナ・アクラ教会"},"과테말라교회":{en:"Guatemala Church",zh:"危地马拉教会",ja:"グアテマラ教会"},"나이지리아라고스교회":{en:"Lagos, Nigeria Church",zh:"尼日利亚拉各斯教会",ja:"ナイジェリア・ラゴス教会"},"마닐라교회":{en:"Manila Church",zh:"马尼拉教会",ja:"マニラ教会"},"엘에이교회":{en:"Los Angeles Church",zh:"洛杉矶教会",ja:"ロサンゼルス教会"},"워싱턴디시교회":{en:"Washington D.C. Church",zh:"华盛顿特区教会",ja:"ワシントンD.C.教会"},"자카르타교회":{en:"Jakarta Church",zh:"雅加达教会",ja:"ジャカルタ教会"},"중국상해교회":{en:"Shanghai, China Church",zh:"中国上海教会",ja:"中国上海教会"},"필리핀교회":{en:"Philippines Church",zh:"菲律宾教会",ja:"フィリピン教会"},"후쿠오카교회":{en:"Fukuoka Church",zh:"福冈教会",ja:"福岡教会"},"에티오피아교회":{en:"Ethiopia Church",zh:"埃塞俄比亚教会",ja:"エチオピア教会"},"콜롬비아교회":{en:"Colombia Church",zh:"哥伦比亚教会",ja:"コロンビア教会"},"탄자니아교회":{en:"Tanzania Church",zh:"坦桑尼亚教会",ja:"タンザニア教会"},"호주교회":{en:"Australia Church",zh:"澳大利亚教会",ja:"オーストラリア教会"},"호주멜버른교회":{en:"Melbourne, Australia Church",zh:"澳大利亚墨尔本教会",ja:"オーストラリア・メルボルン教会"},"인도벵갈루루교회":{en:"Bengaluru, India Church",zh:"印度班加罗尔教会",ja:"インド・ベンガルール教会"},"중국내몽고교회":{en:"Inner Mongolia, China Church",zh:"中国内蒙古教会",ja:"中国内モンゴル教会"},"중국대련교회":{en:"Dalian, China Church",zh:"中国大连教会",ja:"中国大連教会"},"중국무한교회":{en:"Wuhan, China Church",zh:"中国武汉教会",ja:"中国武漢教会"},"중국북경교회":{en:"Beijing, China Church",zh:"中国北京教会",ja:"中国北京教会"},"중국심양교회":{en:"Shenyang, China Church",zh:"中国沈阳教会",ja:"中国瀋陽教会"},"중국천진교회":{en:"Tianjin, China Church",zh:"中国天津教会",ja:"中国天津教会"},"중국청도교회":{en:"Qingdao, China Church",zh:"中国青岛教会",ja:"中国青島教会"},"베트남하노이교회":{en:"Hanoi, Vietnam Church",zh:"越南河内教会",ja:"ベトナム・ハノイ教会"},"부룬디교회":{en:"Burundi Church",zh:"布隆迪教会",ja:"ブルンジ教会"},"오사카교회":{en:"Osaka Church",zh:"大阪教会",ja:"大阪教会"},"인도코임바토르교회":{en:"Coimbatore, India Church",zh:"印度哥印拜陀教会",ja:"インド・コインバトール教会"},"중부독일교회":{en:"Central Germany Church",zh:"德国中部教会",ja:"ドイツ中部教会"},"뉴욕교회":{en:"New York Church",zh:"纽约教会",ja:"ニューヨーク教会"},"브라질상파울루교회":{en:"São Paulo, Brazil Church",zh:"巴西圣保罗教会",ja:"ブラジル・サンパウロ教会"},"스리랑카교회":{en:"Sri Lanka Church",zh:"斯里兰卡教会",ja:"スリランカ教会"},"시카고교회":{en:"Chicago Church",zh:"芝加哥教会",ja:"シカゴ教会"},"인도뉴델리교회":{en:"New Delhi, India Church",zh:"印度新德里教会",ja:"インド・ニューデリー教会"},"나미비아교회":{en:"Namibia Church",zh:"纳米比亚教会",ja:"ナミビア教会"},"스위스교회":{en:"Switzerland Church",zh:"瑞士教会",ja:"スイス教会"},"영국교회":{en:"United Kingdom Church",zh:"英国教会",ja:"イギリス教会"},"케이프타운교회":{en:"Cape Town Church",zh:"开普敦教会",ja:"ケープタウン教会"},"마다가스카르교회":{en:"Madagascar Church",zh:"马达加斯加教会",ja:"マダガスカル教会"},"말레이시아교회":{en:"Malaysia Church",zh:"马来西亚教会",ja:"マレーシア教会"},"스페인마드리드교회":{en:"Madrid, Spain Church",zh:"西班牙马德里教会",ja:"スペイン・マドリード教会"},"애틀랜타교회":{en:"Atlanta Church",zh:"亚特兰大教会",ja:"アトランタ教会"},"체코교회":{en:"Czech Republic Church",zh:"捷克教会",ja:"チェコ教会"},"프랑스교회":{en:"France Church",zh:"法国教会",ja:"フランス教会"},"프랑크푸르트교회":{en:"Frankfurt Church",zh:"法兰克福教会",ja:"フランクフルト教会"},"네덜란드교회":{en:"Netherlands Church",zh:"荷兰教会",ja:"オランダ教会"},"베트남호치민교회":{en:"Ho Chi Minh, Vietnam Church",zh:"越南胡志明教会",ja:"ベトナム・ホーチミン教会"},"몽골교회":{en:"Mongolia Church",zh:"蒙古教会",ja:"モンゴル教会"},"베를린교회":{en:"Berlin Church",zh:"柏林教会",ja:"ベルリン教会"},"도쿄교회":{en:"Tokyo Church",zh:"东京教会",ja:"東京教会"},"인도첸나이교회":{en:"Chennai, India Church",zh:"印度金奈教会",ja:"インド・チェンナイ教会"},"콩고민주공화국킨샤사교회":{en:"Kinshasa, DR Congo Church",zh:"刚果(金)金沙萨教会",ja:"コンゴ民主共和国キンシャサ教会"},"텍사스교회":{en:"Texas Church",zh:"德克萨斯教会",ja:"テキサス教会"},"튀르키예교회":{en:"Türkiye Church",zh:"土耳其教会",ja:"トルコ教会"},"파키스탄교회":{en:"Pakistan Church",zh:"巴基斯坦教会",ja:"パキスタン教会"},"중국가목사교회":{en:"Jiamusi, China Church",zh:"中国佳木斯教会",ja:"中国佳木斯教会"},"중국계서교회":{en:"Jixi, China Church",zh:"中国鸡西教会",ja:"中国鶏西教会"},"중국귀양교회":{en:"Guiyang, China Church",zh:"中国贵阳教会",ja:"中国貴陽教会"},"중국길림교회":{en:"Jilin, China Church",zh:"中国吉林教会",ja:"中国吉林教会"},"중국남경교회":{en:"Nanjing, China Church",zh:"中国南京教会",ja:"中国南京教会"},"중국남녕교회":{en:"Nanning, China Church",zh:"中国南宁教会",ja:"中国南寧教会"},"중국대경교회":{en:"Daqing, China Church",zh:"中国大庆教会",ja:"中国大慶教会"},"중국목단강교회":{en:"Mudanjiang, China Church",zh:"中国牡丹江教会",ja:"中国牡丹江教会"},"중국십언교회":{en:"Shiyan, China Church",zh:"中国十堰教会",ja:"中国十堰教会"},"중국연길교회":{en:"Yanji, China Church",zh:"中国延吉教会",ja:"中国延吉教会"},"중국장춘교회":{en:"Changchun, China Church",zh:"中国长春教会",ja:"中国長春教会"},"중국정주교회":{en:"Zhengzhou, China Church",zh:"中国郑州教会",ja:"中国鄭州教会"},"중국학강교회":{en:"Hegang, China Church",zh:"中国鹤岗教会",ja:"中国鶴崗教会"},"중국할빈교회":{en:"Harbin, China Church",zh:"中国哈尔滨教会",ja:"中国ハルビン教会"},"중국합비교회":{en:"Hefei, China Church",zh:"中国合肥教会",ja:"中国合肥教会"},"중국항주교회":{en:"Hangzhou, China Church",zh:"中国杭州教会",ja:"中国杭州教会"},"샌프란시스코교회":{en:"San Francisco Church",zh:"旧金山教会",ja:"サンフランシスコ教会"},"우간다교회":{en:"Uganda Church",zh:"乌干达教会",ja:"ウガンダ教会"},"케냐교회":{en:"Kenya Church",zh:"肯尼亚教会",ja:"ケニア教会"}};
@@ -2399,7 +2410,7 @@ function renderDiag(){
     return `<div class="dcard span" style="--acc:${acc||'var(--blue)'}"><div class="dct"><span class="dnum">${num}</span>${tr(TRc,title)}${note?` <span style="font-size:11px;color:var(--muted);font-weight:600">${note}</span>`:''}${hr}</div>${rows}</div>`; };
 
   // 예배 지표 월별 추이 (전월입교자·전성도 출석·전성도 대면)
-  const chBy=DATA.months.map(mm=>{ const rec=DATA.records.find(r=>r.name===c.name&&r.month===mm); const aa=rec?aggregate([rec]):null; const mn=parseInt(mm);
+  const chBy=DATA.months.map(mm=>{ const rec=DATA.records.find(r=>r.name===c.name&&r.month===mm); const aa=rec?aggregate([rec]):null; const mn=getMonthNumFromStr(mm);
     return {m:mm, qNew:aa?rate(aa.newAttTotal,aa.prevNewAdmitCnt):null, qAtt:aa?rate(aa.attTotal,aa.attReg):null, qFace:(aa&&mn>=4)?rate(aa.attOnsite,aa.attReg):null, sn:aa?(aa.prevNewAdmitCnt||0):0}; });
   const tdir=vals=>{ const v=vals.filter(x=>x!=null); if(v.length<2)return '<span style="color:#94a3bd">-</span>'; const d=v[v.length-1]-v[v.length-2]; const col=(Math.abs(d)<=0.005)?'#6b7a99':(d>0?'#16a34a':'#e1503e'); const t=(Math.abs(d)<=0.005)?P('→ 유지','→ Flat','→ 持平','→ 維持'):(d>0?P('↗ 상승','↗ Up','↗ 上升','↗ 上昇'):P('↘ 하락','↘ Down','↘ 下降','↘ 低下')); return `<span style="color:${col}">${t}</span>`; };
   const trows=[{l:trLbls.qNew,k:"qNew",smp:true},{l:trLbls.qAtt,k:"qAtt"},{l:trLbls.qFace,k:"qFace"}].map(row=>{

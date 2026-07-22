@@ -7,6 +7,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
+import java.util.HashMap;
 
 @RestController
 @RequestMapping("/api/v1/diagnosis")
@@ -14,6 +16,14 @@ import java.util.List;
 public class DiagnosisController {
 
     private final DiagnosisService diagnosisService;
+
+    @GetMapping("/permissions")
+    public ResponseEntity<Map<String, String>> getMenuPermissions() {
+        String permissions = diagnosisService.getMenuPermissions();
+        Map<String, String> response = new HashMap<>();
+        response.put("permissions", permissions);
+        return ResponseEntity.ok(response);
+    }
 
     @GetMapping("/months")
     public ResponseEntity<List<String>> getAvailableMonths() {

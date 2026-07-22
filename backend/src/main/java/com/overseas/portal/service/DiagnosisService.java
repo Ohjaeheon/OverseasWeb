@@ -4,6 +4,7 @@ import com.overseas.portal.domain.Church;
 import com.overseas.portal.domain.FaithProcessRecord;
 import com.overseas.portal.repository.ChurchRepository;
 import com.overseas.portal.repository.FaithProcessRecordRepository;
+import com.overseas.portal.repository.SystemConfigRepository;
 import lombok.Builder;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
@@ -20,6 +21,13 @@ public class DiagnosisService {
 
     private final FaithProcessRecordRepository faithProcessRecordRepository;
     private final ChurchRepository churchRepository;
+    private final SystemConfigRepository systemConfigRepository;
+
+    public String getMenuPermissions() {
+        return systemConfigRepository.findByConfigKey("menu_permissions_matrix")
+                .map(config -> config.getConfigValue())
+                .orElse("");
+    }
 
     @Data
     @Builder

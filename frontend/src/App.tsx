@@ -19,7 +19,24 @@ import { AdminLoginLogsPage } from './pages/admin/AdminLoginLogsPage';
 import { AdminAccessLogsPage } from './pages/admin/AdminAccessLogsPage';
 import { AdminPlaceholderPage } from './pages/admin/AdminPlaceholderPage';
 
+import { roleService } from './services/roleService';
+
 export const App: React.FC = () => {
+  React.useEffect(() => {
+    const syncPermissions = async () => {
+      try {
+        await roleService.fetchMenuPermissionsFromDb();
+      } catch (e) {
+        console.warn("Failed to sync permissions on app start", e);
+      }
+    };
+
+    const token = localStorage.getItem('token');
+    if (token) {
+      syncPermissions();
+    }
+  }, []);
+
   return (
     <BrowserRouter basename="/OverseasPortal">
       <Routes>

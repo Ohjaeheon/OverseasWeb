@@ -39,13 +39,16 @@ export const AdminPermissionPage: React.FC = () => {
     setMenus(newMenus);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     setSaving(true);
-    roleService.saveMenuPermissions(menus);
-    setTimeout(() => {
-      setSaving(false);
+    try {
+      await roleService.saveMenuPermissions(menus);
       alert("권한별 메뉴 접근 설정이 성공적으로 저장되었습니다.");
-    }, 400);
+    } catch (err) {
+      alert("저장 중 오류가 발생했습니다.");
+    } finally {
+      setSaving(false);
+    }
   };
 
   // Helper to distinguish Admin Portal menus from User Portal menus
