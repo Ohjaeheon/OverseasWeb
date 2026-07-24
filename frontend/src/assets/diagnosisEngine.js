@@ -2443,44 +2443,64 @@ window.toggleSharePasswordVisibility = (e) => {
 };
 
 async function encryptData(plaintext, password) {
-  const enc = new TextEncoder();
-  const salt = window.crypto.getRandomValues(new Uint8Array(16));
-  const pbkdf2Key = await window.crypto.subtle.importKey(
-    "raw", enc.encode(password), { name: "PBKDF2" }, false, ["deriveKey"]
-  );
-  const key = await window.crypto.subtle.deriveKey(
-    { name: "PBKDF2", salt: salt, iterations: 100000, hash: "SHA-256" },
-    pbkdf2Key, { name: "AES-GCM", length: 256 }, false, ["encrypt"]
-  );
-  const iv = window.crypto.getRandomValues(new Uint8Array(12));
-  const encrypted = await window.crypto.subtle.encrypt(
-    { name: "AES-GCM", iv: iv }, key, enc.encode(plaintext)
-  );
-  const combined = new Uint8Array(salt.length + iv.length + encrypted.byteLength);
-  combined.set(salt, 0);
-  combined.set(iv, salt.length);
-  combined.set(new Uint8Array(encrypted), salt.length + iv.length);
-  return btoa(String.fromCharCode.apply(null, combined));
+  if (window.crypto && window.crypto.subtle) {
+    try {
+      const enc = new TextEncoder();
+      const salt = window.crypto.getRandomValues(new Uint8Array(16));
+      const pbkdf2Key = await window.crypto.subtle.importKey(
+        "raw", enc.encode(password), { name: "PBKDF2" }, false, ["deriveKey"]
+      );
+      const key = await window.crypto.subtle.deriveKey(
+        { name: "PBKDF2", salt: salt, iterations: 100000, hash: "SHA-256" },
+        pbkdf2Key, { name: "AES-GCM", length: 256 }, false, ["encrypt"]
+      );
+      const iv = window.crypto.getRandomValues(new Uint8Array(12));
+      const encrypted = await window.crypto.subtle.encrypt(
+        { name: "AES-GCM", iv: iv }, key, enc.encode(plaintext)
+      );
+      const combined = new Uint8Array(salt.length + iv.length + encrypted.byteLength);
+      combined.set(salt, 0);
+      combined.set(iv, salt.length);
+      combined.set(new Uint8Array(encrypted), salt.length + iv.length);
+      return btoa(String.fromCharCode.apply(null, combined));
+    } catch (e) {
+      console.warn("Native subtle encrypt failed in diagnosisEngine, trying fallback:", e);
+    }
+  }
+  if (typeof window.encryptData === 'function') {
+    return window.encryptData(plaintext, password);
+  }
+  throw new Error("Web Crypto API (subtle) not available and fallback not loaded");
 }
 
 async function decryptData(ciphertextBase64, password) {
-  const combined = new Uint8Array(atob(ciphertextBase64).split("").map(c => c.charCodeAt(0)));
-  const salt = combined.slice(0, 16);
-  const iv = combined.slice(16, 28);
-  const encrypted = combined.slice(28);
-  
-  const enc = new TextEncoder();
-  const pbkdf2Key = await window.crypto.subtle.importKey(
-    "raw", enc.encode(password), { name: "PBKDF2" }, false, ["deriveKey"]
-  );
-  const key = await window.crypto.subtle.deriveKey(
-    { name: "PBKDF2", salt: salt, iterations: 100000, hash: "SHA-256" },
-    pbkdf2Key, { name: "AES-GCM", length: 256 }, false, ["decrypt"]
-  );
-  const decrypted = await window.crypto.subtle.decrypt(
-    { name: "AES-GCM", iv: iv }, key, encrypted
-  );
-  return new TextDecoder().decode(decrypted);
+  if (window.crypto && window.crypto.subtle) {
+    try {
+      const combined = new Uint8Array(atob(ciphertextBase64).split("").map(c => c.charCodeAt(0)));
+      const salt = combined.slice(0, 16);
+      const iv = combined.slice(16, 28);
+      const encrypted = combined.slice(28);
+      
+      const enc = new TextEncoder();
+      const pbkdf2Key = await window.crypto.subtle.importKey(
+        "raw", enc.encode(password), { name: "PBKDF2" }, false, ["deriveKey"]
+      );
+      const key = await window.crypto.subtle.deriveKey(
+        { name: "PBKDF2", salt: salt, iterations: 100000, hash: "SHA-256" },
+        pbkdf2Key, { name: "AES-GCM", length: 256 }, false, ["decrypt"]
+      );
+      const decrypted = await window.crypto.subtle.decrypt(
+        { name: "AES-GCM", iv: iv }, key, encrypted
+      );
+      return new TextDecoder().decode(decrypted);
+    } catch (e) {
+      console.warn("Native subtle decrypt failed in diagnosisEngine, trying fallback:", e);
+    }
+  }
+  if (typeof window.decryptData === 'function') {
+    return window.decryptData(ciphertextBase64, password);
+  }
+  throw new Error("Web Crypto API (subtle) not available and fallback not loaded");
 }
 
 window.generateShareFile = async () => {
