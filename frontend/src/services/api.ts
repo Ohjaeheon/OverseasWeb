@@ -36,7 +36,7 @@ async function decryptData(ciphertextBase64: string, password: string): Promise<
   const tagBytes = encryptedAndTagBytes.slice(encryptedAndTagBytes.length - 16);
   
   const derivedKeyBytes = forge.pkcs5.pbkdf2(
-    password, 
+    forge.util.encodeUtf8(password), 
     saltBytes, 
     100000, 
     32, 
@@ -93,7 +93,7 @@ async function encryptData(plaintext: string, password: string): Promise<string>
   const iv = forge.random.getBytesSync(12);
   
   const derivedKeyBytes = forge.pkcs5.pbkdf2(
-    password,
+    forge.util.encodeUtf8(password),
     salt,
     100000,
     32,
