@@ -1643,7 +1643,7 @@ function renderFunnel(){
 // ── render ──
 function render(){
   const sec=ST.section||"home";
-  if (sec === 'evangelism/check' || sec === 'evangelism/aggregate') {
+  if (sec === 'evangelism/check' || sec === 'evangelism/aggregate' || sec === 'approvals/pending' || sec === 'approvals/completed') {
     buildSidebar();
     return;
   }
@@ -1971,8 +1971,9 @@ var SIDEBAR=[
   {grp:"보 기"},
   {s:"map",ico:"🌍",label:"지도·지구본"},
   {s:"trend",ico:"📈",label:"추이·비교"},
-  {grp:"공 유"},
-  {s:"export",ico:"📥",label:"엑셀 내보내기",tag:"NEW"},
+  {grp:"결 재"},
+  {s:"approvals/pending",ico:"📥",label:"결재 대기중인 건",path:"/approvals/pending"},
+  {s:"approvals/completed",ico:"📋",label:"결재 완료 건",path:"/approvals/completed"},
 ];
 function checkMenuAccess(menuKey){
   try {
@@ -1992,6 +1993,10 @@ function checkMenuAccess(menuKey){
       normRole = 'ROLE_JIPA';
     } else if(normRole === 'ROLE_일반 회원' || normRole === 'ROLE_GUEST') {
       normRole = 'ROLE_GUEST';
+    }
+
+    if (menuKey === 'approvals/pending' || menuKey === 'approvals/completed') {
+      if (normRole === 'ROLE_USER' || normRole === 'ROLE_JIPA') return true;
     }
 
     const rawPerms = localStorage.getItem('OVERSEAS_PORTAL_PERMISSIONS');

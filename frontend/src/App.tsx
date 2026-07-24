@@ -54,6 +54,8 @@ export const App: React.FC = () => {
         <Route path="/center" element={<DiagnosisPage section="center" />} />
         <Route path="/membership" element={<DiagnosisPage section="membership" />} />
         <Route path="/worship" element={<DiagnosisPage section="worship" />} />
+        <Route path="/approvals/pending" element={<DiagnosisPage section="approvals/pending" />} />
+        <Route path="/approvals/completed" element={<DiagnosisPage section="approvals/completed" />} />
         <Route path="/login" element={<LoginPage />} />
 
         {/* Protected Admin Routes (ROLE_ADMIN Only) */}

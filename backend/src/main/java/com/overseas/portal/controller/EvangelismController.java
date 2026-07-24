@@ -116,22 +116,44 @@ public class EvangelismController {
         return encryptResponse(list);
     }
 
+    @GetMapping("/edit-requests/completed")
+    public ResponseEntity<Map<String, Object>> getCompletedRequests(
+            @RequestParam(name = "username", required = false) String username,
+            @RequestParam(name = "role", required = false) String role,
+            @RequestParam(name = "name", required = false) String name) {
+        log.info("Fetching completed edit requests for name: {}, role: {}", name, role);
+        List<EvangelismEditRequest> list;
+        List<String> completedStatuses = List.of("APPROVED", "REJECTED", "USED");
+        if (role != null && (role.equals("ROLE_ADMIN") || role.equals("ADMIN"))) {
+            list = evangelismEditRequestRepository.findByStatusIn(completedStatuses);
+        } else {
+            list = evangelismEditRequestRepository.findByRequestedToAndStatusIn(name != null ? name : "", completedStatuses);
+        }
+        return encryptResponse(list);
+    }
+
     @PostMapping("/edit-requests/{id}/approve")
-    public ResponseEntity<Map<String, Object>> approveRequest(@PathVariable(name = "id") Long id) {
-        log.info("Approving edit request ID: {}", id);
+    public ResponseEntity<Map<String, Object>> approveRequest(
+            @PathVariable(name = "id") Long id,
+            @RequestParam(name = "comment", required = false) String comment) {
+        log.info("Approving edit request ID: {}, comment: {}", id, comment);
         return evangelismEditRequestRepository.findById(id).map(req -> {
             req.setStatus("APPROVED");
             req.setApprovedAt(ZonedDateTime.now());
+            req.setApproverComment(comment);
             evangelismEditRequestRepository.save(req);
             return encryptResponse(req);
         }).orElseGet(() -> ResponseEntity.notFound().build());
     }
 
     @PostMapping("/edit-requests/{id}/reject")
-    public ResponseEntity<Map<String, Object>> rejectRequest(@PathVariable(name = "id") Long id) {
-        log.info("Rejecting edit request ID: {}", id);
+    public ResponseEntity<Map<String, Object>> rejectRequest(
+            @PathVariable(name = "id") Long id,
+            @RequestParam(name = "comment", required = false) String comment) {
+        log.info("Rejecting edit request ID: {}, comment: {}", id, comment);
         return evangelismEditRequestRepository.findById(id).map(req -> {
             req.setStatus("REJECTED");
+            req.setApproverComment(comment);
             evangelismEditRequestRepository.save(req);
             return encryptResponse(req);
         }).orElseGet(() -> ResponseEntity.notFound().build());

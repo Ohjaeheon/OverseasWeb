@@ -4,6 +4,7 @@ import { diagnosisService } from '../../services/diagnosisService';
 import { logService } from '../../services/logService';
 import { sessionService } from '../../services/sessionService';
 import { EvangelismModule } from '../../components/user/EvangelismModule';
+import { ApprovalModule } from '../../components/user/ApprovalModule';
 import { roleService } from '../../services/roleService';
 import api from '../../services/api';
 
@@ -102,7 +103,9 @@ export const DiagnosisPage: React.FC<DiagnosisPageProps> = ({ section = 'home', 
       'evangelism/aggregate': 'p1_agg',
       'center': 'p2',
       'membership': 'p3',
-      'worship': 'p4'
+      'worship': 'p4',
+      'approvals/pending': 'approvals_pending',
+      'approvals/completed': 'approvals_completed'
     };
 
     const targetKey = sectionToMenuKey[section] || section;
@@ -411,7 +414,7 @@ export const DiagnosisPage: React.FC<DiagnosisPageProps> = ({ section = 'home', 
     }
   }, [section]);
 
-  if (section === 'evangelism/check' || section === 'evangelism/aggregate') {
+  if (section === 'evangelism/check' || section === 'evangelism/aggregate' || section === 'approvals/pending' || section === 'approvals/completed') {
     return (
       <div style={{ minHeight: '100vh', background: '#f8fafc' }}>
         <div className="topbar">
@@ -432,7 +435,11 @@ export const DiagnosisPage: React.FC<DiagnosisPageProps> = ({ section = 'home', 
         <div className="shell">
           <nav className="side" id="side" style={{ display: 'block' }}></nav>
           <main className="main" style={{ flex: 1, padding: '20px', overflowY: 'auto' }}>
-            <EvangelismModule initialTab={section === 'evangelism/check' ? 'check' : 'aggregate'} />
+            {(section === 'evangelism/check' || section === 'evangelism/aggregate') ? (
+              <EvangelismModule initialTab={section === 'evangelism/check' ? 'check' : 'aggregate'} />
+            ) : (
+              <ApprovalModule mode={section === 'approvals/pending' ? 'pending' : 'completed'} />
+            )}
             <div id="homeview" style={{ display: 'none' }}></div>
             <div id="diagview" style={{ display: 'none' }}></div>
             <div id="dataview" style={{ display: 'none' }}></div>
@@ -581,10 +588,12 @@ export const DiagnosisPage: React.FC<DiagnosisPageProps> = ({ section = 'home', 
 
 <button id="toTop" onclick="goTop()" title="맨 위로" aria-label="맨 위로">↑</button>
 
+${(import.meta as any).env?.DEV ? `
 <div id="debugPanel" style="position:fixed;bottom:12px;right:12px;background:rgba(15,23,42,0.95);color:#10b981;padding:12px 16px;border-radius:12px;font-family:monospace;font-size:12px;z-index:9999;width:340px;box-shadow:0 10px 25px rgba(0,0,0,0.4);border:1.5px solid #334155;pointer-events:none">
   <h4 style="margin:0 0 8px 0;color:#ffffff;font-size:13px;border-bottom:1px solid #334155;padding-bottom:4px;display:flex;align-items:center;gap:6px">⚙️ SYSTEM DEBUG PANEL</h4>
   <div id="debugContent">Initializing...</div>
 </div>
+` : ''}
       ` }}
     />
   );

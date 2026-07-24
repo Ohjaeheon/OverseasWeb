@@ -40,6 +40,8 @@ export const DEFAULT_MENUS: { menuKey: string; menuName: string; category: strin
   { menuKey: 'p2', menuName: '② 센터', category: '🖥️ 일반 사용자 진단서 포탈', path: '/center' },
   { menuKey: 'p3', menuName: '③ 내무', category: '🖥️ 일반 사용자 진단서 포탈', path: '/membership' },
   { menuKey: 'p4', menuName: '④ 예배 · 전성도', category: '🖥️ 일반 사용자 진단서 포탈', path: '/worship' },
+  { menuKey: 'approvals_pending', menuName: '📥 결재 대기중인 건', category: '🖥️ 일반 사용자 진단서 포탈', path: '/approvals/pending' },
+  { menuKey: 'approvals_completed', menuName: '📋 결재 완료 건', category: '🖥️ 일반 사용자 진단서 포탈', path: '/approvals/completed' },
 
   // Admin Portal Menus
   { menuKey: 'admin_dash', menuName: '📊 관리자 대시보드', category: '⚙️ 관리자 전용 (adminsetting)', path: '/adminsetting/dashboard' },

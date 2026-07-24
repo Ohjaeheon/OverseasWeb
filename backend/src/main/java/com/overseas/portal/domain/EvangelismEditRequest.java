@@ -62,4 +62,8 @@ public class EvangelismEditRequest {
     @Column(name = "approved_at")
     @Comment("승인 일시")
     private ZonedDateTime approvedAt;
+
+    @Column(name = "approver_comment", columnDefinition = "TEXT")
+    @Comment("결재자 의견 및 반려 사유")
+    private String approverComment;
 }

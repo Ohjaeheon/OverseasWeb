@@ -1540,8 +1540,9 @@ const SIDEBAR=[
   {grp:"보 기"},
   {s:"map",ico:"🌍",label:"지도·지구본"},
   {s:"trend",ico:"📈",label:"추이·비교"},
-  {grp:"공 유"},
-  {s:"export",ico:"📥",label:"엑셀 내보내기",tag:"NEW"},
+  {grp:"결 재"},
+  {s:"approvals/pending",ico:"📥",label:"결재 대기중인 건",path:"/approvals/pending"},
+  {s:"approvals/completed",ico:"📋",label:"결재 완료 건",path:"/approvals/completed"},
 ];
 function buildSidebar(){
   let html="";
