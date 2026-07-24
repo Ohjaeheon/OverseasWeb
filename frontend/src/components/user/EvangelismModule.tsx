@@ -23,6 +23,88 @@ interface EvangelismModuleProps {
 
 const DEPARTMENTS = ['교역자', '자문회', '장년회', '부녀회', '청년회'];
 
+// Helper to get all weeks and current week dynamically
+const getDynamicWeekConfig = (selectedYearStr: string) => {
+  const currentYearNum = new Date().getFullYear();
+  const selectedYearNum = parseInt(selectedYearStr.replace(/[^0-9]/g, '')) || 2026;
+  const isCurrentYear = (selectedYearNum === currentYearNum);
+  
+  // Calculate all weeks for selected year (starting from Sunday-to-Saturday weeks)
+  const d = new Date(selectedYearNum - 1, 11, 25);
+  while (d.getDay() !== 0) {
+    d.setDate(d.getDate() - 1);
+  }
+
+  const weeks: { weekKey: string; rangeStr: string; month: number; weekNum: number }[] = [];
+  const monthWeekCounts: Record<number, number> = {};
+  
+  const today = new Date();
+  let detectedCurrentWeekKey = '';
+  
+  for (let i = 0; i < 54; i++) {
+    const start = new Date(d);
+    const end = new Date(d);
+    end.setDate(end.getDate() + 6);
+    
+    // Starting Sunday determines the month of the week
+    const startYear = start.getFullYear();
+    const m = start.getMonth() + 1;
+    
+    if (startYear > selectedYearNum) {
+      break;
+    }
+    
+    if (startYear === selectedYearNum) {
+      monthWeekCounts[m] = (monthWeekCounts[m] || 0) + 1;
+      const weekNum = monthWeekCounts[m];
+      const weekKey = `${m}월${weekNum}주차`;
+      const rangeStr = `(${start.getMonth() + 1}/${start.getDate()} ~ ${end.getMonth() + 1}/${end.getDate()})`;
+      
+      weeks.push({
+        weekKey,
+        rangeStr,
+        month: m,
+        weekNum
+      });
+      
+      const startCheck = new Date(start);
+      startCheck.setHours(0,0,0,0);
+      const endCheck = new Date(end);
+      endCheck.setHours(23,59,59,999);
+      
+      if (today >= startCheck && today <= endCheck) {
+        detectedCurrentWeekKey = weekKey;
+      }
+    }
+    d.setDate(d.getDate() + 7);
+  }
+  
+  // Default fallbacks if not found
+  if (!detectedCurrentWeekKey && weeks.length > 0) {
+    if (isCurrentYear) {
+      const lastWeek = weeks[weeks.length - 1];
+      detectedCurrentWeekKey = lastWeek.weekKey;
+    } else {
+      detectedCurrentWeekKey = '12월4주차';
+    }
+  }
+
+  // Capping available weeks at current week for current year
+  let allowedWeeks = [...weeks];
+  if (isCurrentYear) {
+    const currentWeekIdx = weeks.findIndex(w => w.weekKey === detectedCurrentWeekKey);
+    if (currentWeekIdx !== -1) {
+      allowedWeeks = weeks.slice(0, currentWeekIdx + 1);
+    }
+  }
+  
+  return {
+    allWeeks: weeks,
+    allowedWeeks: allowedWeeks,
+    currentWeekKey: detectedCurrentWeekKey || (isCurrentYear ? '7월3주차' : '12월4주차')
+  };
+};
+
 export const EvangelismModule: React.FC<EvangelismModuleProps> = ({ initialTab = 'check' }) => {
   const navigate = useNavigate();
   // 1. Navigation Sub-tab ('check': 교회별 데이터 확인, 'aggregate': 취합)
@@ -43,7 +125,7 @@ export const EvangelismModule: React.FC<EvangelismModuleProps> = ({ initialTab =
   // 3. Date & Week Filters
   const [selectedYear, setSelectedYear] = useState<string>('2026년');
   const [selectedWeekCheck, setSelectedWeekCheck] = useState<string>('전체'); // For Tab 1
-  const [selectedWeekAgg, setSelectedWeekAgg] = useState<string>('7월3주차');   // For Tab 2
+  const [selectedWeekAgg, setSelectedWeekAgg] = useState<string>(() => getDynamicWeekConfig('2026년').currentWeekKey);   // For Tab 2
 
   // 3-1. Current Week Data State for Aggregation Tab
   const [currentWeekInputs, setCurrentWeekInputs] = useState<Record<string, DeptData>>({
@@ -91,36 +173,17 @@ export const EvangelismModule: React.FC<EvangelismModuleProps> = ({ initialTab =
 
   // Reset selected weeks if they are invalid for the selected year
   useEffect(() => {
-    const isCurrentYear = selectedYear === '2026년';
-    const validWeeks = isCurrentYear ? [
-      '전체', '1월', '2월', '3월', '4월', '5월', '6월', '7월',
-      '1월1주차', '1월2주차', '1월3주차', '1월4주차',
-      '2월1주차', '2월2주차', '2월3주차', '2월4주차',
-      '3월1주차', '3월2주차', '3월3주차', '3월4주차',
-      '4월1주차', '4월2주차', '4월3주차', '4월4주차',
-      '5월1주차', '5월2주차', '5월3주차', '5월4주차',
-      '6월1주차', '6월2주차', '6월3주차', '6월4주차',
-      '7월1주차', '7월2주차', '7월3주차'
-    ] : [
-      '전체', '1월', '2월', '3월', '4월', '5월', '6월', '7월', '8월', '9월', '10월', '11월', '12월',
-      '1월1주차', '1월2주차', '1월3주차', '1월4주차',
-      '2월1주차', '2월2주차', '2월3주차', '2월4주차',
-      '3월1주차', '3월2주차', '3월3주차', '3월4주차',
-      '4월1주차', '4월2주차', '4월3주차', '4월4주차',
-      '5월1주차', '5월2주차', '5월3주차', '5월4주차',
-      '6월1주차', '6월2주차', '6월3주차', '6월4주차',
-      '7월1주차', '7월2주차', '7월3주차', '7월4주차',
-      '8월1주차', '8월2주차', '8월3주차', '8월4주차',
-      '9월1주차', '9월2주차', '9월3주차', '9월4주차',
-      '10월1주차', '10월2주차', '10월3주차', '10월4주차',
-      '11월1주차', '11월2주차', '11월3주차', '11월4주차',
-      '12월1주차', '12월2주차', '12월3주차', '12월4주차'
+    const config = getDynamicWeekConfig(selectedYear);
+    const validWeeks = [
+      '전체',
+      ...Array.from(new Set(config.allowedWeeks.map(w => `${w.month}월`))),
+      ...config.allowedWeeks.map(w => w.weekKey)
     ];
 
     if (!validWeeks.includes(selectedWeekCheck)) {
       setSelectedWeekCheck('전체');
     }
-    setSelectedWeekAgg(isCurrentYear ? '7월3주차' : '12월4주차');
+    setSelectedWeekAgg(config.currentWeekKey);
   }, [selectedYear]);
 
   // 5. Admin Users list for Modal
@@ -155,29 +218,8 @@ export const EvangelismModule: React.FC<EvangelismModuleProps> = ({ initialTab =
 
   useEffect(() => {
     checkAccessPermission();
-    const isCurrentYear = selectedYear === '2026년';
-    const ALL_WEEKS_LIST = isCurrentYear ? [
-      '1월1주차', '1월2주차', '1월3주차', '1월4주차',
-      '2월1주차', '2월2주차', '2월3주차', '2월4주차',
-      '3월1주차', '3월2주차', '3월3주차', '3월4주차',
-      '4월1주차', '4월2주차', '4월3주차', '4월4주차',
-      '5월1주차', '5월2주차', '5월3주차', '5월4주차',
-      '6월1주차', '6월2주차', '6월3주차', '6월4주차',
-      '7월1주차', '7월2주차', '7월3주차'
-    ] : [
-      '1월1주차', '1월2주차', '1월3주차', '1월4주차',
-      '2월1주차', '2월2주차', '2월3주차', '2월4주차',
-      '3월1주차', '3월2주차', '3월3주차', '3월4주차',
-      '4월1주차', '4월2주차', '4월3주차', '4월4주차',
-      '5월1주차', '5월2주차', '5월3주차', '5월4주차',
-      '6월1주차', '6월2주차', '6월3주차', '6월4주차',
-      '7월1주차', '7월2주차', '7월3주차', '7월4주차',
-      '8월1주차', '8월2주차', '8월3주차', '8월4주차',
-      '9월1주차', '9월2주차', '9월3주차', '9월4주차',
-      '10월1주차', '10월2주차', '10월3주차', '10월4주차',
-      '11월1주차', '11월2주차', '11월3주차', '11월4주차',
-      '12월1주차', '12월2주차', '12월3주차', '12월4주차'
-    ];
+    const config = getDynamicWeekConfig(selectedYear);
+    const ALL_WEEKS_LIST = config.allowedWeeks.map(w => w.weekKey);
     const selectedWeekIdx = ALL_WEEKS_LIST.indexOf(selectedWeekAgg);
     const prevWeekKey = selectedWeekIdx > 0 ? ALL_WEEKS_LIST[selectedWeekIdx - 1] : '1월1주차';
     checkPrevAccessPermission(prevWeekKey);
@@ -186,29 +228,8 @@ export const EvangelismModule: React.FC<EvangelismModuleProps> = ({ initialTab =
   useEffect(() => {
     const handleRefresh = () => {
       checkAccessPermission();
-      const isCurrentYear = selectedYear === '2026년';
-      const ALL_WEEKS_LIST = isCurrentYear ? [
-        '1월1주차', '1월2주차', '1월3주차', '1월4주차',
-        '2월1주차', '2월2주차', '2월3주차', '2월4주차',
-        '3월1주차', '3월2주차', '3월3주차', '3월4주차',
-        '4월1주차', '4월2주차', '4월3주차', '4월4주차',
-        '5월1주차', '5월2주차', '5월3주차', '5월4주차',
-        '6월1주차', '6월2주차', '6월3주차', '6월4주차',
-        '7월1주차', '7월2주차', '7월3주차'
-      ] : [
-        '1월1주차', '1월2주차', '1월3주차', '1월4주차',
-        '2월1주차', '2월2주차', '2월3주차', '2월4주차',
-        '3월1주차', '3월2주차', '3월3주차', '3월4주차',
-        '4월1주차', '4월2주차', '4월3주차', '4월4주차',
-        '5월1주차', '5월2주차', '5월3주차', '5월4주차',
-        '6월1주차', '6월2주차', '6월3주차', '6월4주차',
-        '7월1주차', '7월2주차', '7월3주차', '7월4주차',
-        '8월1주차', '8월2주차', '8월3주차', '8월4주차',
-        '9월1주차', '9월2주차', '9월3주차', '9월4주차',
-        '10월1주차', '10월2주차', '10월3주차', '10월4주차',
-        '11월1주차', '11월2주차', '11월3주차', '11월4주차',
-        '12월1주차', '12월2주차', '12월3주차', '12월4주차'
-      ];
+      const config = getDynamicWeekConfig(selectedYear);
+      const ALL_WEEKS_LIST = config.allowedWeeks.map(w => w.weekKey);
       const selectedWeekIdx = ALL_WEEKS_LIST.indexOf(selectedWeekAgg);
       const prevWeekKey = selectedWeekIdx > 0 ? ALL_WEEKS_LIST[selectedWeekIdx - 1] : '1월1주차';
       checkPrevAccessPermission(prevWeekKey);
@@ -330,36 +351,36 @@ export const EvangelismModule: React.FC<EvangelismModuleProps> = ({ initialTab =
     return '';
   };
 
-  // Generate Weekly Options for 1월 1주차 ~ 12월 4주차 (Dynamically calculated dates)
+  // Generate Weekly Options dynamically based on date configuration
   const generateWeeklyOptions = (includeSummary: boolean = true) => {
     const options: { value: string; label: string; isMonthHeader?: boolean }[] = [];
-    const isCurrentYear = selectedYear === '2026년';
-    const yearNum = parseInt(selectedYear.replace(/[^0-9]/g, '')) || 2026;
+    const config = getDynamicWeekConfig(selectedYear);
 
     if (includeSummary) {
-      if (isCurrentYear) {
-        options.push({ value: '전체', label: '🌐 전체 (1월 1주차 ~ 현재 주차)' });
-      } else {
-        options.push({ value: '전체', label: '🌐 전체 (1월 1주차 ~ 12월 4주차)' });
-      }
+      options.push({ value: '전체', label: `🌐 전체 (1월 1주차 ~ ${config.currentWeekKey})` });
     }
 
-    const endMonth = isCurrentYear ? 7 : 12;
-    for (let m = 1; m <= endMonth; m++) {
+    const groupedByMonth: Record<number, typeof config.allowedWeeks> = {};
+    config.allowedWeeks.forEach(w => {
+      if (!groupedByMonth[w.month]) {
+        groupedByMonth[w.month] = [];
+      }
+      groupedByMonth[w.month].push(w);
+    });
+
+    Object.keys(groupedByMonth).map(Number).sort((a, b) => a - b).forEach(m => {
       if (includeSummary) {
         options.push({ value: `${m}월`, label: `📅 ${m}월 (전체 주차 집계)`, isMonthHeader: true });
       }
 
-      const endW = (isCurrentYear && m === 7) ? 3 : 4;
-      for (let w = 1; w <= endW; w++) {
-        const dateRange = getWeekDateRangeStr(yearNum, m, w - 1);
-        const suffix = (isCurrentYear && m === 7 && w === 3) ? ' [현재주차]' : '';
+      groupedByMonth[m].forEach(w => {
+        const suffix = (w.weekKey === config.currentWeekKey) ? ' [현재주차]' : '';
         options.push({
-          value: `${m}월${w}주차`,
-          label: `   ㄴ ${m}월${w}주차 ${dateRange}${suffix}`
+          value: w.weekKey,
+          label: `   ㄴ ${w.weekKey} ${w.rangeStr}${suffix}`
         });
-      }
-    }
+      });
+    });
 
     return options;
   };
@@ -383,29 +404,8 @@ export const EvangelismModule: React.FC<EvangelismModuleProps> = ({ initialTab =
 
   // Filter weeks to render based on selectedWeekCheck ('전체', '1월', '1월1주차' etc.)
   const getFilteredWeeks = () => {
-    const isCurrentYear = selectedYear === '2026년';
-    const allWeeks = isCurrentYear ? [
-      '1월1주차', '1월2주차', '1월3주차', '1월4주차',
-      '2월1주차', '2월2주차', '2월3주차', '2월4주차',
-      '3월1주차', '3월2주차', '3월3주차', '3월4주차',
-      '4월1주차', '4월2주차', '4월3주차', '4월4주차',
-      '5월1주차', '5월2주차', '5월3주차', '5월4주차',
-      '6월1주차', '6월2주차', '6월3주차', '6월4주차',
-      '7월1주차', '7월2주차', '7월3주차'
-    ] : [
-      '1월1주차', '1월2주차', '1월3주차', '1월4주차',
-      '2월1주차', '2월2주차', '2월3주차', '2월4주차',
-      '3월1주차', '3월2주차', '3월3주차', '3월4주차',
-      '4월1주차', '4월2주차', '4월3주차', '4월4주차',
-      '5월1주차', '5월2주차', '5월3주차', '5월4주차',
-      '6월1주차', '6월2주차', '6월3주차', '6월4주차',
-      '7월1주차', '7월2주차', '7월3주차', '7월4주차',
-      '8월1주차', '8월2주차', '8월3주차', '8월4주차',
-      '9월1주차', '9월2주차', '9월3주차', '9월4주차',
-      '10월1주차', '10월2주차', '10월3주차', '10월4주차',
-      '11월1주차', '11월2주차', '11월3주차', '11월4주차',
-      '12월1주차', '12월2주차', '12월3주차', '12월4주차'
-    ];
+    const config = getDynamicWeekConfig(selectedYear);
+    const allWeeks = config.allowedWeeks.map(w => w.weekKey);
 
     if (selectedWeekCheck === '전체') {
       return allWeeks;
@@ -841,31 +841,10 @@ export const EvangelismModule: React.FC<EvangelismModuleProps> = ({ initialTab =
       {/* TAB 2: 취합 및 실적 입력 (Aggregation & Input)                             */}
       {/* ========================================================================= */}
       {activeTab === 'aggregate' && (() => {
-        const isCurrentYear = selectedYear === '2026년';
-        const REAL_CURRENT_WEEK = isCurrentYear ? '7월3주차' : '12월4주차';
+        const config = getDynamicWeekConfig(selectedYear);
+        const REAL_CURRENT_WEEK = config.currentWeekKey;
         const isEditable = (selectedWeekAgg === REAL_CURRENT_WEEK) || hasEditPermission;
-        const ALL_WEEKS_LIST = isCurrentYear ? [
-          '1월1주차', '1월2주차', '1월3주차', '1월4주차',
-          '2월1주차', '2월2주차', '2월3주차', '2월4주차',
-          '3월1주차', '3월2주차', '3월3주차', '3월4주차',
-          '4월1주차', '4월2주차', '4월3주차', '4월4주차',
-          '5월1주차', '5월2주차', '5월3주차', '5월4주차',
-          '6월1주차', '6월2주차', '6월3주차', '6월4주차',
-          '7월1주차', '7월2주차', '7월3주차'
-        ] : [
-          '1월1주차', '1월2주차', '1월3주차', '1월4주차',
-          '2월1주차', '2월2주차', '2월3주차', '2월4주차',
-          '3월1주차', '3월2주차', '3월3주차', '3월4주차',
-          '4월1주차', '4월2주차', '4월3주차', '4월4주차',
-          '5월1주차', '5월2주차', '5월3주차', '5월4주차',
-          '6월1주차', '6월2주차', '6월3주차', '6월4주차',
-          '7월1주차', '7월2주차', '7월3주차', '7월4주차',
-          '8월1주차', '8월2주차', '8월3주차', '8월4주차',
-          '9월1주차', '9월2주차', '9월3주차', '9월4주차',
-          '10월1주차', '10월2주차', '10월3주차', '10월4주차',
-          '11월1주차', '11월2주차', '11월3주차', '11월4주차',
-          '12월1주차', '12월2주차', '12월3주차', '12월4주차'
-        ];
+        const ALL_WEEKS_LIST = config.allowedWeeks.map(w => w.weekKey);
         const selectedWeekIdx = ALL_WEEKS_LIST.indexOf(selectedWeekAgg);
         const prevWeekKey = selectedWeekIdx > 0 ? ALL_WEEKS_LIST[selectedWeekIdx - 1] : '1월1주차';
 
