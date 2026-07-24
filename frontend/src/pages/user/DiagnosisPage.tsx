@@ -202,7 +202,12 @@ export const DiagnosisPage: React.FC<DiagnosisPageProps> = ({ section = 'home', 
       try {
         const res = await api.get<any[]>('/evangelism/records');
         const weeklyRecords = res.data || [];
-        if (weeklyRecords.length === 0) return rawDataRecords;
+        if (!(window as any).DATA) (window as any).DATA = {};
+        (window as any).DATA.weeklyRecords = weeklyRecords;
+
+        if (weeklyRecords.length === 0) {
+          return { syncedRecords: rawDataRecords, weeklyRecords };
+        }
 
         const getMonthFromWeekKey = (weekKey: string): string => {
           const match = weekKey.match(/^(\d+월)/);
@@ -210,30 +215,39 @@ export const DiagnosisPage: React.FC<DiagnosisPageProps> = ({ section = 'home', 
         };
 
         const getMonthNum = (mStr: string): number => {
-          const match = mStr.match(/^(\d+)월/);
+          const match = mStr.match(/(\d+)월/);
           return match ? parseInt(match[1]) : 0;
+        };
+
+        const getYearNum = (str: string): number => {
+          const match = str.match(/^(\d+)년/);
+          return match ? parseInt(match[1]) : 2026;
         };
 
         const grouped: Record<string, Record<string, any[]>> = {};
         weeklyRecords.forEach(r => {
           const church = r.churchName;
-          const m = getMonthFromWeekKey(r.weekKey);
-          if (!m) return;
+          const monthPart = getMonthFromWeekKey(r.weekKey);
+          if (!monthPart) return;
+
+          const yearPart = r.yearStr ? (r.yearStr.endsWith('년') ? r.yearStr : r.yearStr + '년') : '2026년';
+          const fullMonth = `${yearPart} ${monthPart}`;
 
           if (!grouped[church]) grouped[church] = {};
-          if (!grouped[church][m]) grouped[church][m] = [];
-          grouped[church][m].push(r);
+          if (!grouped[church][fullMonth]) grouped[church][fullMonth] = [];
+          grouped[church][fullMonth].push(r);
         });
 
         const updatedRecords = rawDataRecords.map(rec => {
           const church = rec.name;
-          const m = rec.month;
+          const m = rec.month; // e.g. "2026년 6월"
+          const currentYear = getYearNum(m);
 
           const churchGroup = grouped[church];
           if (!churchGroup) return rec;
 
           const matchedMonthKey = Object.keys(churchGroup).find(k => 
-            k === m || k.replace('월','') === m.replace('월','')
+            k === m || k.replace(/\s+/g,'') === m.replace(/\s+/g,'')
           );
 
           if (!matchedMonthKey) return rec;
@@ -251,6 +265,9 @@ export const DiagnosisPage: React.FC<DiagnosisPageProps> = ({ section = 'home', 
           const allChurchWeeklyRecs = weeklyRecords.filter(w => w.churchName === church);
           const limitMonthNum = getMonthNum(matchedMonthKey);
           const bibleCumRegSum = allChurchWeeklyRecs.reduce((sum, w) => {
+            const wYear = w.yearStr ? parseInt(w.yearStr.replace(/[^0-9]/g, '')) : 2026;
+            if (wYear !== currentYear) return sum;
+
             const wMonth = getMonthFromWeekKey(w.weekKey);
             if (getMonthNum(wMonth) <= limitMonthNum) {
               return sum + (w.admitCount || 0);
@@ -267,10 +284,10 @@ export const DiagnosisPage: React.FC<DiagnosisPageProps> = ({ section = 'home', 
           };
         });
 
-        return updatedRecords;
+        return { syncedRecords: updatedRecords, weeklyRecords };
       } catch (err) {
         console.error("Failed to sync database evangelism records", err);
-        return rawDataRecords;
+        return { syncedRecords: rawDataRecords, weeklyRecords: [] };
       }
     };
 
@@ -284,37 +301,56 @@ export const DiagnosisPage: React.FC<DiagnosisPageProps> = ({ section = 'home', 
       return mStr;
     };
 
+    const updateDebugInfo = (status: string, err?: any) => {
+      const debugEl = document.getElementById('debugContent');
+      if (debugEl) {
+        const u = localStorage.getItem('user');
+        const d = (window as any).DATA;
+        const st = (window as any).ST || {};
+        debugEl.innerHTML = `
+          <div style="margin-bottom:4px"><b>Status:</b> ${status}</div>
+          <div style="margin-bottom:4px;word-break:break-all"><b>User:</b> ${u ? u.slice(0, 100) : 'null'}</div>
+          <div style="margin-bottom:4px"><b>DATA.records:</b> ${d?.records?.length || 0}</div>
+          <div style="margin-bottom:4px"><b>DATA.weeklyRecords:</b> ${d?.weeklyRecords?.length || 0}</div>
+          <div style="margin-bottom:4px"><b>ST.month:</b> ${st.month || 'null'}</div>
+          <div style="margin-bottom:4px"><b>ST.week:</b> ${st.week || 'null'}</div>
+          <div style="margin-bottom:4px"><b>ST.section:</b> ${st.section || 'null'}</div>
+          ${err ? `<div style="color:#f87171;margin-top:6px"><b>Error:</b> ${err.message || JSON.stringify(err)}</div>` : ''}
+        `;
+      }
+    };
+
     const initEngine = async () => {
-      // 1. Try to fetch live records from Spring Boot API (/api/v1/diagnosis/records?month=all)
+      updateDebugInfo('Init started');
+
       try {
         const months = await diagnosisService.getMonths();
+        updateDebugInfo(`Fetched months: ${months?.length || 0}`);
+        
         if (months && months.length > 0) {
           const apiRecords = await diagnosisService.getRecords("all");
+          updateDebugInfo(`Fetched records: ${apiRecords?.length || 0}`);
 
-          if (apiRecords && apiRecords.length > 0) {
-            const filteredApiRecords = filterByAssignedLocation(apiRecords);
-            const mappedRecords = filteredApiRecords.map((r: any) => ({
-              ...r,
-              month: formatMonth(r.month)
-            }));
+          const filteredApiRecords = apiRecords ? filterByAssignedLocation(apiRecords) : [];
+          updateDebugInfo(`Filtered records: ${filteredApiRecords.length}`);
 
-            const syncedRecords = await syncEvangelismDbData(mappedRecords);
+          const mappedRecords = filteredApiRecords.map((r: any) => ({
+            ...r,
+            month: formatMonth(r.month)
+          }));
 
-            (window as any).DATA = {
-              months: (window as any).DATA?.months || months.map((m: string) => formatMonth(m)),
-              jipaOrder: (window as any).DATA?.jipaOrder || ["맛디아", "서울", "무등", "베드로", "요한"],
-              jipaColors: (window as any).DATA?.jipaColors || { "맛디아": "#6FBA2C", "서울": "#6FBA2C", "무등": "#3b82f6", "베드로": "#06b6d4", "요한": "#f59e0b" },
-              records: syncedRecords
-            };
-          }
+          const { syncedRecords, weeklyRecords } = await syncEvangelismDbData(mappedRecords);
+          updateDebugInfo(`Synced weekly records: ${weeklyRecords.length}`);
+
+          const d = (window as any).DATA || {};
+          d.months = months.map((m: string) => formatMonth(m));
+          d.records = syncedRecords;
+          d.weeklyRecords = weeklyRecords;
+          updateDebugInfo('DATA fully populated');
         }
-      } catch (err) {
-        console.warn("Spring Boot API unavailable or empty, using embedded data.js:", err);
-      }
-
-      // Filter embedded data.js if fallback was used
-      if ((window as any).DATA && (window as any).DATA.records) {
-        (window as any).DATA.records = filterByAssignedLocation((window as any).DATA.records);
+      } catch (err: any) {
+        console.error("Failed to load records from database:", err);
+        updateDebugInfo('Failed to load', err);
       }
 
       // 2. Trigger Diagnosis Engine Initialization
@@ -330,9 +366,12 @@ export const DiagnosisPage: React.FC<DiagnosisPageProps> = ({ section = 'home', 
       if (typeof (window as any).render === 'function') {
         (window as any).render();
       }
+      
+      const st = (window as any).ST || {};
+      updateDebugInfo(`Init completed (ST.month=${st.month}, ST.week=${st.week})`);
     };
 
-    // Sequential Script Loader: data.js -> diagnosisEngine.js -> initEngine
+    // Sequential Script Loader: diagnosisEngine.js -> initEngine
     const loadScript = (id: string, src: string): Promise<void> => {
       return new Promise((resolve) => {
         if (document.getElementById(id)) {
@@ -347,8 +386,16 @@ export const DiagnosisPage: React.FC<DiagnosisPageProps> = ({ section = 'home', 
       });
     };
 
-    loadScript('data-js-script', getUrl('data.js'))
-      .then(() => loadScript('diag-engine-script', getUrl('assets/diagnosisEngine.js')))
+    // Pre-initialize window.DATA BEFORE loading the script so the script's internal DATA variable resolves correctly
+    (window as any).DATA = {
+      months: ["2026년 6월"],
+      jipaOrder: ["맛디아", "서울", "무등", "베드로", "요한"],
+      jipaColors: { "맛디아": "#6FBA2C", "서울": "#6FBA2C", "무등": "#3b82f6", "베드로": "#06b6d4", "요한": "#f59e0b" },
+      records: [],
+      weeklyRecords: []
+    };
+
+    loadScript('diag-engine-script', getUrl('assets/diagnosisEngine.js'))
       .then(() => {
         initEngine();
       });
@@ -533,6 +580,11 @@ export const DiagnosisPage: React.FC<DiagnosisPageProps> = ({ section = 'home', 
 <div class="ovl" id="ovl"><div class="modal" id="modal"></div></div>
 
 <button id="toTop" onclick="goTop()" title="맨 위로" aria-label="맨 위로">↑</button>
+
+<div id="debugPanel" style="position:fixed;bottom:12px;right:12px;background:rgba(15,23,42,0.95);color:#10b981;padding:12px 16px;border-radius:12px;font-family:monospace;font-size:12px;z-index:9999;width:340px;box-shadow:0 10px 25px rgba(0,0,0,0.4);border:1.5px solid #334155;pointer-events:none">
+  <h4 style="margin:0 0 8px 0;color:#ffffff;font-size:13px;border-bottom:1px solid #334155;padding-bottom:4px;display:flex;align-items:center;gap:6px">⚙️ SYSTEM DEBUG PANEL</h4>
+  <div id="debugContent">Initializing...</div>
+</div>
       ` }}
     />
   );

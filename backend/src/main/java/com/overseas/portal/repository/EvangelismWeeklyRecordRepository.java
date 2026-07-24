@@ -14,4 +14,7 @@ public interface EvangelismWeeklyRecordRepository extends JpaRepository<Evangeli
     List<EvangelismWeeklyRecord> findByChurchNameAndYearStr(String churchName, String yearStr);
 
     List<EvangelismWeeklyRecord> findByChurchName(String churchName);
+
+    @org.springframework.data.jpa.repository.Query("SELECT DISTINCT r.yearStr, r.weekKey FROM EvangelismWeeklyRecord r")
+    List<Object[]> findDistinctYearAndWeeks();
 }

@@ -1,10 +1,12 @@
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\domain\Church.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\domain\I18nDictionary.java
+E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\security\EncryptionUtil.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\service\I18nService.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\repository\AuditLogRepository.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\config\DataInitializer.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\controller\AuthController.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\domain\EvangelismWeeklyRecord.java
+E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\domain\EvangelismEditRequest.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\config\SecurityConfig.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\domain\AuditLog.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\security\JwtTokenProvider.java
@@ -12,6 +14,7 @@ E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\controller\I18nC
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\repository\I18nDictionaryRepository.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\repository\EvangelismWeeklyRecordRepository.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\security\JwtAuthenticationFilter.java
+E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\repository\EvangelismEditRequestRepository.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\repository\FaithProcessRecordRepository.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\OverseasPortalApplication.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\service\AdminService.java

@@ -28,6 +28,7 @@ com\overseas\portal\domain\I18nDictionary$I18nDictionaryBuilder.class
 com\overseas\portal\domain\SystemConfig.class
 com\overseas\portal\service\I18nService.class
 com\overseas\portal\config\SecurityConfig.class
+com\overseas\portal\repository\EvangelismEditRequestRepository.class
 com\overseas\portal\domain\FaithProcessRecord.class
 com\overseas\portal\domain\Church.class
 com\overseas\portal\domain\FaithProcessRecord$FaithProcessRecordBuilder.class
@@ -35,9 +36,12 @@ com\overseas\portal\repository\UserRepository.class
 com\overseas\portal\controller\DiagnosisController.class
 com\overseas\portal\service\DiagnosisService$RecordDTO$RecordDTOBuilder.class
 com\overseas\portal\repository\SystemConfigRepository.class
+com\overseas\portal\domain\EvangelismEditRequest$EvangelismEditRequestBuilder.class
 com\overseas\portal\service\DiagnosisService$SummaryMetric.class
 com\overseas\portal\controller\AdminController$ConfigUpdateRequest.class
 com\overseas\portal\controller\I18nController.class
+com\overseas\portal\domain\EvangelismEditRequest.class
+com\overseas\portal\security\EncryptionUtil.class
 com\overseas\portal\service\AdminService.class
 com\overseas\portal\domain\AuditLog.class
 com\overseas\portal\service\AuthService.class

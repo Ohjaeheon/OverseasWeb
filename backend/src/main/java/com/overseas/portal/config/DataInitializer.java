@@ -22,6 +22,7 @@ public class DataInitializer implements CommandLineRunner {
     private final FaithProcessRecordRepository faithProcessRecordRepository;
     private final SystemConfigRepository systemConfigRepository;
     private final PasswordEncoder passwordEncoder;
+    private final EvangelismWeeklyRecordRepository evangelismWeeklyRecordRepository;
 
     @Override
     @Transactional
@@ -458,6 +459,127 @@ public class DataInitializer implements CommandLineRunner {
             churchRepository.save(church_20);
             churchMap.put("인도첸나이교회인도네시아쿠팡지역", church_20);
             log.info("Successfully seeded 21 churches with enriched metadata into PostgreSQL database!");
+        }
+
+        // 3-1. Seed FaithProcessRecords for 2024, 2025, 2026 if not exist
+        List<Church> churches = churchRepository.findAll();
+        List<FaithProcessRecord> newFaithRecords = new ArrayList<>();
+        String[] yearsList = {"2024", "2025", "2026"};
+        
+        for (Church c : churches) {
+            for (String y : yearsList) {
+                int endMonth = y.equals("2026") ? 7 : 12;
+                for (int m = 1; m <= endMonth; m++) {
+                    String ym = String.format("%s-%02d", y, m);
+                    boolean exists = faithProcessRecordRepository.findByChurch_ChurchIdAndYearMonth(c.getChurchId(), ym).isPresent();
+                    if (!exists) {
+                        FaithProcessRecord rec = FaithProcessRecord.builder()
+                                .church(c)
+                                .yearMonth(ym)
+                                .evangReg(100)
+                                .bibleMonthReg(0)
+                                .bibleCumReg(0)
+                                .bibleCurAtt(0)
+                                .centerMonthOn(0)
+                                .centerMonthOff(0)
+                                .centerMonthTotal(0)
+                                .centerCumOn(0)
+                                .centerCumOff(0)
+                                .centerCumReg(0)
+                                .centerMonthGrad(0)
+                                .centerTotMonthReg(0)
+                                .centerCumGrad(0)
+                                .centerAttElem(0)
+                                .centerAttMid(0)
+                                .centerAttHigh(0)
+                                .registered(100)
+                                .yearStartReg(100)
+                                .regChange(0)
+                                .newAdmit(0)
+                                .cumNewAdmit(0)
+                                .discipline(0)
+                                .cumDiscipline(0)
+                                .moveIn(0)
+                                .moveOut(0)
+                                .transIn(0)
+                                .transOut(0)
+                                .dupReg(0)
+                                .prevNewAdmitCnt(0)
+                                .attReg(100)
+                                .attOnsite(90)
+                                .attOnline(5)
+                                .attEtc(0)
+                                .attTotal(95)
+                                .absOnce(2)
+                                .absLongManage(2)
+                                .absLongUnmanage(1)
+                                .absTotal(5)
+                                .build();
+                        newFaithRecords.add(rec);
+                    }
+                }
+            }
+        }
+        if (!newFaithRecords.isEmpty()) {
+            try {
+                faithProcessRecordRepository.saveAll(newFaithRecords);
+                log.info("Successfully seeded {} new faith process records into database!", newFaithRecords.size());
+            } catch (Exception e) {
+                log.error("Failed to seed faith process records: {}", e.getMessage());
+            }
+        }
+
+        // 4. Seed EvangelismWeeklyRecords if count is small (e.g. < 1000)
+        if (evangelismWeeklyRecordRepository.count() < 1000) {
+            log.info("Count of weekly records is less than 1000. Re-seeding sample weekly records for 2024, 2025, 2026...");
+            try {
+                evangelismWeeklyRecordRepository.deleteAllInBatch();
+            } catch (Exception e) {
+                log.warn("Clearing existing weekly records failed: {}", e.getMessage());
+            }
+
+            String[] years = {"2024년", "2025년", "2026년"};
+            String[] departments = {"교역자", "자문회", "장년회", "부녀회", "청년회"};
+            String[] churchesList = {"도쿄교회", "텍사스교회", "튀르키예교회"};
+
+            List<EvangelismWeeklyRecord> seedList = new ArrayList<>();
+            Random rand = new Random(42);
+
+            for (String church : churchesList) {
+                for (String y : years) {
+                    List<String> weeksList = new ArrayList<>();
+                    int endMonth = y.equals("2026년") ? 7 : 12;
+                    for (int m = 1; m <= endMonth; m++) {
+                        int endW = (y.equals("2026년") && m == 7) ? 3 : 4;
+                        for (int w = 1; w <= endW; w++) {
+                            weeksList.add(m + "월" + w + "주차");
+                        }
+                    }
+
+                    for (String w : weeksList) {
+                        for (String dept : departments) {
+                            int base = 10 + rand.nextInt(20);
+                            EvangelismWeeklyRecord rec = EvangelismWeeklyRecord.builder()
+                                    .churchName(church)
+                                    .yearStr(y)
+                                    .weekKey(w)
+                                    .department(dept)
+                                    .regCount(base)
+                                    .findCount(rand.nextInt(base / 2 + 1))
+                                    .findDropCount(rand.nextInt(3))
+                                    .gospelCount(rand.nextInt(base / 3 + 1))
+                                    .gospelDropCount(rand.nextInt(2))
+                                    .admitCount(rand.nextInt(base / 4 + 1))
+                                    .admitDropCount(rand.nextInt(2))
+                                    .updatedBy("system_seed")
+                                    .build();
+                            seedList.add(rec);
+                        }
+                    }
+                }
+            }
+            evangelismWeeklyRecordRepository.saveAll(seedList);
+            log.info("Successfully seeded {} weekly records into database!", seedList.size());
         }
     }
 }

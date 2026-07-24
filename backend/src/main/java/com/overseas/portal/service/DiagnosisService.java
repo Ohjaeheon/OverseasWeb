@@ -5,6 +5,7 @@ import com.overseas.portal.domain.FaithProcessRecord;
 import com.overseas.portal.repository.ChurchRepository;
 import com.overseas.portal.repository.FaithProcessRecordRepository;
 import com.overseas.portal.repository.SystemConfigRepository;
+import com.overseas.portal.repository.EvangelismWeeklyRecordRepository;
 import lombok.Builder;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
@@ -22,6 +23,7 @@ public class DiagnosisService {
     private final FaithProcessRecordRepository faithProcessRecordRepository;
     private final ChurchRepository churchRepository;
     private final SystemConfigRepository systemConfigRepository;
+    private final EvangelismWeeklyRecordRepository evangelismWeeklyRecordRepository;
 
     public String getMenuPermissions() {
         return systemConfigRepository.findByConfigKey("menu_permissions_matrix")
@@ -102,8 +104,57 @@ public class DiagnosisService {
     }
 
     public List<String> getAvailableMonths() {
-        List<String> months = faithProcessRecordRepository.findDistinctYearMonths();
-        return months.isEmpty() ? List.of("2026-05") : months;
+        Set<String> monthSet = new HashSet<>();
+
+        // 1. Get from faith_process_record
+        try {
+            List<String> faithMonths = faithProcessRecordRepository.findDistinctYearMonths();
+            if (faithMonths != null) {
+                for (String fm : faithMonths) {
+                    if (fm != null && fm.matches("^\\d{4}-\\d{2}$")) {
+                        monthSet.add(fm);
+                    }
+                }
+            }
+        } catch (Exception e) {
+            // Ignored
+        }
+
+        // 2. Get from evangelism_weekly_records
+        try {
+            List<Object[]> weeklyYearWeeks = evangelismWeeklyRecordRepository.findDistinctYearAndWeeks();
+            if (weeklyYearWeeks != null) {
+                for (Object[] row : weeklyYearWeeks) {
+                    if (row.length >= 2 && row[0] != null && row[1] != null) {
+                        String yearStr = row[0].toString();
+                        String weekKey = row[1].toString();
+
+                        // Parse year (e.g. "2026년" -> 2026)
+                        String yearNumStr = yearStr.replaceAll("[^0-9]", "");
+                        if (yearNumStr.isEmpty()) yearNumStr = "2026";
+                        int year = Integer.parseInt(yearNumStr);
+
+                        // Parse month (e.g. "7월3주차" -> 7)
+                        java.util.regex.Matcher matcher = java.util.regex.Pattern.compile("(\\d+)월").matcher(weekKey);
+                        if (matcher.find()) {
+                            int month = Integer.parseInt(matcher.group(1));
+                            String formatted = String.format("%04d-%02d", year, month);
+                            monthSet.add(formatted);
+                        }
+                    }
+                }
+            }
+        } catch (Exception e) {
+            // Ignored
+        }
+
+        if (monthSet.isEmpty()) {
+            return List.of("2026-05");
+        }
+
+        List<String> sorted = new ArrayList<>(monthSet);
+        sorted.sort(Collections.reverseOrder());
+        return sorted;
     }
 
     public List<RecordDTO> getRecordsByMonth(String yearMonth) {

@@ -47,11 +47,11 @@ export const EvangelismModule: React.FC<EvangelismModuleProps> = ({ initialTab =
 
   // 3-1. Current Week Data State for Aggregation Tab
   const [currentWeekInputs, setCurrentWeekInputs] = useState<Record<string, DeptData>>({
-    '교역자': { reg: 10, find: 3, findDrop: 1, gospel: 2, gospelDrop: 1, admit: 2, admitDrop: 0 },
-    '자문회': { reg: 20, find: 4, findDrop: 2, gospel: 3, gospelDrop: 1, admit: 2, admitDrop: 1 },
-    '장년회': { reg: 25, find: 5, findDrop: 2, gospel: 4, gospelDrop: 2, admit: 3, admitDrop: 1 },
-    '부녀회': { reg: 25, find: 6, findDrop: 3, gospel: 5, gospelDrop: 2, admit: 4, admitDrop: 1 },
-    '청년회': { reg: 20, find: 8, findDrop: 4, gospel: 6, gospelDrop: 3, admit: 5, admitDrop: 2 },
+    '교역자': { reg: 0, find: 0, findDrop: 0, gospel: 0, gospelDrop: 0, admit: 0, admitDrop: 0 },
+    '자문회': { reg: 0, find: 0, findDrop: 0, gospel: 0, gospelDrop: 0, admit: 0, admitDrop: 0 },
+    '장년회': { reg: 0, find: 0, findDrop: 0, gospel: 0, gospelDrop: 0, admit: 0, admitDrop: 0 },
+    '부녀회': { reg: 0, find: 0, findDrop: 0, gospel: 0, gospelDrop: 0, admit: 0, admitDrop: 0 },
+    '청년회': { reg: 0, find: 0, findDrop: 0, gospel: 0, gospelDrop: 0, admit: 0, admitDrop: 0 },
   });
 
   // 4. Database Records State
@@ -89,6 +89,40 @@ export const EvangelismModule: React.FC<EvangelismModuleProps> = ({ initialTab =
     fetchDbRecords();
   }, [selectedChurch, selectedYear]);
 
+  // Reset selected weeks if they are invalid for the selected year
+  useEffect(() => {
+    const isCurrentYear = selectedYear === '2026년';
+    const validWeeks = isCurrentYear ? [
+      '전체', '1월', '2월', '3월', '4월', '5월', '6월', '7월',
+      '1월1주차', '1월2주차', '1월3주차', '1월4주차',
+      '2월1주차', '2월2주차', '2월3주차', '2월4주차',
+      '3월1주차', '3월2주차', '3월3주차', '3월4주차',
+      '4월1주차', '4월2주차', '4월3주차', '4월4주차',
+      '5월1주차', '5월2주차', '5월3주차', '5월4주차',
+      '6월1주차', '6월2주차', '6월3주차', '6월4주차',
+      '7월1주차', '7월2주차', '7월3주차'
+    ] : [
+      '전체', '1월', '2월', '3월', '4월', '5월', '6월', '7월', '8월', '9월', '10월', '11월', '12월',
+      '1월1주차', '1월2주차', '1월3주차', '1월4주차',
+      '2월1주차', '2월2주차', '2월3주차', '2월4주차',
+      '3월1주차', '3월2주차', '3월3주차', '3월4주차',
+      '4월1주차', '4월2주차', '4월3주차', '4월4주차',
+      '5월1주차', '5월2주차', '5월3주차', '5월4주차',
+      '6월1주차', '6월2주차', '6월3주차', '6월4주차',
+      '7월1주차', '7월2주차', '7월3주차', '7월4주차',
+      '8월1주차', '8월2주차', '8월3주차', '8월4주차',
+      '9월1주차', '9월2주차', '9월3주차', '9월4주차',
+      '10월1주차', '10월2주차', '10월3주차', '10월4주차',
+      '11월1주차', '11월2주차', '11월3주차', '11월4주차',
+      '12월1주차', '12월2주차', '12월3주차', '12월4주차'
+    ];
+
+    if (!validWeeks.includes(selectedWeekCheck)) {
+      setSelectedWeekCheck('전체');
+    }
+    setSelectedWeekAgg(isCurrentYear ? '7월3주차' : '12월4주차');
+  }, [selectedYear]);
+
   // 5. Admin Users list for Modal
   const [adminUsers, setAdminUsers] = useState<UserItem[]>([]);
 
@@ -97,6 +131,91 @@ export const EvangelismModule: React.FC<EvangelismModuleProps> = ({ initialTab =
   const [requestWeek, setRequestWeek] = useState<string>('7월2주차');
   const [requestReason, setRequestReason] = useState<string>('');
   const [requestAdminUser, setRequestAdminUser] = useState<string>('');
+
+  const [hasEditPermission, setHasEditPermission] = useState<boolean>(false);
+  const [hasPrevEditPermission, setHasPrevEditPermission] = useState<boolean>(false);
+
+  const checkAccessPermission = async () => {
+    try {
+      const res = await api.get(`/evangelism/edit-requests/check?church=${encodeURIComponent(selectedChurch)}&year=${encodeURIComponent(selectedYear)}&week=${encodeURIComponent(selectedWeekAgg)}`);
+      setHasEditPermission(res.data?.hasAccess || false);
+    } catch (e) {
+      setHasEditPermission(false);
+    }
+  };
+
+  const checkPrevAccessPermission = async (prevWeek: string) => {
+    try {
+      const res = await api.get(`/evangelism/edit-requests/check?church=${encodeURIComponent(selectedChurch)}&year=${encodeURIComponent(selectedYear)}&week=${encodeURIComponent(prevWeek)}`);
+      setHasPrevEditPermission(res.data?.hasAccess || false);
+    } catch (e) {
+      setHasPrevEditPermission(false);
+    }
+  };
+
+  useEffect(() => {
+    checkAccessPermission();
+    const isCurrentYear = selectedYear === '2026년';
+    const ALL_WEEKS_LIST = isCurrentYear ? [
+      '1월1주차', '1월2주차', '1월3주차', '1월4주차',
+      '2월1주차', '2월2주차', '2월3주차', '2월4주차',
+      '3월1주차', '3월2주차', '3월3주차', '3월4주차',
+      '4월1주차', '4월2주차', '4월3주차', '4월4주차',
+      '5월1주차', '5월2주차', '5월3주차', '5월4주차',
+      '6월1주차', '6월2주차', '6월3주차', '6월4주차',
+      '7월1주차', '7월2주차', '7월3주차'
+    ] : [
+      '1월1주차', '1월2주차', '1월3주차', '1월4주차',
+      '2월1주차', '2월2주차', '2월3주차', '2월4주차',
+      '3월1주차', '3월2주차', '3월3주차', '3월4주차',
+      '4월1주차', '4월2주차', '4월3주차', '4월4주차',
+      '5월1주차', '5월2주차', '5월3주차', '5월4주차',
+      '6월1주차', '6월2주차', '6월3주차', '6월4주차',
+      '7월1주차', '7월2주차', '7월3주차', '7월4주차',
+      '8월1주차', '8월2주차', '8월3주차', '8월4주차',
+      '9월1주차', '9월2주차', '9월3주차', '9월4주차',
+      '10월1주차', '10월2주차', '10월3주차', '10월4주차',
+      '11월1주차', '11월2주차', '11월3주차', '11월4주차',
+      '12월1주차', '12월2주차', '12월3주차', '12월4주차'
+    ];
+    const selectedWeekIdx = ALL_WEEKS_LIST.indexOf(selectedWeekAgg);
+    const prevWeekKey = selectedWeekIdx > 0 ? ALL_WEEKS_LIST[selectedWeekIdx - 1] : '1월1주차';
+    checkPrevAccessPermission(prevWeekKey);
+  }, [selectedChurch, selectedYear, selectedWeekAgg]);
+
+  useEffect(() => {
+    const handleRefresh = () => {
+      checkAccessPermission();
+      const isCurrentYear = selectedYear === '2026년';
+      const ALL_WEEKS_LIST = isCurrentYear ? [
+        '1월1주차', '1월2주차', '1월3주차', '1월4주차',
+        '2월1주차', '2월2주차', '2월3주차', '2월4주차',
+        '3월1주차', '3월2주차', '3월3주차', '3월4주차',
+        '4월1주차', '4월2주차', '4월3주차', '4월4주차',
+        '5월1주차', '5월2주차', '5월3주차', '5월4주차',
+        '6월1주차', '6월2주차', '6월3주차', '6월4주차',
+        '7월1주차', '7월2주차', '7월3주차'
+      ] : [
+        '1월1주차', '1월2주차', '1월3주차', '1월4주차',
+        '2월1주차', '2월2주차', '2월3주차', '2월4주차',
+        '3월1주차', '3월2주차', '3월3주차', '3월4주차',
+        '4월1주차', '4월2주차', '4월3주차', '4월4주차',
+        '5월1주차', '5월2주차', '5월3주차', '5월4주차',
+        '6월1주차', '6월2주차', '6월3주차', '6월4주차',
+        '7월1주차', '7월2주차', '7월3주차', '7월4주차',
+        '8월1주차', '8월2주차', '8월3주차', '8월4주차',
+        '9월1주차', '9월2주차', '9월3주차', '9월4주차',
+        '10월1주차', '10월2주차', '10월3주차', '10월4주차',
+        '11월1주차', '11월2주차', '11월3주차', '11월4주차',
+        '12월1주차', '12월2주차', '12월3주차', '12월4주차'
+      ];
+      const selectedWeekIdx = ALL_WEEKS_LIST.indexOf(selectedWeekAgg);
+      const prevWeekKey = selectedWeekIdx > 0 ? ALL_WEEKS_LIST[selectedWeekIdx - 1] : '1월1주차';
+      checkPrevAccessPermission(prevWeekKey);
+    };
+    window.addEventListener('refreshEditRequests', handleRefresh);
+    return () => window.removeEventListener('refreshEditRequests', handleRefresh);
+  }, [selectedChurch, selectedYear, selectedWeekAgg]);
 
   // Load User Scope & Available Churches
   useEffect(() => {
@@ -173,65 +292,74 @@ export const EvangelismModule: React.FC<EvangelismModuleProps> = ({ initialTab =
     setCurrentWeekInputs(inputs);
   }, [selectedWeekAgg, dbRecords]);
 
-  // Generate Weekly Options for 1월 1주차 ~ 7월 3주차 (Current Week)
-  const generateWeeklyOptions = (includeSummary: boolean = true) => {
-    const options: { value: string; label: string; isMonthHeader?: boolean }[] = [];
-    if (includeSummary) {
-      options.push({ value: '전체', label: '🌐 전체 (1월 1주차 ~ 현재 주차)' });
+  // Helper to dynamically calculate the Sunday-to-Saturday date range of a week in a given year.
+  // We determine which week belongs to which month based on where the Wednesday of that week falls.
+  const getWeekDateRangeStr = (yearNum: number, monthNum: number, weekIdx: number): string => {
+    const d = new Date(yearNum - 1, 11, 25);
+    while (d.getDay() !== 0) {
+      d.setDate(d.getDate() - 1);
     }
 
-    const monthData = [
-      { month: '1월', weeks: [
-        { label: '1월1주차 (1/4 ~ 1/10)', val: '1월1주차' },
-        { label: '1월2주차 (1/11 ~ 1/17)', val: '1월2주차' },
-        { label: '1월3주차 (1/18 ~ 1/24)', val: '1월3주차' },
-        { label: '1월4주차 (1/25 ~ 1/31)', val: '1월4주차' },
-      ]},
-      { month: '2월', weeks: [
-        { label: '2월1주차 (2/1 ~ 2/7)', val: '2월1주차' },
-        { label: '2월2주차 (2/8 ~ 2/14)', val: '2월2주차' },
-        { label: '2월3주차 (2/15 ~ 2/21)', val: '2월3주차' },
-        { label: '2월4주차 (2/22 ~ 2/28)', val: '2월4주차' },
-      ]},
-      { month: '3월', weeks: [
-        { label: '3월1주차 (3/1 ~ 3/7)', val: '3월1주차' },
-        { label: '3월2주차 (3/8 ~ 3/14)', val: '3월2주차' },
-        { label: '3월3주차 (3/15 ~ 3/21)', val: '3월3주차' },
-        { label: '3월4주차 (3/22 ~ 3/28)', val: '3월4주차' },
-      ]},
-      { month: '4월', weeks: [
-        { label: '4월1주차 (4/1 ~ 4/7)', val: '4월1주차' },
-        { label: '4월2주차 (4/8 ~ 4/14)', val: '4월2주차' },
-        { label: '4월3주차 (4/15 ~ 4/21)', val: '4월3주차' },
-        { label: '4월4주차 (4/22 ~ 4/28)', val: '4월4주차' },
-      ]},
-      { month: '5월', weeks: [
-        { label: '5월1주차 (5/3 ~ 5/9)', val: '5월1주차' },
-        { label: '5월2주차 (5/10 ~ 5/16)', val: '5월2주차' },
-        { label: '5월3주차 (5/17 ~ 5/23)', val: '5월3주차' },
-        { label: '5월4주차 (5/24 ~ 5/30)', val: '5월4주차' },
-      ]},
-      { month: '6월', weeks: [
-        { label: '6월1주차 (5/31 ~ 6/6)', val: '6월1주차' },
-        { label: '6월2주차 (6/7 ~ 6/13)', val: '6월2주차' },
-        { label: '6월3주차 (6/14 ~ 6/20)', val: '6월3주차' },
-        { label: '6월4주차 (6/21 ~ 6/27)', val: '6월4주차' },
-      ]},
-      { month: '7월', weeks: [
-        { label: '7월1주차 (6/28 ~ 7/4)', val: '7월1주차' },
-        { label: '7월2주차 (7/5 ~ 7/11)', val: '7월2주차' },
-        { label: '7월3주차 (7/12 ~ 7/18) [현재주차]', val: '7월3주차' },
-      ]}
-    ];
-
-    monthData.forEach(m => {
-      if (includeSummary) {
-        options.push({ value: m.month, label: `📅 ${m.month} (전체 주차 집계)`, isMonthHeader: true });
+    const weeks: { startM: number; startD: number; endM: number; endD: number }[] = [];
+    for (let i = 0; i < 54; i++) {
+      const wed = new Date(d);
+      wed.setDate(wed.getDate() + 3);
+      if (wed.getFullYear() > yearNum) {
+        break;
       }
-      m.weeks.forEach(w => {
-        options.push({ value: w.val, label: `   ㄴ ${w.label}` });
-      });
-    });
+      if (wed.getFullYear() === yearNum) {
+        const m = wed.getMonth() + 1;
+        if (m === monthNum) {
+          const end = new Date(d);
+          end.setDate(end.getDate() + 6);
+          weeks.push({
+            startM: d.getMonth() + 1,
+            startD: d.getDate(),
+            endM: end.getMonth() + 1,
+            endD: end.getDate()
+          });
+        }
+      }
+      d.setDate(d.getDate() + 7);
+    }
+
+    const w = weeks[weekIdx];
+    if (w) {
+      return `(${w.startM}/${w.startD} ~ ${w.endM}/${w.endD})`;
+    }
+    return '';
+  };
+
+  // Generate Weekly Options for 1월 1주차 ~ 12월 4주차 (Dynamically calculated dates)
+  const generateWeeklyOptions = (includeSummary: boolean = true) => {
+    const options: { value: string; label: string; isMonthHeader?: boolean }[] = [];
+    const isCurrentYear = selectedYear === '2026년';
+    const yearNum = parseInt(selectedYear.replace(/[^0-9]/g, '')) || 2026;
+
+    if (includeSummary) {
+      if (isCurrentYear) {
+        options.push({ value: '전체', label: '🌐 전체 (1월 1주차 ~ 현재 주차)' });
+      } else {
+        options.push({ value: '전체', label: '🌐 전체 (1월 1주차 ~ 12월 4주차)' });
+      }
+    }
+
+    const endMonth = isCurrentYear ? 7 : 12;
+    for (let m = 1; m <= endMonth; m++) {
+      if (includeSummary) {
+        options.push({ value: `${m}월`, label: `📅 ${m}월 (전체 주차 집계)`, isMonthHeader: true });
+      }
+
+      const endW = (isCurrentYear && m === 7) ? 3 : 4;
+      for (let w = 1; w <= endW; w++) {
+        const dateRange = getWeekDateRangeStr(yearNum, m, w - 1);
+        const suffix = (isCurrentYear && m === 7 && w === 3) ? ' [현재주차]' : '';
+        options.push({
+          value: `${m}월${w}주차`,
+          label: `   ㄴ ${m}월${w}주차 ${dateRange}${suffix}`
+        });
+      }
+    }
 
     return options;
   };
@@ -242,33 +370,21 @@ export const EvangelismModule: React.FC<EvangelismModuleProps> = ({ initialTab =
       return dbRecords[weekKey][dept];
     }
 
-    let factor = 1;
-    if (dept === '청년회') factor = 1.5;
-    if (dept === '부녀회') factor = 1.3;
-    if (dept === '교역자') factor = 0.6;
-
-    const baseReg = Math.round(20 * factor);
-    const find = Math.round(3 * factor);
-    const findDrop = Math.round(1 * factor);
-    const gospel = Math.round(2 * factor);
-    const gospelDrop = Math.round(1 * factor);
-    const admit = Math.round(1 * factor);
-    const admitDrop = Math.round(0.5 * factor);
-
     return {
-      reg: baseReg,
-      find,
-      findDrop,
-      gospel,
-      gospelDrop,
-      admit,
-      admitDrop
+      reg: 0,
+      find: 0,
+      findDrop: 0,
+      gospel: 0,
+      gospelDrop: 0,
+      admit: 0,
+      admitDrop: 0
     };
   };
 
   // Filter weeks to render based on selectedWeekCheck ('전체', '1월', '1월1주차' etc.)
   const getFilteredWeeks = () => {
-    const allWeeks = [
+    const isCurrentYear = selectedYear === '2026년';
+    const allWeeks = isCurrentYear ? [
       '1월1주차', '1월2주차', '1월3주차', '1월4주차',
       '2월1주차', '2월2주차', '2월3주차', '2월4주차',
       '3월1주차', '3월2주차', '3월3주차', '3월4주차',
@@ -276,6 +392,19 @@ export const EvangelismModule: React.FC<EvangelismModuleProps> = ({ initialTab =
       '5월1주차', '5월2주차', '5월3주차', '5월4주차',
       '6월1주차', '6월2주차', '6월3주차', '6월4주차',
       '7월1주차', '7월2주차', '7월3주차'
+    ] : [
+      '1월1주차', '1월2주차', '1월3주차', '1월4주차',
+      '2월1주차', '2월2주차', '2월3주차', '2월4주차',
+      '3월1주차', '3월2주차', '3월3주차', '3월4주차',
+      '4월1주차', '4월2주차', '4월3주차', '4월4주차',
+      '5월1주차', '5월2주차', '5월3주차', '5월4주차',
+      '6월1주차', '6월2주차', '6월3주차', '6월4주차',
+      '7월1주차', '7월2주차', '7월3주차', '7월4주차',
+      '8월1주차', '8월2주차', '8월3주차', '8월4주차',
+      '9월1주차', '9월2주차', '9월3주차', '9월4주차',
+      '10월1주차', '10월2주차', '10월3주차', '10월4주차',
+      '11월1주차', '11월2주차', '11월3주차', '11월4주차',
+      '12월1주차', '12월2주차', '12월3주차', '12월4주차'
     ];
 
     if (selectedWeekCheck === '전체') {
@@ -320,18 +449,38 @@ export const EvangelismModule: React.FC<EvangelismModuleProps> = ({ initialTab =
   const kpi = computeKpiTotals();
 
   // Submit Unlock Request Modal
-  const handleSendUnlockRequest = () => {
+  const handleSendUnlockRequest = async () => {
     if (!requestReason.trim()) {
       alert('수정 요청 사유를 입력해 주세요.');
       return;
     }
-    logService.addAccessLog(
-      `🔒 이전 주차 수정 요청 (${requestWeek})`,
-      `/evangelism/request?week=${requestWeek}&reason=${encodeURIComponent(requestReason)}`
-    );
-    alert(`[${requestWeek}] 데이터 수정 요청이 ${requestAdminUser} 담당자에게 성공적으로 전송되었습니다!\n승인 후 해당 주차 수정이 활성화됩니다.`);
-    setIsModalOpen(false);
-    setRequestReason('');
+    const userStr = localStorage.getItem('user');
+    let username = 'admin';
+    if (userStr) {
+      try {
+        username = JSON.parse(userStr).username || 'admin';
+      } catch (e) {}
+    }
+    try {
+      await api.post('/evangelism/edit-requests', {
+        churchName: selectedChurch,
+        yearStr: selectedYear,
+        weekKey: requestWeek,
+        reason: requestReason,
+        requestedBy: username,
+        requestedTo: requestAdminUser
+      });
+      logService.addAccessLog(
+        `🔒 이전 주차 수정 요청 (${requestWeek})`,
+        `/evangelism/request?week=${requestWeek}&reason=${encodeURIComponent(requestReason)}`
+      );
+      alert(`[${requestWeek}] 데이터 수정 요청이 ${requestAdminUser} 담당자에게 성공적으로 전송되었습니다!\n승인 후 해당 주차 수정이 활성화됩니다.`);
+      setIsModalOpen(false);
+      setRequestReason('');
+      window.dispatchEvent(new Event('refreshEditRequests'));
+    } catch (e) {
+      alert('수정 요청 전송 중 오류가 발생했습니다.');
+    }
   };
 
   // Handle Input Change for Aggregation Tab
@@ -692,9 +841,10 @@ export const EvangelismModule: React.FC<EvangelismModuleProps> = ({ initialTab =
       {/* TAB 2: 취합 및 실적 입력 (Aggregation & Input)                             */}
       {/* ========================================================================= */}
       {activeTab === 'aggregate' && (() => {
-        const REAL_CURRENT_WEEK = '7월3주차';
-        const isEditable = selectedWeekAgg === REAL_CURRENT_WEEK;
-        const ALL_WEEKS_LIST = [
+        const isCurrentYear = selectedYear === '2026년';
+        const REAL_CURRENT_WEEK = isCurrentYear ? '7월3주차' : '12월4주차';
+        const isEditable = (selectedWeekAgg === REAL_CURRENT_WEEK) || hasEditPermission;
+        const ALL_WEEKS_LIST = isCurrentYear ? [
           '1월1주차', '1월2주차', '1월3주차', '1월4주차',
           '2월1주차', '2월2주차', '2월3주차', '2월4주차',
           '3월1주차', '3월2주차', '3월3주차', '3월4주차',
@@ -702,6 +852,19 @@ export const EvangelismModule: React.FC<EvangelismModuleProps> = ({ initialTab =
           '5월1주차', '5월2주차', '5월3주차', '5월4주차',
           '6월1주차', '6월2주차', '6월3주차', '6월4주차',
           '7월1주차', '7월2주차', '7월3주차'
+        ] : [
+          '1월1주차', '1월2주차', '1월3주차', '1월4주차',
+          '2월1주차', '2월2주차', '2월3주차', '2월4주차',
+          '3월1주차', '3월2주차', '3월3주차', '3월4주차',
+          '4월1주차', '4월2주차', '4월3주차', '4월4주차',
+          '5월1주차', '5월2주차', '5월3주차', '5월4주차',
+          '6월1주차', '6월2주차', '6월3주차', '6월4주차',
+          '7월1주차', '7월2주차', '7월3주차', '7월4주차',
+          '8월1주차', '8월2주차', '8월3주차', '8월4주차',
+          '9월1주차', '9월2주차', '9월3주차', '9월4주차',
+          '10월1주차', '10월2주차', '10월3주차', '10월4주차',
+          '11월1주차', '11월2주차', '11월3주차', '11월4주차',
+          '12월1주차', '12월2주차', '12월3주차', '12월4주차'
         ];
         const selectedWeekIdx = ALL_WEEKS_LIST.indexOf(selectedWeekAgg);
         const prevWeekKey = selectedWeekIdx > 0 ? ALL_WEEKS_LIST[selectedWeekIdx - 1] : '1월1주차';
@@ -743,6 +906,8 @@ export const EvangelismModule: React.FC<EvangelismModuleProps> = ({ initialTab =
                       logService.addAccessLog('💾 주차별 실적 저장 (DB 연동)', `/evangelism/save?church=${encodeURIComponent(selectedChurch)}&week=${selectedWeekAgg}`);
                       alert(`[${selectedChurch} · ${selectedWeekAgg}] 전도 실적이 PostgreSQL 데이터베이스에 성공적으로 저장되었습니다!`);
                       fetchDbRecords();
+                      checkAccessPermission();
+                      window.dispatchEvent(new Event('refreshEditRequests'));
                     } catch (e) {
                       alert('데이터베이스 저장 중 오류가 발생했습니다.');
                     }
@@ -779,38 +944,45 @@ export const EvangelismModule: React.FC<EvangelismModuleProps> = ({ initialTab =
                     <th style={{ padding: '14px', textAlign: 'left', fontWeight: 800, color: '#334155' }}>구분</th>
 
                     {/* Previous Week Header (Locked + Unlock Request Button) */}
-                    <th colSpan={6} style={{ padding: '12px', background: '#fef2f2', borderLeft: '2px solid #fecaca', color: '#991b1b', fontWeight: 800 }}>
+                    {/* Previous Week Header (Locked + Unlock Request Button) */}
+                    <th colSpan={6} style={{ padding: '12px', background: hasPrevEditPermission ? '#f0fdf4' : '#fef2f2', borderLeft: '2px solid ' + (hasPrevEditPermission ? '#bbf7d0' : '#fecaca'), color: hasPrevEditPermission ? '#166534' : '#991b1b', fontWeight: 800 }}>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
-                        <span>{prevWeekKey} (이전 주차 · 🔒 잠금)</span>
-                        <button
-                          onClick={() => {
-                            setRequestWeek(prevWeekKey);
-                            setIsModalOpen(true);
-                          }}
-                          style={{
-                            background: '#ffffff',
-                            border: '1px solid #fca5a5',
-                            color: '#dc2626',
-                            padding: '4px 10px',
-                            borderRadius: '6px',
-                            fontSize: '0.75rem',
-                            fontWeight: 800,
-                            cursor: 'pointer',
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '4px',
-                            boxShadow: '0 2px 6px rgba(220, 38, 38, 0.15)'
-                          }}
-                        >
-                          <Lock size={12} /> 수정 허용 요청
-                        </button>
+                        <span>{prevWeekKey} {hasPrevEditPermission ? '(이전 주차 · 🔓 허용됨)' : '(이전 주차 · 🔒 잠금)'}</span>
+                        {!hasPrevEditPermission && (
+                          <button
+                            onClick={() => {
+                              setRequestWeek(prevWeekKey);
+                              setIsModalOpen(true);
+                            }}
+                            style={{
+                              background: '#ffffff',
+                              border: '1px solid #fca5a5',
+                              color: '#dc2626',
+                              padding: '4px 10px',
+                              borderRadius: '6px',
+                              fontSize: '0.75rem',
+                              fontWeight: 800,
+                              cursor: 'pointer',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                              boxShadow: '0 2px 6px rgba(220, 38, 38, 0.15)'
+                            }}
+                          >
+                            <Lock size={12} /> 수정 허용 요청
+                          </button>
+                        )}
                       </div>
                     </th>
 
                     {/* Current Week Header (Active Editable or Locked) */}
                     <th colSpan={6} style={{ padding: '12px', background: isEditable ? '#f0fdf4' : '#fef2f2', borderLeft: '2px solid ' + (isEditable ? '#bbf7d0' : '#fecaca'), color: isEditable ? '#166534' : '#991b1b', fontWeight: 800 }}>
                       {isEditable ? (
-                        `✨ ${selectedWeekAgg} (현재 주차 · ✏️ 편집 가능)`
+                        selectedWeekAgg === REAL_CURRENT_WEEK ? (
+                          `✨ ${selectedWeekAgg} (현재 주차 · ✏️ 편집 가능)`
+                        ) : (
+                          `🔓 ${selectedWeekAgg} (이전 주차 · ✏️ 수정 허용됨)`
+                        )
                       ) : (
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
                           <span>{selectedWeekAgg} (이전 주차 · 🔒 잠금)</span>

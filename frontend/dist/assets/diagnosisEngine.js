@@ -279,10 +279,12 @@ const CATS = {
   ],
   "①전도":[
     {k:"evangReg", l:"전도재적", t:"int", primary:true},
-    {k:"bibleMonthReg", l:"월등록", t:"int"},
-    {k:r=>rate(r.bibleMonthReg,r.evangReg), l:"월등록율", t:"pct"},
-    {k:"bibleCumReg", l:"누적등록수", t:"int"},
-    {k:"bibleCurAtt", l:"현재출석수", t:"int"},
+    {k:"findCount", l:"찾기", t:"int"},
+    {k:"gospelCount", l:"복음방", t:"int"},
+    {k:r=>rate(r.gospelCount,r.evangReg), l:"복음방율", t:"pct"},
+    {k:"gospelCum", l:"누적 복음방", t:"int"},
+    {k:"admitCount", l:"등록", t:"int"},
+    {k:r=>rate(r.admitCount,r.evangReg), l:"등록율", t:"pct"},
   ],
   "②센터":[
     {k:"evangReg", l:"전도재적", t:"int"},
@@ -360,13 +362,88 @@ function getYearNumFromStr(mStr) {
   return match ? parseInt(match[1]) : 2026;
 }
 
+function getMonthFromWeekKey(weekKey) {
+  if (!weekKey) return 0;
+  const match = weekKey.match(/(\d+)월/);
+  return match ? parseInt(match[1]) : 0;
+}
+function getWeekNumFromWeekKey(weekKey) {
+  if (!weekKey) return 0;
+  const match = weekKey.match(/(\d+)주차/);
+  return match ? parseInt(match[1]) : 0;
+}
+function isWeekBeforeOrEqual(w1, w2) {
+  const m1 = getMonthFromWeekKey(w1);
+  const m2 = getMonthFromWeekKey(w2);
+  if (m1 < m2) return true;
+  if (m1 > m2) return false;
+  return getWeekNumFromWeekKey(w1) <= getWeekNumFromWeekKey(w2);
+}
+function getDynamicEvangelismRecord(rec, yearStr, weekKey) {
+  const weekly = (typeof DATA !== "undefined" && DATA.weeklyRecords) ? DATA.weeklyRecords : [];
+  const church = rec.name;
+  
+  const churchRecs = weekly.filter(w => w.churchName === church && 
+    (w.yearStr === yearStr || 
+     ((w.yearStr || '').replace('년','') === (yearStr || '').replace('년','')))
+  );
+  
+  const weekRecs = churchRecs.filter(w => w.weekKey === weekKey);
+  const evangRegSum = weekRecs.reduce((sum, w) => sum + (w.regCount || 0), 0);
+  const bibleCurAttSum = weekRecs.reduce((sum, w) => sum + (w.gospelCount || 0), 0);
+  
+  const selMonth = getMonthFromWeekKey(weekKey);
+  const monthWeeks = churchRecs.filter(w => {
+    const wMonth = getMonthFromWeekKey(w.weekKey);
+    return wMonth === selMonth && isWeekBeforeOrEqual(w.weekKey, weekKey);
+  });
+  const bibleMonthRegSum = monthWeeks.reduce((sum, w) => sum + (w.admitCount || 0), 0);
+  
+  const cumWeeks = churchRecs.filter(w => isWeekBeforeOrEqual(w.weekKey, weekKey));
+  const bibleCumRegSum = cumWeeks.reduce((sum, w) => sum + (w.admitCount || 0), 0);
+  
+  return {
+    ...rec,
+    evangReg: evangRegSum,
+    bibleMonthReg: bibleMonthRegSum,
+    bibleCumReg: bibleCumRegSum,
+    bibleCurAtt: bibleCurAttSum
+  };
+}
+function getActiveWeekForMonth(month, selectedWeek) {
+  if (getMonthFromWeekKey(selectedWeek) === getMonthNumFromStr(month)) {
+    return selectedWeek;
+  }
+  
+  const weekly = (typeof DATA !== "undefined" && DATA.weeklyRecords) ? DATA.weeklyRecords : [];
+  const monthNum = getMonthNumFromStr(month);
+  const yearNum = getYearNumFromStr(month);
+  
+  const monthWeeks = weekly.filter(w => {
+    const wYear = w.yearStr ? parseInt(w.yearStr.replace(/[^0-9]/g, "")) : 2026;
+    return wYear === yearNum && getMonthFromWeekKey(w.weekKey) === monthNum;
+  });
+  
+  if (monthWeeks.length > 0) {
+    const sorted = [...new Set(monthWeeks.map(w => w.weekKey))].sort((a, b) => {
+      const m1 = getMonthFromWeekKey(a);
+      const m2 = getMonthFromWeekKey(b);
+      if (m1 !== m2) return m2 - m1;
+      return getWeekNumFromWeekKey(b) - getWeekNumFromWeekKey(a);
+    });
+    return sorted[0];
+  }
+  
+  return `${monthNum}월4주차`;
+}
+
 // sum numeric fields across a set of records
 const SUM_FIELDS = ["yearStartReg","retroReg","prevReg","newAdmit","transIn","transOut","moveIn","moveOut",
   "discipline","dupReg","registered","regChange","cumNewAdmit","cumDiscipline","prevNewAdmitCnt",
   "newAttOnsite","newAttOnline","newAttEtc","newAttTotal","attReg","attOnsite","attOnline","attEtc",
   "attTotal","absTotal","evangReg","bibleMonthReg","bibleCumReg","bibleCurAtt","centerMonthOn",
   "centerMonthOff","centerMonthTotal","centerTotMonthReg","centerCumOn","centerCumOff","centerCumReg","centerTotCumReg","centerMonthGrad","centerCumGrad","centerAttElem",
-  "centerAttMid","centerAttHigh","absOnce","absLongManage","absLongUnmanage"];
+  "centerAttMid","centerAttHigh","absOnce","absLongManage","absLongUnmanage", "findCount", "gospelCount", "gospelCum", "admitCount"];
 function aggregate(recs){
   const o={count:recs.length}; SUM_FIELDS.forEach(f=>o[f]=0);
   o.ctwkE=0; o.ctwkM=0; o.ctwkH=0; o.catE=0; o.catM=0; o.catH=0; // 센터 초/중/고 총등록·출석(주간보고서 매칭분) — 출석율 분자·분모 동일집합(리더 확정 2026-07-04)
@@ -405,8 +482,60 @@ function checkAssignedLocationAccess(r){
   }
 }
 
+function getMonthlyEvangelismRecord(rec, monthStr) {
+  const weekly = (typeof DATA !== "undefined" && DATA.weeklyRecords) ? DATA.weeklyRecords : [];
+  const church = rec.name;
+  
+  const yearNum = getYearNumFromStr(monthStr);
+  const yearStr = yearNum + '년';
+  const monthNum = getMonthNumFromStr(monthStr);
+  
+  const churchRecs = weekly.filter(w => w.churchName === church && 
+    (w.yearStr === yearStr || 
+     ((w.yearStr || '').replace('년','') === yearStr.replace('년','')))
+  );
+  
+  const monthWeeks = churchRecs.filter(w => getMonthFromWeekKey(w.weekKey) === monthNum);
+  
+  const sortedWeeks = [...new Set(monthWeeks.map(w => w.weekKey))].sort((a, b) => {
+    return getWeekNumFromWeekKey(a) - getWeekNumFromWeekKey(b);
+  });
+  const lastWeek = sortedWeeks[sortedWeeks.length - 1];
+  const lastWeekRecs = monthWeeks.filter(w => w.weekKey === lastWeek);
+  const evangRegVal = lastWeekRecs.reduce((sum, w) => sum + (w.regCount || 0), 0);
+  
+  const findVal = monthWeeks.reduce((sum, w) => sum + (w.findCount || 0), 0);
+  const gospelVal = monthWeeks.reduce((sum, w) => sum + (w.gospelCount || 0), 0);
+  
+  const cumWeeks = churchRecs.filter(w => {
+    const m = getMonthFromWeekKey(w.weekKey);
+    return m <= monthNum;
+  });
+  const gospelCumVal = cumWeeks.reduce((sum, w) => sum + (w.gospelCount || 0), 0);
+  
+  const admitVal = monthWeeks.reduce((sum, w) => sum + (w.admitCount || 0), 0);
+  
+  return {
+    ...rec,
+    evangReg: evangRegVal,
+    findCount: findVal,
+    gospelCount: gospelVal,
+    gospelCum: gospelCumVal,
+    admitCount: admitVal
+  };
+}
+
 function recordsFor(month, gubunFilter){
-  return DATA.records.filter(r=> r.month===month && (gubunFilter==="전체" || r.gubun===gubunFilter) && checkAssignedLocationAccess(r));
+  const recs = DATA.records.filter(r=> r.month===month && (gubunFilter==="전체" || r.gubun===gubunFilter) && checkAssignedLocationAccess(r));
+  if (ST.section === 'p1') {
+    return recs.map(r => getMonthlyEvangelismRecord(r, month));
+  }
+  if (ST.week && DATA.weeklyRecords && DATA.weeklyRecords.length > 0) {
+    const activeWeek = getActiveWeekForMonth(month, ST.week);
+    const activeYearStr = ST.year || '2026년';
+    return recs.map(r => getDynamicEvangelismRecord(r, activeYearStr, activeWeek));
+  }
+  return recs;
 }
 
 // build grouped rows for current view
@@ -442,6 +571,32 @@ function renderKPI(){
   const nPion=recs.filter(r=>r.gubun==="개척지").length;
   const pctS=v=>(v==null||isNaN(v))?"-":((v>0?"+":"")+(v*100).toFixed(1)+"%");
   const sgn=v=>(v>0?"+":"")+fmt(v);
+  
+  if (ST.section === 'p1') {
+    const cenRegRate = rate(a.gospelCum, a.evangReg); // 복음방 누적 등록율
+    const admitRate = rate(a.admitCount, a.evangReg); // 당월 가개강율
+    const gospelToAdmitRate = rate(a.admitCount, a.gospelCount); // 복음방대비 등록율
+    const regDiff = a.registered - a.prevReg;
+    const regRate = rate(regDiff, a.retroReg);
+    
+    const kpis = [
+      {l:"대상 (교회/지역/개척지)", v:`${nChurch} / ${nRegion} / ${nPion}`, s:`합계 ${nChurch+nRegion+nPion}곳`, c:"var(--gold)", ic:"🏛️"},
+      {l:"총 현재적", v:fmt(a.registered), side:pctS(regRate), s:`전월 ${fmt(a.prevReg)} 대비 ${sgn(regDiff)}`, c:"#00a0e9", ic:"👥"},
+      {l:"당월 가개강 수", v:fmt(a.admitCount), s:`당월 가개강(등록) 실적`, c:"#2ecc71", ic:"🌱"},
+      {l:"당월 가개강율", v:pct(admitRate), s:`전도재적 ${fmt(a.evangReg)}명 대비 등록율`, c:"#e39300", ic:"📈"},
+      {l:"복음방대비 등록율", v:pct(gospelToAdmitRate), s:`당월 복음방 ${fmt(a.gospelCount)}명 대비 등록율`, c:"#16b9c9", ic:"⛪"},
+      {l:"복음방 누적 등록수", v:fmt(a.gospelCum), s:`누적 복음방 등록 학생 수`, c:"#7f1084", ic:"📚"},
+      {l:"센터 누적 등록율", v:pct(cenRegRate), s:`전도재적 ${fmt(a.evangReg)}명 대비 누적등록율`, c:"#d7005b", ic:"🎓"},
+      {l:"-", v:"-", s:"비어 있음", c:"#94a3b8", ic:"⚪"}
+    ];
+    document.getElementById("kpis").innerHTML=kpis.map(k=>
+      `<div class="kpi" style="${k.l==='-'?'opacity:0.4;pointer-events:none':''}"><div class="k-bar" style="background:${k.c}"></div>
+       <div class="k-l">${k.l}</div>
+       <div class="k-v">${k.v}${k.side?`<span class="k-side" style="${k.sideCol?`color:${k.sideCol}`:''}">${k.side}</span>`:''}</div>
+       <div class="k-s">${k.s}</div></div>`).join("");
+    return;
+  }
+
   // 비율 (분모는 리더 확정/추정 — 재적증가율=÷전월재적, 입교율=÷소급적용재적, 센터등록율=÷전도재적, 종강율=÷누적등록)
   const regDiff=a.registered-a.prevReg;
   const regRate=rate(regDiff,a.retroReg);
@@ -1559,8 +1714,129 @@ function setSecMonth(sec, m) {
   render();
 }
 
+function setDashboardYear(y) {
+  ST.year = y;
+  const weekly = (typeof DATA !== "undefined" && DATA.weeklyRecords) ? DATA.weeklyRecords : [];
+  const weeks = [...new Set(weekly.filter(w => {
+    const yStr = w.yearStr ? (w.yearStr.endsWith('년') ? w.yearStr : w.yearStr + '년') : '2026년';
+    return yStr === y;
+  }).map(w => w.weekKey))].sort((a, b) => {
+    const m1 = getMonthFromWeekKey(a);
+    const m2 = getMonthFromWeekKey(b);
+    if (m1 !== m2) return m1 - m2;
+    return getWeekNumFromWeekKey(a) - getWeekNumFromWeekKey(b);
+  });
+  if (weeks.length > 0) {
+    ST.week = weeks[weeks.length - 1];
+  }
+  const monthNum = getMonthFromWeekKey(ST.week);
+  ST.month = `${y.replace('년','')}년 ${monthNum}월`;
+  render();
+}
+
+function setDashboardWeek(w) {
+  ST.week = w;
+  const monthNum = getMonthFromWeekKey(w);
+  const yearStr = ST.year || '2026년';
+  ST.month = `${yearStr.replace('년','')}년 ${monthNum}월`;
+  render();
+}
+
+function setEvangelismYear(y) {
+  const curM = getSecMonth('p1') || '2026년 6월';
+  const monthNum = getMonthNumFromStr(curM);
+  const endMonth = (y === '2026년') ? 6 : 12;
+  const targetMonth = Math.min(monthNum, endMonth);
+  const newM = `${y.replace('년','')}년 ${targetMonth}월`;
+  setSecMonth('p1', newM);
+}
+
+function setEvangelismMonth(m) {
+  const curM = getSecMonth('p1') || '2026년 6월';
+  const yearNum = getYearNumFromStr(curM);
+  const newM = `${yearNum}년 ${m}`;
+  setSecMonth('p1', newM);
+}
+
+window.setEvangelismYear = setEvangelismYear;
+window.setEvangelismMonth = setEvangelismMonth;
+
 function renderMonthSelectorHTML(sec) {
   const targetSec = sec || ST.section || 'home';
+  
+  if (targetSec === 'p1') {
+    const curM = getSecMonth('p1') || '2026년 6월';
+    const yearNum = getYearNumFromStr(curM);
+    const yearStr = yearNum + '년';
+    const monthNum = getMonthNumFromStr(curM);
+    
+    const years = ["2026년", "2025년", "2024년"];
+    const yearOpts = years.map(y => `<option value="${y}" ${y === yearStr ? 'selected' : ''}>${y}</option>`).join('');
+    
+    const endMonth = (yearStr === '2026년') ? 6 : 12;
+    let monthOpts = "";
+    for (let m = 1; m <= endMonth; m++) {
+      monthOpts += `<option value="${m}월" ${m === monthNum ? 'selected' : ''}>${m}월</option>`;
+    }
+    
+    return `
+      <div class="sec-month-box" style="display:inline-flex;align-items:center;gap:12px;background:#ffffff;border:1.5px solid #cbd5e1;padding:5px 12px;border-radius:10px;font-size:12.5px;font-weight:700;box-shadow:0 2px 8px rgba(0,0,0,0.04);margin-left:auto">
+        <div style="display:flex;align-items:center;gap:4px">
+          <span style="color:#64748b;font-weight:700">📅 연도</span>
+          <select style="border:none;background:transparent;font-weight:800;color:#2563eb;cursor:pointer;outline:none;font-size:13px" onchange="setEvangelismYear(this.value)">
+            ${yearOpts}
+          </select>
+        </div>
+        <div style="border-left:1px solid #cbd5e1;height:14px;margin:0 4px"></div>
+        <div style="display:flex;align-items:center;gap:4px">
+          <span style="color:#64748b;font-weight:700">📍 월 선택</span>
+          <select style="border:none;background:transparent;font-weight:800;color:#16a34a;cursor:pointer;outline:none;font-size:13px" onchange="setEvangelismMonth(this.value)">
+            ${monthOpts}
+          </select>
+        </div>
+      </div>
+    `;
+  }
+  
+  if (targetSec !== 'p1' && typeof DATA !== "undefined" && DATA.weeklyRecords && DATA.weeklyRecords.length > 0) {
+    const weekly = DATA.weeklyRecords;
+    const years = [...new Set(weekly.map(w => w.yearStr ? (w.yearStr.endsWith('년') ? w.yearStr : w.yearStr + '년') : '2026년'))].sort();
+    if (!ST.year) ST.year = years.includes('2026년') ? '2026년' : (years[0] || '2026년');
+    
+    const weeksForYear = weekly.filter(w => {
+      const yStr = w.yearStr ? (w.yearStr.endsWith('년') ? w.yearStr : w.yearStr + '년') : '2026년';
+      return yStr === ST.year;
+    });
+    const weeks = [...new Set(weeksForYear.map(w => w.weekKey))].sort((a, b) => {
+      const m1 = getMonthFromWeekKey(a);
+      const m2 = getMonthFromWeekKey(b);
+      if (m1 !== m2) return m1 - m2;
+      return getWeekNumFromWeekKey(a) - getWeekNumFromWeekKey(b);
+    });
+    if (!ST.week) ST.week = weeks[weeks.length - 1] || '7월3주차';
+    
+    const yearOpts = years.map(y => `<option value="${y}" ${y === ST.year ? 'selected' : ''}>${y}</option>`).join('');
+    const weekOpts = weeks.map(w => `<option value="${w}" ${w === ST.week ? 'selected' : ''}>${w}</option>`).join('');
+    
+    return `
+      <div class="sec-month-box" style="display:inline-flex;align-items:center;gap:12px;background:#ffffff;border:1.5px solid #cbd5e1;padding:5px 12px;border-radius:10px;font-size:12.5px;font-weight:700;box-shadow:0 2px 8px rgba(0,0,0,0.04);margin-left:auto">
+        <div style="display:flex;align-items:center;gap:4px">
+          <span style="color:#64748b;font-weight:700">📅 연도</span>
+          <select style="border:none;background:transparent;font-weight:800;color:#2563eb;cursor:pointer;outline:none;font-size:13px" onchange="setDashboardYear(this.value)">
+            ${yearOpts}
+          </select>
+        </div>
+        <div style="border-left:1px solid #cbd5e1;height:14px;margin:0 4px"></div>
+        <div style="display:flex;align-items:center;gap:4px">
+          <span style="color:#64748b;font-weight:700">📍 주차 선택</span>
+          <select style="border:none;background:transparent;font-weight:800;color:#16a34a;cursor:pointer;outline:none;font-size:13px" onchange="setDashboardWeek(this.value)">
+            ${weekOpts}
+          </select>
+        </div>
+      </div>
+    `;
+  }
+
   const curM = getSecMonth(targetSec);
   const months = (typeof DATA !== "undefined" && DATA.months) ? DATA.months : ['5월', '6월'];
   const opts = months.map(m => `<option value="${m}" ${m === curM ? 'selected' : ''}>${m}</option>`).join('');
@@ -1605,6 +1881,28 @@ function setSection(sec, cat){
     sec = 'p1';
   }
   ST.section=sec;
+  
+  if (typeof DATA !== "undefined" && DATA.weeklyRecords && DATA.weeklyRecords.length > 0) {
+    if (!ST.year) {
+      const years = [...new Set(DATA.weeklyRecords.map(w => w.yearStr ? (w.yearStr.endsWith('년') ? w.yearStr : w.yearStr + '년') : '2026년'))].sort();
+      ST.year = years.includes('2026년') ? '2026년' : (years[0] || '2026년');
+    }
+    if (!ST.week) {
+      const weeksForYear = DATA.weeklyRecords.filter(w => {
+        const yStr = w.yearStr ? (w.yearStr.endsWith('년') ? w.yearStr : w.yearStr + '년') : '2026년';
+        return yStr === ST.year;
+      });
+      const weeks = [...new Set(weeksForYear.map(w => w.weekKey))].sort((a, b) => {
+        const m1 = getMonthFromWeekKey(a);
+        const m2 = getMonthFromWeekKey(b);
+        if (m1 !== m2) return m1 - m2;
+        return getWeekNumFromWeekKey(a) - getWeekNumFromWeekKey(b);
+      });
+      ST.week = weeks[weeks.length - 1] || '7월3주차';
+    }
+    const monthNum = getMonthFromWeekKey(ST.week);
+    ST.month = `${ST.year.replace('년','')}년 ${monthNum}월`;
+  }
   try {
     const routePaths = {
       home: '',
@@ -2186,10 +2484,43 @@ function renderP1(){
   const tableCard=`<div class="card" style="grid-column:1/-1;min-width:0"><h3>상세표 <span style="font-size:12px;font-weight:600;color:#8aa0c4">· 열 제목(항목)을 클릭하면 아래 차트가 그 항목 기준으로 바뀝니다 · 현재 <b style="color:#2563eb">${si>0?pm.l:'이름'}</b></span></h3>
     <div class="tblwrap" style="max-height:420px"><table id="p1tbl">${thead}${tbody}</table></div></div>`;
   const cpm=(si>0)?pm:(cat.find(m=>m.primary)||cat[0]), cIsPct=(cpm.t==="pct");
+  const empty='<div style="padding:28px 0;text-align:center;color:var(--muted);font-size:13px">데이터 없음</div>';
+
+  if (ST.section === 'p1') {
+    const chData = rows.map(g=>({...g,val:metricVal(g.agg,cpm)})).filter(g=>g.val!=null).sort((a,b)=>b.val-a.val);
+    const chMax = Math.max(0.0001,...chData.map(d=>Math.abs(d.val)||0));
+    const chBars = `<div style="display:flex;flex-direction:column;gap:8px;max-height:520px;overflow-y:auto;padding-right:6px;margin-top:6px">`+chData.map(d=>`<div class="brow" data-name="${encodeURIComponent(d.name)}"><div class="bname" title="${d.name}"><span class="dot" style="background:${d.color}"></span>${d.name}</div><div class="btrack"><div class="bfill" style="width:${Math.max(2,Math.abs(d.val)/chMax*100)}%;background:${d.color}"></div></div><div class="bval">${fmtVal(d.val,cpm)}</div></div>`).join("")+`</div>`;
+    const barCardTitle = (cpm.k === "evangReg") ? "교회별 전도재적" : `교회별 ${cpm.l}`;
+    const barCard = `<div class="card"><h3>${barCardTitle}</h3>${chData.length ? chBars : empty}</div>`;
+
+    const yearNum = getYearNumFromStr(ST.month);
+    const mo = DATA.months.filter(m => getYearNumFromStr(m) === yearNum);
+    const entities = DATA.records.filter(r => r.month === ST.month && checkAssignedLocationAccess(r)).map(r => ({ name: r.name, color: DATA.jipaColors[r.jipa] || "#888" }));
+    const series = entities.map(ent => {
+      const values = mo.map(m => {
+        const rec = getMonthlyEvangelismRecord({ name: ent.name }, m);
+        return rec.admitCount || 0;
+      });
+      return {
+        name: ent.name,
+        color: ent.color || '#2563eb',
+        values: values
+      };
+    });
+    const shortLabels = mo.map(m => getMonthNumFromStr(m) + '월');
+    const lineCard = `<div class="card" style="min-width:0"><h3>교회별 등록수</h3>${entities.length ? lineSVG(shortLabels, series) : empty}</div>`;
+
+    el.style.gridTemplateColumns="minmax(0,1fr) minmax(0,1fr)";
+    el.innerHTML = tableCard + barCard + lineCard;
+    el.style.display="grid";
+    el.querySelectorAll("#p1tbl th").forEach(th=>th.onclick=()=>{ const i=+th.dataset.i; if(ST.sortIdx===i){ST.sortDir*=-1;}else{ST.sortIdx=i;ST.sortDir=(i===0?1:-1);} render(); });
+    el.querySelectorAll("#p1tbl tr.clk, .brow").forEach(x=>x.onclick=()=>openDetail(decodeURIComponent(x.dataset.name)));
+    return;
+  }
+
   const jvals=DATA.jipaOrder.map(j=>{const a=aggregate(recs.filter(r=>r.jipa===j)); return {label:j,value:metricVal(a,cpm),color:DATA.jipaColors[j]||"#888"};}).filter(d=>d.value!=null);
   const cmap={}; recs.forEach(r=>{const k=contOf(r); (cmap[k]=cmap[k]||[]).push(r);});
   const cvals=Object.entries(cmap).map(([k,rs])=>({label:k,value:metricVal(aggregate(rs),cpm),color:CONT_COLORS[k]||"#9aa8c4"})).filter(d=>d.value!=null);
-  const empty='<div style="padding:28px 0;text-align:center;color:var(--muted);font-size:13px">데이터 없음</div>';
   const rateBar=(arr)=>{const mx=Math.max(0.0001,...arr.map(d=>Math.abs(d.value)||0)); return `<div style="display:flex;flex-direction:column;gap:7px;margin-top:6px">`+arr.slice().sort((a,b)=>b.value-a.value).map(d=>`<div style="display:grid;grid-template-columns:104px 1fr 56px;align-items:center;gap:9px"><span style="font-size:12px;font-weight:700;color:#41506f;white-space:nowrap"><span class="dot" style="background:${d.color}"></span>${d.label}</span><span style="height:15px;background:#eef2fa;border-radius:5px;overflow:hidden"><span class="gbar" style="display:block;height:100%;width:${(Math.abs(d.value)/mx*100).toFixed(1)}%;background:${d.color};border-radius:5px"></span></span><span style="font-size:12px;font-weight:800;text-align:right">${fmtVal(d.value,cpm)}</span></div>`).join("")+`</div>`;};
   const donutOrBar=(arr)=> !arr.length?empty:(cIsPct?rateBar(arr):(arr.filter(d=>d.value>0).length?donutSVG(arr.filter(d=>d.value>0).sort((a,b)=>b.value-a.value),{}):empty));
   const jCard=`<div class="card"><h3>지파별 ${cpm.l}</h3>${donutOrBar(jvals)}</div>`;
@@ -2217,27 +2548,27 @@ function renderSectionCharts(){
   // ①전도 전용: 가개강 등록율(전도재적 대비) + 이번 달 신규등록 전달대비 증감 + 지파별 등록율 + 월별 추이
   if(ST.cat==="①전도"){
     const A=aggregate(recs);
-    const cur=rate(A.bibleCumReg,A.evangReg);
+    const cur=rate(A.admitCount,A.evangReg);
     const mi=DATA.months.indexOf(ST.month), pmn=mi>0?DATA.months[mi-1]:null;
-    const curMR=A.bibleMonthReg, prevMR=pmn?aggregate(recordsFor(pmn,ST.gubun)).bibleMonthReg:null;
+    const curMR=A.admitCount, prevMR=pmn?aggregate(recordsFor(pmn,ST.gubun)).admitCount:null;
     const mrDiff=(prevMR!=null)?(curMR-prevMR):null;
-    const jr=DATA.jipaOrder.map(j=>{ const a=aggregate(recs.filter(r=>r.jipa===j)); return {label:j,value:rate(a.bibleCumReg,a.evangReg),color:DATA.jipaColors[j]||"#888"}; }).filter(d=>d.value!=null).sort((a,b)=>a.value-b.value);
+    const jr=DATA.jipaOrder.map(j=>{ const a=aggregate(recs.filter(r=>r.jipa===j)); return {label:j,value:rate(a.admitCount,a.evangReg),color:DATA.jipaColors[j]||"#888"}; }).filter(d=>d.value!=null).sort((a,b)=>a.value-b.value);
     const maxR=Math.max(0.01,...jr.map(d=>d.value||0));
     const jbars=`<div style="display:flex;flex-direction:column;gap:7px;margin-top:8px">`+jr.map(d=>`<div style="display:grid;grid-template-columns:112px 1fr 54px;align-items:center;gap:9px">
       <span style="font-size:12px;font-weight:700;color:#41506f;white-space:nowrap"><span class="dot" style="background:${d.color}"></span>${d.label}</span>
       <span style="height:15px;background:#eef2fa;border-radius:5px;overflow:hidden"><span class="gbar" style="display:block;height:100%;width:${(d.value/maxR*100).toFixed(1)}%;background:${d.color};border-radius:5px"></span></span>
       <span style="font-size:12px;font-weight:800;text-align:right">${pct(d.value)}</span></div>`).join("")+`</div>`;
-    const mo=DATA.months, lv=mo.map(m=>{const a=aggregate(recordsFor(m,ST.gubun)); const v=rate(a.bibleCumReg,a.evangReg); return v==null?0:+(v*100).toFixed(1);});
+    const mo=DATA.months, lv=mo.map(m=>{const a=aggregate(recordsFor(m,ST.gubun)); const v=rate(a.admitCount,a.evangReg); return v==null?0:+(v*100).toFixed(1);});
     el.innerHTML=`
-      <div class="card" style="grid-column:1/-1"><h3>① 가개강 등록율 — ${ST.month} · 전도재적 대비 (구분: ${ST.gubun})</h3>
+      <div class="card" style="grid-column:1/-1"><h3>① 당월 가개강율 — ${ST.month} · 전도재적 대비 (구분: ${ST.gubun})</h3>
         <div style="display:flex;gap:26px;flex-wrap:wrap;align-items:baseline;margin:8px 0 2px">
           <div><span style="font-size:36px;font-weight:900;color:#2563eb;letter-spacing:-1px">${cur==null?'-':pct(cur)}</span>
-            <span style="font-size:12.5px;color:#8aa0c4;margin-left:8px">전체 (가개강 누적등록 ÷ 전도재적)</span></div>
-          <div style="font-size:13px;color:#41506f">이번 달 신규 가개강 등록 <b>${fmt(curMR)}명</b> ${mrDiff!=null?`<span style="font-weight:800;color:${mrDiff>=0?'#2f9e6e':'#e11d48'}">· 전달 대비 ${mrDiff>=0?'▲ +':'▼ '}${fmt(Math.abs(mrDiff))}</span>`:''}</div>
+            <span style="font-size:12.5px;color:#8aa0c4;margin-left:8px">전체 (당월 가개강 수 ÷ 전도재적)</span></div>
+          <div style="font-size:13px;color:#41506f">이번 달 가개강 등록 <b>${fmt(curMR)}명</b> ${mrDiff!=null?`<span style="font-weight:800;color:${mrDiff>=0?'#2f9e6e':'#e11d48'}">· 전달 대비 ${mrDiff>=0?'▲ +':'▼ '}${fmt(Math.abs(mrDiff))}</span>`:''}</div>
         </div>
-        <div style="font-size:12.5px;font-weight:700;color:#5b6b8a;margin-top:14px;margin-bottom:2px">지파별 가개강 등록율 (낮은 순)</div>
+        <div style="font-size:12.5px;font-weight:700;color:#5b6b8a;margin-top:14px;margin-bottom:2px">지파별 당월 가개강율 (낮은 순)</div>
         ${jr.length?jbars:'<div style="padding:20px;text-align:center;color:var(--muted)">데이터 없음</div>'}</div>
-      <div class="card" style="grid-column:1/-1"><h3>월별 가개강 등록율 추이</h3>${lineSVG(mo,[{name:"가개강 등록율",color:"#2563eb",values:lv}])}</div>`;
+      <div class="card" style="grid-column:1/-1"><h3>월별 당월 가개강율 추이</h3>${lineSVG(mo,[{name:"당월 가개강율",color:"#2563eb",values:lv}])}</div>`;
     el.style.display="grid"; return;
   }
   const jdata=DATA.jipaOrder.map(j=>{ const a=aggregate(recs.filter(r=>r.jipa===j)); return {label:j,value:Math.max(0,+metricVal(a,pm)||0),color:DATA.jipaColors[j]||"#888"}; }).filter(d=>d.value>0);
@@ -2892,3 +3223,4 @@ function goTop(){ window.scrollTo({top:0, behavior:'smooth'}); }
   }
   window.addEventListener('scroll', upd, {passive:true});
 })();
+window.ST = ST;
