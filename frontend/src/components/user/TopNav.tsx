@@ -41,8 +41,14 @@ export const TopNav: React.FC<TopNavProps> = ({
   const fetchPendingRequests = async () => {
     if (!token || !user) return;
     try {
-      const res = await api.get(`/evangelism/edit-requests/pending?name=${encodeURIComponent(user.name || '')}&role=${user.role || ''}`);
-      setPendingRequests(res.data || []);
+      const queryParams = `?name=${encodeURIComponent(user.name || '')}&role=${user.role || ''}`;
+      const [evangRes, memberRes] = await Promise.all([
+        api.get<any>(`/evangelism/edit-requests/pending${queryParams}`),
+        api.get<any>(`/membership/edit-requests/pending${queryParams}`)
+      ]);
+      const evangList = (evangRes.data || []).map((r: any) => ({ ...r, type: 'evangelism' }));
+      const memberList = (memberRes.data || []).map((r: any) => ({ ...r, type: 'membership' }));
+      setPendingRequests([...evangList, ...memberList]);
     } catch (e) {
       console.error("Failed to fetch pending edit requests", e);
     }
@@ -251,8 +257,8 @@ export const TopNav: React.FC<TopNavProps> = ({
                       {pendingRequests.map((req) => (
                         <div key={req.requestId} style={{ background: '#0f172a', border: '1px solid #334155', borderRadius: '8px', padding: '10px', fontSize: '0.8rem' }}>
                           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                            <span style={{ fontWeight: 800, color: '#38bdf8' }}>{req.churchName}</span>
-                            <span style={{ fontWeight: 700, color: '#cbd5e1' }}>{req.weekKey}</span>
+                            <span style={{ fontWeight: 800, color: '#38bdf8' }}>[{req.type === 'evangelism' ? '전도' : '내무'}] {req.churchName}</span>
+                            <span style={{ fontWeight: 700, color: '#cbd5e1' }}>{req.type === 'evangelism' ? req.weekKey : req.monthKey}</span>
                           </div>
                           <div style={{ color: '#f1f5f9', margin: '4px 0', fontWeight: 500 }}>
                             <b>사유:</b> {req.reason}
@@ -264,7 +270,8 @@ export const TopNav: React.FC<TopNavProps> = ({
                             <button
                               onClick={async () => {
                                 try {
-                                  await api.post(`/evangelism/edit-requests/${req.requestId}/approve`);
+                                  const path = req.type === 'evangelism' ? 'evangelism' : 'membership';
+                                  await api.post(`/${path}/edit-requests/${req.requestId}/approve`);
                                   alert('수정 요청이 승인되었습니다.');
                                   fetchPendingRequests();
                                   window.dispatchEvent(new Event('refreshEditRequests'));
@@ -279,7 +286,8 @@ export const TopNav: React.FC<TopNavProps> = ({
                             <button
                               onClick={async () => {
                                 try {
-                                  await api.post(`/evangelism/edit-requests/${req.requestId}/reject`);
+                                  const path = req.type === 'evangelism' ? 'evangelism' : 'membership';
+                                  await api.post(`/${path}/edit-requests/${req.requestId}/reject`);
                                   alert('수정 요청이 반려되었습니다.');
                                   fetchPendingRequests();
                                   window.dispatchEvent(new Event('refreshEditRequests'));

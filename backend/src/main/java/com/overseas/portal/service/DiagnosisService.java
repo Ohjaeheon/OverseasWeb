@@ -105,42 +105,25 @@ public class DiagnosisService {
     }
 
     public List<String> getAvailableMonths() {
-        Set<String> monthSet = new HashSet<>();
+        List<String> months = new ArrayList<>();
+        int startYear = 2026;
+        int startMonth = 1;
 
-        // 1. Get from faith_process_record
+        java.time.LocalDate now = java.time.LocalDate.now();
+        int currentYear = now.getYear();
+        int currentMonth = now.getMonthValue();
+
         try {
             List<String> faithMonths = faithProcessRecordRepository.findDistinctYearMonths();
             if (faithMonths != null) {
                 for (String fm : faithMonths) {
                     if (fm != null && fm.matches("^\\d{4}-\\d{2}$")) {
-                        monthSet.add(fm);
-                    }
-                }
-            }
-        } catch (Exception e) {
-            // Ignored
-        }
-
-        // 2. Get from evangelism_weekly_records
-        try {
-            List<Object[]> weeklyYearWeeks = evangelismWeeklyRecordRepository.findDistinctYearAndWeeks();
-            if (weeklyYearWeeks != null) {
-                for (Object[] row : weeklyYearWeeks) {
-                    if (row.length >= 2 && row[0] != null && row[1] != null) {
-                        String yearStr = row[0].toString();
-                        String weekKey = row[1].toString();
-
-                        // Parse year (e.g. "2026년" -> 2026)
-                        String yearNumStr = yearStr.replaceAll("[^0-9]", "");
-                        if (yearNumStr.isEmpty()) yearNumStr = "2026";
-                        int year = Integer.parseInt(yearNumStr);
-
-                        // Parse month (e.g. "7월3주차" -> 7)
-                        java.util.regex.Matcher matcher = java.util.regex.Pattern.compile("(\\d+)월").matcher(weekKey);
-                        if (matcher.find()) {
-                            int month = Integer.parseInt(matcher.group(1));
-                            String formatted = String.format("%04d-%02d", year, month);
-                            monthSet.add(formatted);
+                        String[] parts = fm.split("-");
+                        int y = Integer.parseInt(parts[0]);
+                        int m = Integer.parseInt(parts[1]);
+                        if (y > currentYear || (y == currentYear && m > currentMonth)) {
+                            currentYear = y;
+                            currentMonth = m;
                         }
                     }
                 }
@@ -149,27 +132,116 @@ public class DiagnosisService {
             // Ignored
         }
 
-        if (monthSet.isEmpty()) {
-            return List.of("2026-05");
+        for (int y = startYear; y <= currentYear; y++) {
+            int endMonth = (y == currentYear) ? currentMonth : 12;
+            int startM = (y == startYear) ? startMonth : 1;
+            for (int m = startM; m <= endMonth; m++) {
+                months.add(String.format("%04d-%02d", y, m));
+            }
         }
 
-        List<String> sorted = new ArrayList<>(monthSet);
-        sorted.sort(Collections.reverseOrder());
-        return sorted;
+        months.sort(Collections.reverseOrder());
+        return months;
+    }
+
+    private RecordDTO mapChurchToDefaultDTO(Church c, String yearMonth) {
+        return RecordDTO.builder()
+                .recordId(-c.getChurchId())
+                .churchId(c.getChurchId())
+                .name(c.getName())
+                .continent(c.getContinent())
+                .country(c.getCountry())
+                .jipa(c.getJipa())
+                .gubun(c.getGubun())
+                .lat(c.getLat() != null ? c.getLat().doubleValue() : null)
+                .lon(c.getLon() != null ? c.getLon().doubleValue() : null)
+                .month(yearMonth)
+                .sortOrder(c.getSortOrder())
+                .evangReg(0)
+                .bibleMonthReg(0)
+                .bibleCumReg(0)
+                .bibleCurAtt(0)
+                .centerMonthOn(0)
+                .centerMonthOff(0)
+                .centerMonthTotal(0)
+                .centerCumOn(0)
+                .centerCumOff(0)
+                .centerCumReg(0)
+                .centerMonthGrad(0)
+                .centerTotMonthReg(0)
+                .centerCumGrad(0)
+                .centerAttElem(0)
+                .centerAttMid(0)
+                .centerAttHigh(0)
+                .registered(0)
+                .yearStartReg(0)
+                .regChange(0)
+                .newAdmit(0)
+                .cumNewAdmit(0)
+                .discipline(0)
+                .cumDiscipline(0)
+                .moveIn(0)
+                .moveOut(0)
+                .transIn(0)
+                .transOut(0)
+                .dupReg(0)
+                .prevNewAdmitCnt(0)
+                .attReg(0)
+                .attOnsite(0)
+                .attOnline(0)
+                .attEtc(0)
+                .attTotal(0)
+                .absOnce(0)
+                .absLongManage(0)
+                .absLongUnmanage(0)
+                .absTotal(0)
+                .build();
     }
 
     public List<RecordDTO> getRecordsByMonth(String yearMonth) {
-        List<FaithProcessRecord> records;
+        List<Church> activeChurches = churchRepository.findByIsActiveTrueOrderBySortOrderAscNameAsc();
+        
         if ("all".equalsIgnoreCase(yearMonth) || yearMonth == null || yearMonth.isEmpty()) {
-            records = faithProcessRecordRepository.findAllWithChurch();
+            List<String> availableMonths = getAvailableMonths();
+            List<FaithProcessRecord> records = faithProcessRecordRepository.findAllWithChurch();
+            
+            Map<String, Map<Long, FaithProcessRecord>> monthChurchMap = new HashMap<>();
+            for (FaithProcessRecord r : records) {
+                monthChurchMap.computeIfAbsent(r.getYearMonth(), k -> new HashMap<>())
+                              .put(r.getChurch().getChurchId(), r);
+            }
+            
+            List<RecordDTO> dtos = new ArrayList<>();
+            for (String m : availableMonths) {
+                Map<Long, FaithProcessRecord> churchMapForMonth = monthChurchMap.getOrDefault(m, Collections.emptyMap());
+                for (Church c : activeChurches) {
+                    if (churchMapForMonth.containsKey(c.getChurchId())) {
+                        dtos.add(mapToDTO(churchMapForMonth.get(c.getChurchId())));
+                    } else {
+                        dtos.add(mapChurchToDefaultDTO(c, m));
+                    }
+                }
+            }
+            return dtos;
         } else {
-            records = faithProcessRecordRepository.findAllWithChurchByYearMonth(yearMonth);
+            List<FaithProcessRecord> records = faithProcessRecordRepository.findAllWithChurchByYearMonth(yearMonth);
+            Map<Long, FaithProcessRecord> recordMap = records.stream()
+                    .collect(Collectors.toMap(r -> r.getChurch().getChurchId(), r -> r, (r1, r2) -> r1));
+            
+            List<RecordDTO> dtos = new ArrayList<>();
+            for (Church c : activeChurches) {
+                if (recordMap.containsKey(c.getChurchId())) {
+                    dtos.add(mapToDTO(recordMap.get(c.getChurchId())));
+                } else {
+                    dtos.add(mapChurchToDefaultDTO(c, yearMonth));
+                }
+            }
+            return dtos;
         }
-        return records.stream().map(this::mapToDTO).collect(Collectors.toList());
     }
 
     public SummaryMetric getSummaryMetric(String yearMonth) {
-        List<FaithProcessRecord> records = faithProcessRecordRepository.findAllWithChurchByYearMonth(yearMonth);
+        List<RecordDTO> records = getRecordsByMonth(yearMonth);
         int totalReg = records.stream().mapToInt(r -> Optional.ofNullable(r.getRegistered()).orElse(0)).sum();
         int totalEvang = records.stream().mapToInt(r -> Optional.ofNullable(r.getEvangReg()).orElse(0)).sum();
         int totalCenter = records.stream().mapToInt(r -> Optional.ofNullable(r.getCenterMonthTotal()).orElse(0)).sum();

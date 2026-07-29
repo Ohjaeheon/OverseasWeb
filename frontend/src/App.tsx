@@ -53,7 +53,9 @@ export const App: React.FC = () => {
         <Route path="/evangelism/check" element={<DiagnosisPage section="evangelism/check" tab="check" />} />
         <Route path="/evangelism/aggregate" element={<DiagnosisPage section="evangelism/aggregate" tab="aggregate" />} />
         <Route path="/center" element={<DiagnosisPage section="center" />} />
-        <Route path="/membership" element={<DiagnosisPage section="membership" />} />
+        <Route path="/membership" element={<DiagnosisPage section="membership" tab="check" />} />
+        <Route path="/membership/check" element={<DiagnosisPage section="membership/check" tab="check" />} />
+        <Route path="/membership/input" element={<DiagnosisPage section="membership/input" tab="input" />} />
         <Route path="/worship" element={<DiagnosisPage section="worship" />} />
         <Route path="/approvals/pending" element={<DiagnosisPage section="approvals/pending" />} />
         <Route path="/approvals/completed" element={<DiagnosisPage section="approvals/completed" />} />

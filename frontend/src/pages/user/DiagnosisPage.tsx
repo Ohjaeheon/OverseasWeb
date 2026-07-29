@@ -4,13 +4,14 @@ import { diagnosisService } from '../../services/diagnosisService';
 import { logService } from '../../services/logService';
 import { sessionService } from '../../services/sessionService';
 import { EvangelismModule } from '../../components/user/EvangelismModule';
+import { MembershipModule } from '../../components/user/MembershipModule';
 import { ApprovalModule } from '../../components/user/ApprovalModule';
 import { roleService } from '../../services/roleService';
 import api from '../../services/api';
 
 interface DiagnosisPageProps {
   section?: string;
-  tab?: 'check' | 'aggregate';
+  tab?: 'check' | 'aggregate' | 'input';
 }
 
 export const DiagnosisPage: React.FC<DiagnosisPageProps> = ({ section = 'home', tab = 'check' }) => {
@@ -90,6 +91,36 @@ export const DiagnosisPage: React.FC<DiagnosisPageProps> = ({ section = 'home', 
       }
     }
 
+    // Redirect /membership to /membership/check or /membership/input ONLY IF user lacks access to the main p3 dashboard
+    if (section === 'membership') {
+      const cleanRole = userRole.toUpperCase().startsWith('ROLE_') ? userRole.toUpperCase() : `ROLE_${userRole.toUpperCase()}`;
+      let normRole = cleanRole;
+      if (cleanRole === 'ROLE_해외선교부 담당자' || cleanRole === 'ROLE_USER') {
+        normRole = 'ROLE_USER';
+      } else if (cleanRole === 'ROLE_지파 담당자' || cleanRole === 'ROLE_JIPA') {
+        normRole = 'ROLE_JIPA';
+      } else if (cleanRole === 'ROLE_일반 회원' || cleanRole === 'ROLE_GUEST') {
+        normRole = 'ROLE_GUEST';
+      }
+
+      const isAdmin = normRole === 'ROLE_ADMIN' || normRole === 'ADMIN' || normRole === 'ROLE_관리자';
+      const hasMainAccess = isAdmin || roleService.canRoleAccessMenu(userRole, 'p3').read;
+
+      if (!hasMainAccess) {
+        const canCheck = roleService.canRoleAccessMenu(userRole, 'p3_check').read;
+        const canInput = roleService.canRoleAccessMenu(userRole, 'p3_input').read;
+        if (canCheck) {
+          navigate('/membership/check', { replace: true });
+        } else if (canInput) {
+          navigate('/membership/input', { replace: true });
+        } else {
+          alert("해당 메뉴에 대한 접근 권한이 없습니다.");
+          navigate('/', { replace: true });
+        }
+        return;
+      }
+    }
+
     const sectionToMenuKey: Record<string, string> = {
       'home': 'home',
       'diag': 'diag',
@@ -103,6 +134,8 @@ export const DiagnosisPage: React.FC<DiagnosisPageProps> = ({ section = 'home', 
       'evangelism/aggregate': 'p1_agg',
       'center': 'p2',
       'membership': 'p3',
+      'membership/check': 'p3_check',
+      'membership/input': 'p3_input',
       'worship': 'p4',
       'approvals/pending': 'approvals_pending',
       'approvals/completed': 'approvals_completed'
@@ -367,6 +400,9 @@ export const DiagnosisPage: React.FC<DiagnosisPageProps> = ({ section = 'home', 
           d.months = months.map((m: string) => formatMonth(m));
           d.records = syncedRecords;
           d.weeklyRecords = weeklyRecords;
+          if (typeof (window as any).refreshLocalDataReference === 'function') {
+            (window as any).refreshLocalDataReference();
+          }
           updateDebugInfo('DATA fully populated');
         }
       } catch (err: any) {
@@ -408,13 +444,15 @@ export const DiagnosisPage: React.FC<DiagnosisPageProps> = ({ section = 'home', 
     };
 
     // Pre-initialize window.DATA BEFORE loading the script so the script's internal DATA variable resolves correctly
-    (window as any).DATA = {
-      months: ["2026년 6월"],
-      jipaOrder: ["맛디아", "서울", "무등", "베드로", "요한"],
-      jipaColors: { "맛디아": "#6FBA2C", "서울": "#6FBA2C", "무등": "#3b82f6", "베드로": "#06b6d4", "요한": "#f59e0b" },
-      records: [],
-      weeklyRecords: []
-    };
+    if (!(window as any).DATA) {
+      (window as any).DATA = {
+        months: ["2026년 6월"],
+        jipaOrder: ["맛디아", "서울", "무등", "베드로", "요한"],
+        jipaColors: { "맛디아": "#6FBA2C", "서울": "#6FBA2C", "무등": "#3b82f6", "베드로": "#06b6d4", "요한": "#f59e0b" },
+        records: [],
+        weeklyRecords: []
+      };
+    }
 
     loadScript('diag-engine-script', `${getUrl('assets/diagnosisEngine.js')}?v=3`)
       .then(() => {
@@ -434,7 +472,7 @@ export const DiagnosisPage: React.FC<DiagnosisPageProps> = ({ section = 'home', 
     }
   }, [section]);
 
-  if (section === 'evangelism/check' || section === 'evangelism/aggregate' || section === 'approvals/pending' || section === 'approvals/completed') {
+  if (section === 'evangelism/check' || section === 'evangelism/aggregate' || section === 'membership/check' || section === 'membership/input' || section === 'approvals/pending' || section === 'approvals/completed') {
     return (
       <div style={{ minHeight: '100vh', background: '#f8fafc' }}>
         <div className="topbar">
@@ -459,6 +497,8 @@ export const DiagnosisPage: React.FC<DiagnosisPageProps> = ({ section = 'home', 
           <main className="main" style={{ flex: 1, padding: '20px', overflowY: 'auto' }}>
             {(section === 'evangelism/check' || section === 'evangelism/aggregate') ? (
               <EvangelismModule initialTab={section === 'evangelism/check' ? 'check' : 'aggregate'} />
+            ) : (section === 'membership/check' || section === 'membership/input') ? (
+              <MembershipModule initialTab={section === 'membership/check' ? 'check' : 'input'} />
             ) : (
               <ApprovalModule mode={section === 'approvals/pending' ? 'pending' : 'completed'} />
             )}

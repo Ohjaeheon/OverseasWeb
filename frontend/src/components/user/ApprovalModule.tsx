@@ -6,7 +6,8 @@ interface EditRequest {
   requestId: number;
   churchName: string;
   yearStr: string;
-  weekKey: string;
+  weekKey?: string;
+  monthKey?: string;
   reason: string;
   requestedBy: string;
   requestedTo: string;
@@ -14,6 +15,7 @@ interface EditRequest {
   requestedAt: string;
   approvedAt?: string;
   approverComment?: string;
+  type: 'evangelism' | 'membership';
 }
 
 interface ApprovalModuleProps {
@@ -39,10 +41,21 @@ export const ApprovalModule: React.FC<ApprovalModuleProps> = ({ mode }) => {
         return;
       }
       const u = JSON.parse(userStr);
-      const url = mode === 'pending' ? '/evangelism/edit-requests/pending' : '/evangelism/edit-requests/completed';
-      const res = await api.get<any>(`${url}?username=${u.username}&role=${u.role}&name=${encodeURIComponent(u.name)}`);
+      const evangUrl = mode === 'pending' ? '/evangelism/edit-requests/pending' : '/evangelism/edit-requests/completed';
+      const memberUrl = mode === 'pending' ? '/membership/edit-requests/pending' : '/membership/edit-requests/completed';
       
-      setRequests(res.data || []);
+      const queryParams = `?username=${u.username}&role=${u.role}&name=${encodeURIComponent(u.name)}`;
+      
+      const [evangRes, memberRes] = await Promise.all([
+        api.get<any>(`${evangUrl}${queryParams}`),
+        api.get<any>(`${memberUrl}${queryParams}`)
+      ]);
+      
+      const evangList = (evangRes.data || []).map((r: any) => ({ ...r, type: 'evangelism' }));
+      const memberList = (memberRes.data || []).map((r: any) => ({ ...r, type: 'membership' }));
+      
+      const combined = [...evangList, ...memberList].sort((a, b) => b.requestedAt.localeCompare(a.requestedAt));
+      setRequests(combined);
     } catch (e: any) {
       console.error('Failed to fetch approval requests', e);
       setError('결재 내역을 불러오는 중 오류가 발생했습니다.');
@@ -60,10 +73,11 @@ export const ApprovalModule: React.FC<ApprovalModuleProps> = ({ mode }) => {
     setOpinion('');
   }, [selectedRequest]);
 
-  const handleApprove = async (id: number, comment: string) => {
+  const handleApprove = async (id: number, type: 'evangelism' | 'membership', comment: string) => {
     setActionLoadingId(id);
     try {
-      await api.post(`/evangelism/edit-requests/${id}/approve?comment=${encodeURIComponent(comment)}`);
+      const path = type === 'evangelism' ? 'evangelism' : 'membership';
+      await api.post(`/${path}/edit-requests/${id}/approve?comment=${encodeURIComponent(comment)}`);
       alert('성공적으로 승인되었습니다.');
       window.dispatchEvent(new Event('refreshEditRequests'));
       fetchRequests();
@@ -75,10 +89,11 @@ export const ApprovalModule: React.FC<ApprovalModuleProps> = ({ mode }) => {
     }
   };
 
-  const handleReject = async (id: number, comment: string) => {
+  const handleReject = async (id: number, type: 'evangelism' | 'membership', comment: string) => {
     setActionLoadingId(id);
     try {
-      await api.post(`/evangelism/edit-requests/${id}/reject?comment=${encodeURIComponent(comment)}`);
+      const path = type === 'evangelism' ? 'evangelism' : 'membership';
+      await api.post(`/${path}/edit-requests/${id}/reject?comment=${encodeURIComponent(comment)}`);
       alert('요청이 반려되었습니다.');
       window.dispatchEvent(new Event('refreshEditRequests'));
       fetchRequests();
@@ -200,8 +215,8 @@ export const ApprovalModule: React.FC<ApprovalModuleProps> = ({ mode }) => {
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem', textAlign: 'left' }}>
             <thead>
               <tr style={{ background: '#f8fafc', borderBottom: '2px solid #cbd5e1' }}>
-                <th style={{ padding: '14px', fontWeight: 800, color: '#334155' }}>신청 교회</th>
-                <th style={{ padding: '14px', fontWeight: 800, color: '#334155' }}>대상 주차</th>
+                 <th style={{ padding: '14px', fontWeight: 800, color: '#334155' }}>신청 교회</th>
+                <th style={{ padding: '14px', fontWeight: 800, color: '#334155' }}>대상 주차/월</th>
                 <th style={{ padding: '14px', fontWeight: 800, color: '#334155' }}>수정 사유</th>
                 <th style={{ padding: '14px', fontWeight: 800, color: '#334155' }}>요청자</th>
                 <th style={{ padding: '14px', fontWeight: 800, color: '#334155' }}>결재선(대상)</th>
@@ -219,6 +234,9 @@ export const ApprovalModule: React.FC<ApprovalModuleProps> = ({ mode }) => {
                 >
                   <td style={{ padding: '14px', fontWeight: 700, color: '#0f172a' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <span style={{ fontSize: '0.7rem', fontWeight: 800, background: req.type === 'evangelism' ? '#dbeafe' : '#f3e8ff', color: req.type === 'evangelism' ? '#1e40af' : '#6d28d9', padding: '2px 6px', borderRadius: '4px' }}>
+                        {req.type === 'evangelism' ? '전도' : '내무'}
+                      </span>
                       <MapPin size={14} style={{ color: '#3b82f6' }} />
                       {req.churchName}
                     </div>
@@ -226,7 +244,7 @@ export const ApprovalModule: React.FC<ApprovalModuleProps> = ({ mode }) => {
                   <td style={{ padding: '14px', color: '#334155', fontWeight: 700 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                       <Calendar size={14} style={{ color: '#64748b' }} />
-                      {req.yearStr} {req.weekKey}
+                      {req.yearStr} {req.type === 'evangelism' ? req.weekKey : req.monthKey}
                     </div>
                   </td>
                   <td style={{ padding: '14px', color: '#475569', maxWidth: '260px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -254,7 +272,7 @@ export const ApprovalModule: React.FC<ApprovalModuleProps> = ({ mode }) => {
                           onClick={() => {
                             const comment = window.prompt('승인 결재 의견을 입력해 주세요 (선택사항):');
                             if (comment === null) return;
-                            handleApprove(req.requestId, comment);
+                            handleApprove(req.requestId, req.type, comment);
                           }}
                           disabled={actionLoadingId !== null}
                           style={{
@@ -282,7 +300,7 @@ export const ApprovalModule: React.FC<ApprovalModuleProps> = ({ mode }) => {
                               alert('반려 사유를 입력해야 반려 처리가 가능합니다.');
                               return;
                             }
-                            handleReject(req.requestId, comment);
+                            handleReject(req.requestId, req.type, comment);
                           }}
                           disabled={actionLoadingId !== null}
                           style={{
@@ -393,7 +411,7 @@ export const ApprovalModule: React.FC<ApprovalModuleProps> = ({ mode }) => {
                 <div>
                   <span style={{ display: 'block', fontSize: '0.75rem', color: '#64748b', fontWeight: 700, marginBottom: '4px' }}>결재 구분</span>
                   <span style={{ fontSize: '0.9rem', fontWeight: 800, color: '#0f172a', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <Info size={14} style={{ color: '#3b82f6' }} /> 전도 실적 수정 허용 요청
+                    <Info size={14} style={{ color: '#3b82f6' }} /> {selectedRequest.type === 'evangelism' ? '전도 실적 수정 허용 요청' : '내무 실적 수정 허용 요청'}
                   </span>
                 </div>
                 <div>
@@ -412,9 +430,9 @@ export const ApprovalModule: React.FC<ApprovalModuleProps> = ({ mode }) => {
                 </div>
                 <div style={{ borderBottom: '1px solid #f1f5f9', paddingBottom: '12px' }}>
                   <span style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', color: '#64748b', fontWeight: 700, marginBottom: '6px' }}>
-                    <Calendar size={12} style={{ color: '#10b981' }} /> 대상 주차
+                    <Calendar size={12} style={{ color: '#10b981' }} /> 대상 주차/월
                   </span>
-                  <span style={{ fontSize: '0.92rem', fontWeight: 800, color: '#1e293b' }}>{selectedRequest.yearStr} {selectedRequest.weekKey}</span>
+                  <span style={{ fontSize: '0.92rem', fontWeight: 800, color: '#1e293b' }}>{selectedRequest.yearStr} {selectedRequest.type === 'evangelism' ? selectedRequest.weekKey : selectedRequest.monthKey}</span>
                 </div>
               </div>
 
@@ -549,7 +567,7 @@ export const ApprovalModule: React.FC<ApprovalModuleProps> = ({ mode }) => {
                         alert('반려 처리를 하려면 반려 사유를 의견란에 반드시 기재해 주세요.');
                         return;
                       }
-                      handleReject(selectedRequest.requestId, opinion);
+                      handleReject(selectedRequest.requestId, selectedRequest.type, opinion);
                       setSelectedRequest(null);
                     }}
                     disabled={actionLoadingId !== null}
@@ -572,7 +590,7 @@ export const ApprovalModule: React.FC<ApprovalModuleProps> = ({ mode }) => {
                   </button>
                   <button
                     onClick={() => {
-                      handleApprove(selectedRequest.requestId, opinion);
+                      handleApprove(selectedRequest.requestId, selectedRequest.type, opinion);
                       setSelectedRequest(null);
                     }}
                     disabled={actionLoadingId !== null}

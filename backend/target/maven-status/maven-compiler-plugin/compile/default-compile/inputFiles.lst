@@ -11,6 +11,7 @@ E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\config\SecurityC
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\domain\AuditLog.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\security\JwtTokenProvider.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\controller\I18nController.java
+E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\domain\MembershipMonthlyRecord.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\repository\I18nDictionaryRepository.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\repository\EvangelismWeeklyRecordRepository.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\security\JwtAuthenticationFilter.java
@@ -22,13 +23,17 @@ E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\service\AuthServ
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\repository\SystemConfigRepository.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\controller\EvangelismController.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\domain\User.java
+E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\repository\MembershipMonthlyRecordRepository.java
+E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\controller\MembershipController.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\domain\FaithProcessRecord.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\service\DiagnosisService.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\repository\UserRepository.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\domain\TelegramOtpLog.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\controller\AdminController.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\repository\ChurchRepository.java
+E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\domain\MembershipEditRequest.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\controller\DiagnosisController.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\service\TelegramBotService.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\domain\SystemConfig.java
+E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\repository\MembershipEditRequestRepository.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\repository\TelegramOtpLogRepository.java

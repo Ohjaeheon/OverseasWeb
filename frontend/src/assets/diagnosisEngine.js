@@ -1465,6 +1465,10 @@ function renderFunnel(){
 // ── render ──
 function render(){
   const sec=ST.section||"home";
+  if (sec === 'evangelism/check' || sec === 'evangelism/aggregate' || sec === 'membership/check' || sec === 'membership/input' || sec === 'approvals/pending' || sec === 'approvals/completed') {
+    buildSidebar();
+    return;
+  }
   const dv=document.getElementById("dataview"), mv=document.getElementById("mapview"), gv=document.getElementById("globeview");
   const hv=document.getElementById("homeview"), dgv=document.getElementById("diagview");
   const kpiEl=document.getElementById("kpis"), chipEl=document.getElementById("chips"), mgt=document.getElementById("mapGlobeToggle");
@@ -1544,9 +1548,15 @@ const SIDEBAR=[
   {s:"inspect",ico:"🚨",label:"점검 (양·질)"},
   {s:"funnel",ico:"🚦",label:"관문별 통과율"},
   {grp:"신앙 프로세스"},
-  {s:"p1",ico:"①",label:"전도·가개강"},
+  {s:"p1",ico:"①",label:"전도·가개강",path:"/evangelism",children:[
+    {cat:"p1_check",label:"①-1. 교회별 데이터 확인",path:"/evangelism/check"},
+    {cat:"p1_agg",label:"①-2. 취합 및 실적 입력",path:"/evangelism/aggregate"}
+  ]},
   {s:"p2",ico:"②",label:"센터"},
-  {s:"p3",ico:"③",label:"내무"},
+  {s:"p3",ico:"③",label:"내무",path:"/membership",children:[
+    {cat:"p3_check",label:"③-1. 교회별 데이터 확인",path:"/membership/check"},
+    {cat:"p3_input",label:"③-2. 월별 데이터 입력",path:"/membership/input"}
+  ]},
   {s:"p4",ico:"④",label:"예배",children:[
     {cat:"④예배·전월입교자",label:"전월입교자"},
     {cat:"④예배·전성도",label:"전성도 예배 출석"},
@@ -1563,11 +1573,25 @@ function buildSidebar(){
   let html="";
   SIDEBAR.forEach(it=>{
     if(it.grp){ html+=`<div class="grp">${it.grp}</div>`; return; }
-    const on=(!it.children && it.s===ST.section && (!it.cat||it.cat===ST.cat))?'on':'';
-    const arrow=it.children?`<span style="margin-left:auto;color:var(--muted);font-size:11px">${it.s===ST.section?'▾':'▸'}</span>`:'';
-    html+=`<div class="mitem ${on}" data-s="${it.s}" data-cat="${it.cat||''}"><span class="ico">${it.ico}</span>${it.label}${it.tag?`<span class="tag">${it.tag}</span>`:''}${arrow}</div>`;
-    if(it.children && it.s===ST.section){
-      it.children.forEach(ch=>{ html+=`<div class="mitem ${ch.cat===ST.cat?'on':''}" style="padding-left:36px;font-size:13px" data-s="${it.s}" data-cat="${ch.cat}"><span class="ico" style="font-size:10px;color:var(--muted)">·</span>${ch.label}</div>`; });
+    
+    const isCurrentSection = (it.s === ST.section) || 
+      (it.s === 'p1' && (ST.section === 'evangelism/check' || ST.section === 'evangelism/aggregate')) ||
+      (it.s === 'p3' && (ST.section === 'membership/check' || ST.section === 'membership/input'));
+
+    const on=(!it.children && isCurrentSection && (!it.cat||it.cat===ST.cat))?'on':'';
+    const arrow=it.children?`<span style="margin-left:auto;color:var(--muted);font-size:11px">${isCurrentSection?'▾':'▸'}</span>`:'';
+    html+=`<div class="mitem ${on}" data-s="${it.s}" data-cat="${it.cat||''}" data-path="${it.path||''}"><span class="ico">${it.ico}</span>${it.label}${it.tag?`<span class="tag">${it.tag}</span>`:''}${arrow}</div>`;
+    
+    if(it.children && isCurrentSection){
+      it.children.forEach(ch=>{
+        const isChildOn = (ch.cat === ST.cat) ||
+          (ch.cat === 'p1_check' && ST.section === 'evangelism/check') ||
+          (ch.cat === 'p1_agg' && ST.section === 'evangelism/aggregate') ||
+          (ch.cat === 'p3_check' && ST.section === 'membership/check') ||
+          (ch.cat === 'p3_input' && ST.section === 'membership/input');
+
+        html+=`<div class="mitem ${isChildOn?'on':''}" style="padding-left:36px;font-size:13px" data-s="${it.s}" data-cat="${ch.cat}" data-path="${ch.path||''}"><span class="ico" style="font-size:10px;color:var(--muted)">·</span>${ch.label}</div>`;
+      });
     }
   });
 
@@ -1592,7 +1616,19 @@ function buildSidebar(){
   document.getElementById("side").innerHTML=html;
   document.querySelectorAll(".mitem").forEach(m=>m.onclick=()=>{
     if (typeof window.closeSidebar === 'function') window.closeSidebar();
-    if(m.dataset.s==="export"){ openExportModal(); } else { setSection(m.dataset.s, m.dataset.cat||null); }
+    if(m.dataset.s==="export"){ 
+      openExportModal(); 
+    } else if (m.dataset.path && typeof window.reactNavigate === 'function') {
+      window.reactNavigate(m.dataset.path);
+    } else {
+      const isReactRoute = ['/evangelism', '/membership', '/approvals'].some(p => window.location.pathname.includes(p));
+      if (isReactRoute && typeof window.reactNavigate === 'function') {
+        const dest = m.dataset.s === 'home' ? '/' : `/${m.dataset.s}`;
+        window.reactNavigate(dest);
+      } else {
+        setSection(m.dataset.s, m.dataset.cat||null); 
+      }
+    }
   });
 }
 // ========== 📥 공유용 엑셀 내보내기 (담임강사 공유) — 항목 선택 + 순위 ==========

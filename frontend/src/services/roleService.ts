@@ -38,7 +38,9 @@ export const DEFAULT_MENUS: { menuKey: string; menuName: string; category: strin
   { menuKey: 'p1_check', menuName: '   ㄴ ①-1. 교회별 데이터 확인', category: '🖥️ 일반 사용자 진단서 포탈', path: '/evangelism/check' },
   { menuKey: 'p1_agg', menuName: '   ㄴ ①-2. 취합 및 실적 입력', category: '🖥️ 일반 사용자 진단서 포탈', path: '/evangelism/aggregate' },
   { menuKey: 'p2', menuName: '② 센터', category: '🖥️ 일반 사용자 진단서 포탈', path: '/center' },
-  { menuKey: 'p3', menuName: '③ 내무', category: '🖥️ 일반 사용자 진단서 포탈', path: '/membership' },
+  { menuKey: 'p3', menuName: '③ 내무 (전체)', category: '🖥️ 일반 사용자 진단서 포탈', path: '/membership' },
+  { menuKey: 'p3_check', menuName: '   ㄴ ③-1. 교회별 데이터 확인', category: '🖥️ 일반 사용자 진단서 포탈', path: '/membership/check' },
+  { menuKey: 'p3_input', menuName: '   ㄴ ③-2. 월별 데이터 입력', category: '🖥️ 일반 사용자 진단서 포탈', path: '/membership/input' },
   { menuKey: 'p4', menuName: '④ 예배 · 전성도', category: '🖥️ 일반 사용자 진단서 포탈', path: '/worship' },
   { menuKey: 'approvals_pending', menuName: '📥 결재 대기중인 건', category: '🖥️ 일반 사용자 진단서 포탈', path: '/approvals/pending' },
   { menuKey: 'approvals_completed', menuName: '📋 결재 완료 건', category: '🖥️ 일반 사용자 진단서 포탈', path: '/approvals/completed' },
@@ -249,6 +251,9 @@ export const roleService = {
     if (menuKey === 'evangelism/check') normKey = 'p1_check';
     if (menuKey === 'evangelism/aggregate') normKey = 'p1_agg';
     if (menuKey === 'evangelism') normKey = 'p1';
+    if (menuKey === 'membership/check') normKey = 'p3_check';
+    if (menuKey === 'membership/input') normKey = 'p3_input';
+    if (menuKey === 'membership') normKey = 'p3';
 
     const permissions = roleService.getMenuPermissions();
     const matchedMenu = permissions.find(m => m.menuKey === normKey || m.path.includes(normKey));

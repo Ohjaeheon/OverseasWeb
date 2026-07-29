@@ -124,9 +124,15 @@ export const EvangelismModule: React.FC<EvangelismModuleProps> = ({ initialTab =
   const [selectedChurch, setSelectedChurch] = useState<string>('도쿄교회');
 
   // 3. Date & Week Filters
-  const [selectedYear, setSelectedYear] = useState<string>('2026년');
+  const currentYearNum = new Date().getFullYear();
+  const [selectedYear, setSelectedYear] = useState<string>(() => `${currentYearNum}년`);
   const [selectedWeekCheck, setSelectedWeekCheck] = useState<string>('전체'); // For Tab 1
-  const [selectedWeekAgg, setSelectedWeekAgg] = useState<string>(() => getDynamicWeekConfig('2026년').currentWeekKey);   // For Tab 2
+  const [selectedWeekAgg, setSelectedWeekAgg] = useState<string>(() => getDynamicWeekConfig(`${currentYearNum}년`).currentWeekKey);   // For Tab 2
+
+  const dynamicYears: string[] = [];
+  for (let y = currentYearNum; y >= 2026; y--) {
+    dynamicYears.push(`${y}년`);
+  }
 
   // 3-1. Current Week Data State for Aggregation Tab
   const [currentWeekInputs, setCurrentWeekInputs] = useState<Record<string, DeptData>>({
@@ -695,9 +701,9 @@ export const EvangelismModule: React.FC<EvangelismModuleProps> = ({ initialTab =
               onChange={(e) => setSelectedYear(e.target.value)}
               style={{ border: 'none', background: 'transparent', fontWeight: 800, color: '#2563eb', fontSize: '0.9rem', outline: 'none', cursor: 'pointer' }}
             >
-              <option value="2026년">2026년</option>
-              <option value="2025년">2025년</option>
-              <option value="2024년">2024년</option>
+              {dynamicYears.map(y => (
+                <option key={y} value={y}>{y}</option>
+              ))}
             </select>
           </div>
 

@@ -1,3 +1,4 @@
+com\overseas\portal\domain\MembershipEditRequest.class
 com\overseas\portal\service\DiagnosisService$RecordDTO.class
 com\overseas\portal\config\DataInitializer.class
 com\overseas\portal\domain\EvangelismWeeklyRecord.class
@@ -5,6 +6,7 @@ com\overseas\portal\service\AdminService$AdminDashboardSummary.class
 com\overseas\portal\domain\User$UserBuilder.class
 com\overseas\portal\OverseasPortalApplication.class
 com\overseas\portal\service\TelegramBotService.class
+com\overseas\portal\controller\MembershipController.class
 com\overseas\portal\controller\AuthController.class
 com\overseas\portal\repository\ChurchRepository.class
 com\overseas\portal\domain\EvangelismWeeklyRecord$EvangelismWeeklyRecordBuilder.class
@@ -18,6 +20,7 @@ com\overseas\portal\controller\AdminController.class
 com\overseas\portal\controller\AuthController$LoginRequest.class
 com\overseas\portal\domain\Church$ChurchBuilder.class
 com\overseas\portal\controller\AdminController$TelegramMapRequest.class
+com\overseas\portal\repository\MembershipEditRequestRepository.class
 com\overseas\portal\domain\TelegramOtpLog$TelegramOtpLogBuilder.class
 com\overseas\portal\domain\TelegramOtpLog.class
 com\overseas\portal\domain\AuditLog$AuditLogBuilder.class
@@ -25,6 +28,7 @@ com\overseas\portal\repository\AuditLogRepository.class
 com\overseas\portal\service\AuthService$LoginResponse$LoginResponseBuilder.class
 com\overseas\portal\repository\FaithProcessRecordRepository.class
 com\overseas\portal\domain\I18nDictionary$I18nDictionaryBuilder.class
+com\overseas\portal\domain\MembershipMonthlyRecord.class
 com\overseas\portal\domain\SystemConfig.class
 com\overseas\portal\service\I18nService.class
 com\overseas\portal\config\SecurityConfig.class
@@ -32,6 +36,7 @@ com\overseas\portal\repository\EvangelismEditRequestRepository.class
 com\overseas\portal\domain\FaithProcessRecord.class
 com\overseas\portal\domain\Church.class
 com\overseas\portal\domain\FaithProcessRecord$FaithProcessRecordBuilder.class
+com\overseas\portal\repository\MembershipMonthlyRecordRepository.class
 com\overseas\portal\repository\UserRepository.class
 com\overseas\portal\controller\DiagnosisController.class
 com\overseas\portal\service\DiagnosisService$RecordDTO$RecordDTOBuilder.class
@@ -46,8 +51,10 @@ com\overseas\portal\service\AdminService.class
 com\overseas\portal\domain\AuditLog.class
 com\overseas\portal\service\AuthService.class
 com\overseas\portal\service\DiagnosisService.class
+com\overseas\portal\domain\MembershipMonthlyRecord$MembershipMonthlyRecordBuilder.class
 com\overseas\portal\repository\EvangelismWeeklyRecordRepository.class
 com\overseas\portal\controller\EvangelismController.class
+com\overseas\portal\domain\MembershipEditRequest$MembershipEditRequestBuilder.class
 com\overseas\portal\controller\AuthController$VerifyOtpRequest.class
 com\overseas\portal\domain\I18nDictionary.class
 com\overseas\portal\repository\TelegramOtpLogRepository.class
