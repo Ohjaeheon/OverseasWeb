@@ -16,10 +16,10 @@ public interface FaithProcessRecordRepository extends JpaRepository<FaithProcess
 
     Optional<FaithProcessRecord> findByChurch_ChurchIdAndYearMonth(Long churchId, String yearMonth);
 
-    @Query("SELECT f FROM FaithProcessRecord f JOIN FETCH f.church c WHERE f.yearMonth = :yearMonth")
+    @Query("SELECT f FROM FaithProcessRecord f JOIN FETCH f.church c WHERE f.yearMonth = :yearMonth ORDER BY c.sortOrder ASC, c.name ASC")
     List<FaithProcessRecord> findAllWithChurchByYearMonth(@Param("yearMonth") String yearMonth);
 
-    @Query("SELECT f FROM FaithProcessRecord f JOIN FETCH f.church c ORDER BY c.churchId ASC")
+    @Query("SELECT f FROM FaithProcessRecord f JOIN FETCH f.church c ORDER BY c.sortOrder ASC, c.name ASC")
     List<FaithProcessRecord> findAllWithChurch();
 
     @Query("SELECT DISTINCT f.yearMonth FROM FaithProcessRecord f ORDER BY f.yearMonth DESC")

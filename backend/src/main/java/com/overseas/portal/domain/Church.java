@@ -85,6 +85,10 @@ public class Church {
     @Builder.Default
     private Boolean isActive = true;
 
+    @Column(name = "sort_order")
+    @Comment("출력 정렬 순서 (오름차순)")
+    private Integer sortOrder;
+
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     @Comment("생성 일시")

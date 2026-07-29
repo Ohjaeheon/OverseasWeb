@@ -457,12 +457,27 @@ function renderBars(rows){
 function renderTable(rows){
   const cat=CATS[ST.cat];
   const cols=[{l:(ST.group==="개별"?(ST.gubun==="전체"?"대상":ST.gubun):ST.group.replace("별","")), name:true}, ...cat.map(m=>({l:m.l, m}))];
-  if(ST.sortIdx==null){ ST.sortIdx=1; ST.sortDir=-1; }
+  if(ST.sortIdx==null){
+    if (ST.group === '개별') {
+      ST.sortIdx = 0;
+      ST.sortDir = 1;
+    } else {
+      ST.sortIdx = 1;
+      ST.sortDir = -1;
+    }
+  }
   let data=rows.map(g=>({g, cells:cat.map(m=>metricVal(g.agg,m))}));
   const si=ST.sortIdx;
   data.sort((a,b)=>{
     let va,vb;
-    if(si===0){ va=a.g.name; vb=b.g.name; return ST.sortDir*(""+va).localeCompare(""+vb,"ko"); }
+    if(si===0){
+      if (ST.group === '개별') {
+        const orderA = a.g.rec && a.g.rec.sortOrder != null ? a.g.rec.sortOrder : 999999;
+        const orderB = b.g.rec && b.g.rec.sortOrder != null ? b.g.rec.sortOrder : 999999;
+        if (orderA !== orderB) return ST.sortDir*(orderA - orderB);
+      }
+      va=a.g.name; vb=b.g.name; return ST.sortDir*(""+va).localeCompare(""+vb,"ko");
+    }
     va=a.cells[si-1]; vb=b.cells[si-1]; va=(va==null?-Infinity:va); vb=(vb==null?-Infinity:vb);
     return ST.sortDir*(va-vb);
   });
@@ -1555,8 +1570,30 @@ function buildSidebar(){
       it.children.forEach(ch=>{ html+=`<div class="mitem ${ch.cat===ST.cat?'on':''}" style="padding-left:36px;font-size:13px" data-s="${it.s}" data-cat="${ch.cat}"><span class="ico" style="font-size:10px;color:var(--muted)">·</span>${ch.label}</div>`; });
     }
   });
+
+  html += `
+    <div class="mobile-side-actions" style="margin-top:20px;padding-top:15px;border-top:1px solid rgba(255,255,255,0.15)">
+      <div style="padding: 0 10px 10px 10px;">
+        <select class="langSel" onchange="setLang(this.value)" style="width:100%;background:#1e293b;color:#fff;border:1px solid rgba(255,255,255,0.2);border-radius:8px;padding:8px 10px;font-size:13px;font-weight:700">
+          <option value="ko">한국어</option>
+          <option value="en">English</option>
+          <option value="zh">中文</option>
+          <option value="ja">日本語</option>
+        </select>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px;padding: 0 10px;">
+        <button class="repbtn" onclick="showIntro()" style="width:100%;justify-content:center;background:rgba(255,255,255,0.1);color:#fff;border:1px solid rgba(255,255,255,0.2)">🏠 인트로</button>
+        <button class="repbtn" onclick="openShareModal()" style="width:100%;justify-content:center;background:rgba(255,255,255,0.1);color:#fff;border:1px solid rgba(255,255,255,0.2)">📤 공유</button>
+        <button class="repbtn" onclick="window.print()" style="width:100%;justify-content:center;background:rgba(255,255,255,0.1);color:#fff;border:1px solid rgba(255,255,255,0.2)">📄 출력 · PDF 저장</button>
+      </div>
+    </div>
+  `;
+
   document.getElementById("side").innerHTML=html;
-  document.querySelectorAll(".mitem").forEach(m=>m.onclick=()=>{ if(m.dataset.s==="export"){ openExportModal(); } else { setSection(m.dataset.s, m.dataset.cat||null); } });
+  document.querySelectorAll(".mitem").forEach(m=>m.onclick=()=>{
+    if (typeof window.closeSidebar === 'function') window.closeSidebar();
+    if(m.dataset.s==="export"){ openExportModal(); } else { setSection(m.dataset.s, m.dataset.cat||null); }
+  });
 }
 // ========== 📥 공유용 엑셀 내보내기 (담임강사 공유) — 항목 선택 + 순위 ==========
 // 마스터 지표 카탈로그: 각 지표는 aggregate(recs) 객체 a를 받아 값 반환 (t=int/pct)
@@ -1939,13 +1976,32 @@ function renderP1(){
   const el=document.getElementById("secCharts"); if(!el) return;
   const mg=document.getElementById("mainGrid"); if(mg) mg.style.display="none";
   const cat=CATS[ST.cat]; if(!cat){ el.style.display="none"; return; }
-  if(ST.sortIdx==null||ST.sortIdx<0||ST.sortIdx>cat.length){ const pi=cat.findIndex(m=>m.primary); ST.sortIdx=(pi>=0?pi+1:1); ST.sortDir=-1; }
+  if(ST.sortIdx==null||ST.sortIdx<0||ST.sortIdx>cat.length){
+    if (ST.group === '개별') {
+      ST.sortIdx = 0;
+      ST.sortDir = 1;
+    } else {
+      const pi=cat.findIndex(m=>m.primary);
+      ST.sortIdx=(pi>=0?pi+1:1);
+      ST.sortDir=-1;
+    }
+  }
   const si=ST.sortIdx, pm=cat[Math.max(0,si-1)];
   const recs=recordsFor(ST.month,ST.gubun), rows=buildRows();
   const gl=(ST.group==="개별"?(ST.gubun==="전체"?"대상":ST.gubun):ST.group.replace("별",""));
   const cols=[{l:gl,name:true},...cat.map(m=>({l:m.l,m}))];
   let tdata=rows.map(g=>({g,cells:cat.map(m=>metricVal(g.agg,m))}));
-  tdata.sort((a,b)=>{ if(si===0){ if(ST.group==="지파별"){ return ST.sortDir*(DATA.jipaOrder.indexOf(a.g.name)-DATA.jipaOrder.indexOf(b.g.name)); } return ST.sortDir*(""+a.g.name).localeCompare(""+b.g.name,"ko");} let va=a.cells[si-1],vb=b.cells[si-1]; va=(va==null?-Infinity:va); vb=(vb==null?-Infinity:vb); return ST.sortDir*(va-vb); });
+  tdata.sort((a,b)=>{
+    if(si===0){
+      if(ST.group==="지파별"){ return ST.sortDir*(DATA.jipaOrder.indexOf(a.g.name)-DATA.jipaOrder.indexOf(b.g.name)); }
+      if(ST.group==="대륙별"){ return ST.sortDir*(""+a.g.name).localeCompare(""+b.g.name,"ko"); }
+      const orderA = a.g.rec && a.g.rec.sortOrder != null ? a.g.rec.sortOrder : 999999;
+      const orderB = b.g.rec && b.g.rec.sortOrder != null ? b.g.rec.sortOrder : 999999;
+      if (orderA !== orderB) return ST.sortDir*(orderA - orderB);
+      return ST.sortDir*(""+a.g.name).localeCompare(""+b.g.name,"ko");
+    }
+    let va=a.cells[si-1],vb=b.cells[si-1]; va=(va==null?-Infinity:va); vb=(vb==null?-Infinity:vb); return ST.sortDir*(va-vb);
+  });
   const thead="<thead><tr>"+cols.map((c,i)=>`<th data-i="${i}" style="cursor:pointer${c.name?'':';min-width:92px;white-space:normal;vertical-align:bottom'}">${c.l}${i===si?(ST.sortDir<0?" ▼":" ▲"):""}</th>`).join("")+"</tr></thead>";
   const totAgg=aggregate(recs); // 상세표 하단 '계' 행 — 전체 합산(비율은 합산 분자·분모로 재계산)
   const totBase='position:sticky;bottom:0;background:#e9eef7;font-weight:800;border-top:2px solid #b9c8e2';
@@ -1964,7 +2020,17 @@ function renderP1(){
   const cCard=`<div class="card"><h3>대륙별 ${cpm.l}</h3>${donutOrBar(cvals)}</div>`;
   const mo=DATA.months, lv=mo.map(m=>{const v=metricVal(aggregate(recordsFor(m,ST.gubun)),cpm); return v==null?0:(cIsPct?+(v*100).toFixed(1):v);});
   const trendCard=`<div class="card"><h3>월별 ${cpm.l} 추이</h3>${lineSVG(mo,[{name:cpm.l,color:"#2563eb",values:lv}])}</div>`;
-  const chData=rows.map(g=>({...g,val:metricVal(g.agg,cpm)})).filter(g=>g.val!=null).sort((a,b)=>b.val-a.val);
+  const chData=rows.map(g=>({...g,val:metricVal(g.agg,cpm)})).filter(g=>g.val!=null);
+  if (ST.group === '개별') {
+    chData.sort((a, b) => {
+      const orderA = a.rec && a.rec.sortOrder != null ? a.rec.sortOrder : 999999;
+      const orderB = b.rec && b.rec.sortOrder != null ? b.rec.sortOrder : 999999;
+      if (orderA !== orderB) return orderA - orderB;
+      return a.name.localeCompare(b.name, 'ko');
+    });
+  } else {
+    chData.sort((a,b)=>b.val-a.val);
+  }
   const chMax=Math.max(0.0001,...chData.map(d=>Math.abs(d.val)||0));
   const chBars=`<div style="display:flex;flex-direction:column;gap:8px;max-height:520px;overflow-y:auto;padding-right:6px;margin-top:6px">`+chData.map(d=>`<div class="brow" data-name="${encodeURIComponent(d.name)}"><div class="bname" title="${d.name}"><span class="dot" style="background:${d.color}"></span>${d.name}</div><div class="btrack"><div class="bfill" style="width:${Math.max(2,Math.abs(d.val)/chMax*100)}%;background:${d.color}"></div></div><div class="bval">${fmtVal(d.val,cpm)}</div></div>`).join("")+`</div>`;
   const barCard=`<div class="card"><h3>${gl}별 ${cpm.l} 순위</h3>${chData.length?chBars:empty}</div>`;
@@ -2195,7 +2261,7 @@ function renderDiag(){
   const chips=(arr,good)=>arr.length? arr.map(m=>`<span class="chip"><span class="cdot" style="background:${good?'var(--good)':'var(--bad)'}"></span>${chipL(m)}${qchip(m.q)}<span class="cv" style="color:${good?'var(--good)':'var(--bad)'}">${pct(m.v)}</span></span>`).join("") : `<div class="swempty">${good?P('아직 상위 25%에 든 지표가 없습니다.','No metric in the top 25% yet.','暂无进入前25%的指标。','まだ上位25%に入る指標はありません。'):P('하위 25% 지표가 없습니다 — 두드러진 약점이 없습니다.','No metric in the bottom 25% — no notable weakness.','没有后25%的指标 — 无明显弱点。','下位25%の指標はありません — 目立った弱点はありません。')}</div>`;
 
   const jo=DATA.jipaOrder||[]; const jidx=j=>{ const i=jo.indexOf(j); return i<0?999:i; };
-  const opts=all.map((x,i)=>({x,i})).filter(({x})=>inScope(x)).sort((a,b)=>(jidx(a.x.jipa)-jidx(b.x.jipa))||(a.i-b.i)) // 지파=파일 순서, 교회=파일(레코드) 순서
+  const opts=all.map((x,i)=>({x,i})).filter(({x})=>inScope(x)).sort((a,b)=>((a.x.rec && a.x.rec.sortOrder != null ? a.x.rec.sortOrder : 999999) - (b.x.rec && b.x.rec.sortOrder != null ? b.x.rec.sortOrder : 999999)) || a.x.name.localeCompare(b.x.name, 'ko')) // 지정된 정렬 순서대로 정렬
     .map(({x})=>`<option value="${x.name.replace(/"/g,'&quot;')}" ${x.name===c.name?'selected':''}>${jpName(x.jipa)} · ${chName(x.name)}</option>`).join("");
 
   // 종합 한마디 진단 (양/질 균형 + 강·약점)

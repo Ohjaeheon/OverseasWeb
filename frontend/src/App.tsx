@@ -15,6 +15,7 @@ import { AdminRolePage } from './pages/admin/AdminRolePage';
 import { AdminPermissionPage } from './pages/admin/AdminPermissionPage';
 import { AdminI18nPage } from './pages/admin/AdminI18nPage';
 import { AdminSettingsPage } from './pages/admin/AdminSettingsPage';
+import { AdminMessagePage } from './pages/admin/AdminMessagePage';
 import { AdminLoginLogsPage } from './pages/admin/AdminLoginLogsPage';
 import { AdminAccessLogsPage } from './pages/admin/AdminAccessLogsPage';
 import { AdminPlaceholderPage } from './pages/admin/AdminPlaceholderPage';
@@ -85,6 +86,7 @@ export const App: React.FC = () => {
             {/* 로그 및 시스템 */}
             <Route path="i18n" element={<AdminI18nPage />} />
             <Route path="settings" element={<AdminSettingsPage />} />
+            <Route path="messages" element={<AdminMessagePage />} />
             <Route path="login-logs" element={<AdminLoginLogsPage />} />
             <Route path="access-logs" element={<AdminAccessLogsPage />} />
           </Route>

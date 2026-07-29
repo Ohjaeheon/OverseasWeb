@@ -99,7 +99,8 @@ export const AdminFaithPage: React.FC = () => {
     distanceKm: 4760,
     timeDiff: '한국보다 4시간 느림',
     language: '우르두어·영어',
-    religion: '이슬람교'
+    religion: '이슬람교',
+    sortOrder: undefined
   });
 
   // Map 21 default churches from defaultChurches.json
@@ -117,8 +118,14 @@ export const AdminFaithPage: React.FC = () => {
     language: c.language,
     religion: c.religion,
     lat: c.lat || 35.68,
-    lon: c.lon || 139.76
-  }));
+    lon: c.lon || 139.76,
+    sortOrder: c.sortOrder
+  })).sort((a, b) => {
+    const orderA = a.sortOrder !== undefined && a.sortOrder !== null ? a.sortOrder : 999999;
+    const orderB = b.sortOrder !== undefined && b.sortOrder !== null ? b.sortOrder : 999999;
+    if (orderA !== orderB) return orderA - orderB;
+    return a.name.localeCompare(b.name, 'ko');
+  });
 
   const loadChurches = async () => {
     setLoading(true);
@@ -131,6 +138,12 @@ export const AdminFaithPage: React.FC = () => {
       }
 
       if (data && data.length > 0) {
+        data.sort((a, b) => {
+          const orderA = a.sortOrder !== undefined && a.sortOrder !== null ? a.sortOrder : 999999;
+          const orderB = b.sortOrder !== undefined && b.sortOrder !== null ? b.sortOrder : 999999;
+          if (orderA !== orderB) return orderA - orderB;
+          return a.name.localeCompare(b.name, 'ko');
+        });
         setChurches(data);
       } else {
         setChurches(defaultList);
@@ -180,7 +193,8 @@ export const AdminFaithPage: React.FC = () => {
       distanceKm: 4760,
       timeDiff: '한국보다 4시간 느림',
       language: '우르두어·영어',
-      religion: '이슬람교'
+      religion: '이슬람교',
+      sortOrder: undefined
     });
     setIsModalOpen(true);
   };
@@ -342,6 +356,7 @@ export const AdminFaithPage: React.FC = () => {
             <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0', color: '#475569' }}>
               <th style={{ padding: '14px 18px', fontWeight: 700 }}>구분</th>
               <th style={{ padding: '14px 18px', fontWeight: 700 }}>포탈 검색 표시명 (지파 · 교회/지역명)</th>
+              <th style={{ padding: '14px 18px', fontWeight: 700 }}>정렬 순서</th>
               <th style={{ padding: '14px 18px', fontWeight: 700 }}>대륙 / 국가</th>
               <th style={{ padding: '14px 18px', fontWeight: 700 }}>담임 / 담당자</th>
               <th style={{ padding: '14px 18px', fontWeight: 700 }}>거리 · 실시간 현지 시각 및 시차</th>
@@ -393,6 +408,9 @@ export const AdminFaithPage: React.FC = () => {
                     </td>
                     <td style={{ padding: '14px 18px', fontWeight: 700, color: '#1f2a44' }}>
                       {displayName}
+                    </td>
+                    <td style={{ padding: '14px 18px', fontWeight: 700, color: '#2563eb' }}>
+                      {item.sortOrder != null ? item.sortOrder : '-'}
                     </td>
                     <td style={{ padding: '14px 18px', color: '#475569' }}>
                       {item.continent} · {item.country}
@@ -537,6 +555,20 @@ export const AdminFaithPage: React.FC = () => {
                   placeholder="예: 파키스탄교회, 대전교회카자흐스탄아스타나지역"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  style={{ width: '100%', padding: '10px', background: '#f8fafc', border: '1px solid #dbe2ef', borderRadius: '8px', color: '#1f2a44' }}
+                />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '0.82rem', color: '#64748b', marginBottom: '6px', fontWeight: 600 }}>정렬 순서 (숫자가 작을수록 먼저 노출)</label>
+                <input
+                  type="number"
+                  placeholder="예: 1, 2, 3 (미입력 시 사전순 정렬)"
+                  value={formData.sortOrder !== undefined && formData.sortOrder !== null ? formData.sortOrder : ''}
+                  onChange={(e) => {
+                    const val = e.target.value === '' ? undefined : parseInt(e.target.value);
+                    setFormData({ ...formData, sortOrder: val });
+                  }}
                   style={{ width: '100%', padding: '10px', background: '#f8fafc', border: '1px solid #dbe2ef', borderRadius: '8px', color: '#1f2a44' }}
                 />
               </div>

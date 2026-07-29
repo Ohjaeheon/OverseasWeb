@@ -67,6 +67,7 @@ export const AdminLayout: React.FC = () => {
     { grp: "로그 및 시스템" },
     { s: "i18n", ico: "🌐", label: "다국어 사전 관리", path: "/adminsetting/i18n" },
     { s: "sys", ico: "⚙️", label: "시스템 설정", path: "/adminsetting/settings" },
+    { s: "messages", ico: "💬", label: "메세지 관리", path: "/adminsetting/messages" },
     { s: "login_log", ico: "📥", label: "로그인 로그", path: "/adminsetting/login-logs" },
     { s: "access_log", ico: "📥", label: "접근로그", path: "/adminsetting/access-logs" }
   ];

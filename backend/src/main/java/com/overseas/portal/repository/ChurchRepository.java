@@ -10,6 +10,8 @@ import java.util.Optional;
 @Repository
 public interface ChurchRepository extends JpaRepository<Church, Long> {
     List<Church> findByIsActiveTrue();
+    List<Church> findByIsActiveTrueOrderBySortOrderAscNameAsc();
     List<Church> findByContinentAndIsActiveTrue(String continent);
     Optional<Church> findByName(String name);
+    List<Church> findAllByOrderBySortOrderAscNameAsc();
 }

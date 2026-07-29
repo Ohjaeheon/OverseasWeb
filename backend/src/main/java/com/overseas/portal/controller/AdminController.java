@@ -112,10 +112,17 @@ public class AdminController {
     public static class ConfigUpdateRequest {
         private String configKey;
         private String configValue;
+        private String description;
     }
 
     @PutMapping("/configs")
     public ResponseEntity<SystemConfig> updateConfig(@RequestBody ConfigUpdateRequest request) {
-        return ResponseEntity.ok(adminService.updateConfig(request.getConfigKey(), request.getConfigValue()));
+        return ResponseEntity.ok(adminService.updateConfig(request.getConfigKey(), request.getConfigValue(), request.getDescription()));
+    }
+
+    @DeleteMapping("/configs/{configId}")
+    public ResponseEntity<Void> deleteConfig(@PathVariable("configId") Long configId) {
+        adminService.deleteConfig(configId);
+        return ResponseEntity.noContent().build();
     }
 }

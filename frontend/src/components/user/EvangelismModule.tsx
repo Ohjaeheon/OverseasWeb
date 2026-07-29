@@ -2,8 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { logService } from '../../services/logService';
 import { adminService, UserItem } from '../../services/adminService';
+import { diagnosisService } from '../../services/diagnosisService';
 import defaultChurchesData from '../../assets/defaultChurches.json';
-import { Building2, Calendar, Lock, Send, CheckCircle2, BarChart3, Edit3, Sparkles, Filter } from 'lucide-react';
+import { Building2, Calendar, Lock, Send, CheckCircle2, BarChart3, Edit3, Sparkles, Filter, HelpCircle } from 'lucide-react';
 
 import api from '../../services/api';
 
@@ -140,6 +141,21 @@ export const EvangelismModule: React.FC<EvangelismModuleProps> = ({ initialTab =
   const [dbRecords, setDbRecords] = useState<Record<string, Record<string, DeptData>>>({});
   const [loadingDb, setLoadingDb] = useState<boolean>(false);
 
+  // 5. Help Descriptions Tooltip Modal State
+  const [activeHelpKey, setActiveHelpKey] = useState<string | null>(null);
+  const [activeHelpTitle, setActiveHelpTitle] = useState<string>('');
+  const [helpTexts, setHelpTexts] = useState<Record<string, string>>({
+    DESC_EVANGELISM_STATUS_1: '선택한 교회의 주차별 전도 현황을 요약하여 한눈에 볼 수 있는 메인 대시보드 표입니다.',
+    DESC_FIND_DETAIL_2: '주차별 찾기와 탈락수를 볼 수 있습니다.',
+    DESC_GOSPEL_DETAIL_3: '주차별 복음방과 탈락수를 볼 수 있습니다.',
+    DESC_ADMIT_DETAIL_4: '주차별 가개강(등록)과 탈락수를 볼 수 있습니다.'
+  });
+
+  const openHelpModal = (key: string, title: string) => {
+    setActiveHelpKey(key);
+    setActiveHelpTitle(title);
+  };
+
   const fetchDbRecords = async () => {
     setLoadingDb(true);
     try {
@@ -238,6 +254,21 @@ export const EvangelismModule: React.FC<EvangelismModuleProps> = ({ initialTab =
     return () => window.removeEventListener('refreshEditRequests', handleRefresh);
   }, [selectedChurch, selectedYear, selectedWeekAgg]);
 
+  // Fetch help descriptions on mount
+  useEffect(() => {
+    adminService.getConfigs().then((data) => {
+      const map: Record<string, string> = {};
+      data.forEach((c: any) => {
+        if (c.configKey.startsWith('DESC_')) {
+          map[c.configKey] = c.configValue;
+        }
+      });
+      setHelpTexts(prev => ({ ...prev, ...map }));
+    }).catch((e) => {
+      console.warn("Failed to load help descriptions from DB, using defaults:", e);
+    });
+  }, []);
+
   // Load User Scope & Available Churches
   useEffect(() => {
     const userStr = localStorage.getItem('user');
@@ -265,24 +296,52 @@ export const EvangelismModule: React.FC<EvangelismModuleProps> = ({ initialTab =
     setUserScope(scope);
     setUserRole(normRole);
 
-    // Build church options
-    const list: { id: string; name: string; jipa: string }[] = [];
-    defaultChurchesData.forEach((c: any) => {
-      list.push({ id: c.name, name: c.name, jipa: c.jipa || '맛디아' });
-    });
-    setAvailableChurches(list);
-
-    // Apply User Permission Scope Filter
-    if (normRole !== 'ROLE_ADMIN' && normRole !== 'ADMIN' && scope !== '전체') {
-      const matched = list.find(c => c.name === scope || `${c.jipa} · ${c.name}` === scope);
-      if (matched) {
-        setSelectedChurch(matched.name);
-      } else {
-        setSelectedChurch(list[0]?.name || '도쿄교회');
+    // Build church options and load from database
+    const loadAvailableChurches = async () => {
+      let list: { id: string; name: string; jipa: string; sortOrder?: number }[] = [];
+      try {
+        const data = await diagnosisService.getChurches();
+        if (data && data.length > 0) {
+          list = data.map((c: any) => ({
+            id: c.name,
+            name: c.name,
+            jipa: c.jipa || '맛디아',
+            sortOrder: c.sortOrder
+          }));
+        }
+      } catch (err) {
+        console.warn("Failed to fetch churches from API, using default list:", err);
       }
-    } else {
-      setSelectedChurch('도쿄교회');
-    }
+
+      if (list.length === 0) {
+        defaultChurchesData.forEach((c: any) => {
+          list.push({ id: c.name, name: c.name, jipa: c.jipa || '맛디아', sortOrder: c.sortOrder });
+        });
+      }
+
+      // Sort by sortOrder ASC, name ASC
+      list.sort((a, b) => {
+        const orderA = a.sortOrder !== undefined && a.sortOrder !== null ? a.sortOrder : 999999;
+        const orderB = b.sortOrder !== undefined && b.sortOrder !== null ? b.sortOrder : 999999;
+        if (orderA !== orderB) return orderA - orderB;
+        return a.name.localeCompare(b.name, 'ko');
+      });
+
+      setAvailableChurches(list);
+
+      // Apply User Permission Scope Filter
+      if (normRole !== 'ROLE_ADMIN' && normRole !== 'ADMIN' && scope !== '전체') {
+        const matched = list.find(c => c.name === scope || `${c.jipa} · ${c.name}` === scope);
+        if (matched) {
+          setSelectedChurch(matched.name);
+        } else {
+          setSelectedChurch(list[0]?.name || '도쿄교회');
+        }
+      } else {
+        setSelectedChurch('도쿄교회');
+      }
+    };
+    loadAvailableChurches();
 
     // Load Overseas Admin Users for Modal
     const loadUsers = async () => {
@@ -736,7 +795,17 @@ export const EvangelismModule: React.FC<EvangelismModuleProps> = ({ initialTab =
           {/* ===================================================================== */}
           <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '16px', padding: '24px', marginBottom: '28px', boxShadow: '0 4px 14px rgba(0,0,0,0.03)' }}>
             <h2 style={{ fontSize: '1.2rem', fontWeight: 800, color: '#0f172a', margin: '0 0 16px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              📊 (1) 회별 전도 현황 <span style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: 600 }}>({selectedChurch} · {selectedYear} {selectedWeekCheck})</span>
+              <span>📊 (1) 회별 전도 현황</span>
+              <span style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: 600 }}>({selectedChurch} · {selectedYear} {selectedWeekCheck})</span>
+              <button 
+                onClick={() => openHelpModal('DESC_EVANGELISM_STATUS_1', '(1) 회별 전도 현황 안내')}
+                style={{ background: 'none', border: 'none', padding: 0, display: 'inline-flex', alignItems: 'center', cursor: 'pointer', color: '#94a3b8', transition: 'color 0.15s' }}
+                onMouseEnter={(e) => e.currentTarget.style.color = '#2563eb'}
+                onMouseLeave={(e) => e.currentTarget.style.color = '#94a3b8'}
+                title="설명 보기"
+              >
+                <HelpCircle size={16} />
+              </button>
             </h2>
 
             <div style={{ overflowX: 'auto' }}>
@@ -831,9 +900,9 @@ export const EvangelismModule: React.FC<EvangelismModuleProps> = ({ initialTab =
           </div>
 
           {/* Helper Render Function for (2) 찾기, (3) 복음방, (4) 가개강 상세분석 Tables */}
-          {renderDetailAnalysisTable('(2) 찾기 상세분석', '주차별 찾기와 탈락수를 볼 수 있습니다.', '찾', '탈', filteredWeeks, getWeeklyData, 'find', 'findDrop')}
-          {renderDetailAnalysisTable('(3) 복음방 상세분석', '주차별 복음방과 탈락수를 볼 수 있습니다.', '복', '탈', filteredWeeks, getWeeklyData, 'gospel', 'gospelDrop')}
-          {renderDetailAnalysisTable('(4) 가개강 상세분석', '주차별 가개강(등록)과 탈락수를 볼 수 있습니다.', '개', '탈', filteredWeeks, getWeeklyData, 'admit', 'admitDrop')}
+          {renderDetailAnalysisTable('(2) 찾기 상세분석', '주차별 찾기와 탈락수를 볼 수 있습니다.', '찾', '탈', filteredWeeks, getWeeklyData, 'find', 'findDrop', openHelpModal)}
+          {renderDetailAnalysisTable('(3) 복음방 상세분석', '주차별 복음방과 탈락수를 볼 수 있습니다.', '복', '탈', filteredWeeks, getWeeklyData, 'gospel', 'gospelDrop', openHelpModal)}
+          {renderDetailAnalysisTable('(4) 가개강 상세분석', '주차별 가개강(등록)과 탈락수를 볼 수 있습니다.', '개', '탈', filteredWeeks, getWeeklyData, 'admit', 'admitDrop', openHelpModal)}
         </div>
       )}
 
@@ -915,8 +984,8 @@ export const EvangelismModule: React.FC<EvangelismModuleProps> = ({ initialTab =
               )}
             </div>
 
-            {/* Table Container */}
-            <div style={{ overflowX: 'auto' }}>
+            {/* Table Container - Desktop view */}
+            <div className="desktop-table-view" style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem', textAlign: 'center' }}>
                 <thead>
                   <tr style={{ background: '#f8fafc', borderBottom: '2px solid #cbd5e1' }}>
@@ -1118,6 +1187,210 @@ export const EvangelismModule: React.FC<EvangelismModuleProps> = ({ initialTab =
                 </tbody>
               </table>
             </div>
+
+            {/* Table Container - Mobile stacked view */}
+            <div className="mobile-table-view">
+              {/* Table 1: Previous Week (전주 실적) */}
+              <div style={{ marginBottom: '24px', background: '#f8fafc', padding: '16px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px', flexWrap: 'wrap', gap: '8px' }}>
+                  <h3 style={{ fontSize: '0.92rem', fontWeight: 800, color: hasPrevEditPermission ? '#166534' : '#991b1b', margin: 0 }}>
+                    이전 주차 ({prevWeekKey}) 실적 {hasPrevEditPermission ? '🔓' : '🔒'}
+                  </h3>
+                  {!hasPrevEditPermission && (
+                    <button
+                      onClick={() => {
+                        setRequestWeek(prevWeekKey);
+                        setIsModalOpen(true);
+                      }}
+                      style={{
+                        background: '#ffffff',
+                        border: '1px solid #fca5a5',
+                        color: '#dc2626',
+                        padding: '4px 10px',
+                        borderRadius: '6px',
+                        fontSize: '0.7rem',
+                        fontWeight: 800,
+                        cursor: 'pointer',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                        boxShadow: '0 2px 6px rgba(220, 38, 38, 0.12)'
+                      }}
+                    >
+                      <Lock size={11} /> 수정 허용 요청
+                    </button>
+                  )}
+                </div>
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem', textAlign: 'center', minWidth: '320px' }}>
+                    <thead>
+                      <tr style={{ background: '#f1f5f9', borderBottom: '2px solid #cbd5e1' }}>
+                        <th style={{ padding: '8px', textAlign: 'left', fontWeight: 800 }}>구분</th>
+                        <th style={{ padding: '6px', color: '#2563eb' }}>찾</th>
+                        <th style={{ padding: '6px', color: '#dc2626' }}>탈</th>
+                        <th style={{ padding: '6px', color: '#7c3aed' }}>복</th>
+                        <th style={{ padding: '6px', color: '#dc2626' }}>탈</th>
+                        <th style={{ padding: '6px', color: '#16a34a' }}>개</th>
+                        <th style={{ padding: '6px', color: '#dc2626' }}>탈</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {DEPARTMENTS.map((dept) => {
+                        const prev = getWeeklyData(prevWeekKey, dept);
+                        return (
+                          <tr key={dept} style={{ borderBottom: '1px solid #cbd5e1' }}>
+                            <td style={{ padding: '8px', textAlign: 'left', fontWeight: 700 }}>{dept}</td>
+                            <td style={{ padding: '6px 4px', color: '#64748b' }}>{prev.find}</td>
+                            <td style={{ padding: '6px 4px', color: '#94a3b8' }}>{prev.findDrop}</td>
+                            <td style={{ padding: '6px 4px', color: '#64748b' }}>{prev.gospel}</td>
+                            <td style={{ padding: '6px 4px', color: '#94a3b8' }}>{prev.gospelDrop}</td>
+                            <td style={{ padding: '6px 4px', color: '#64748b' }}>{prev.admit}</td>
+                            <td style={{ padding: '6px 4px', color: '#94a3b8' }}>{prev.admitDrop}</td>
+                          </tr>
+                        );
+                      })}
+                      <tr style={{ background: '#f1f5f9', fontWeight: 900 }}>
+                        <td style={{ padding: '8px', textAlign: 'left' }}>합계</td>
+                        <td style={{ padding: '6px 4px' }}>{DEPARTMENTS.reduce((sum, d) => sum + getWeeklyData(prevWeekKey, d).find, 0)}</td>
+                        <td style={{ padding: '6px 4px' }}>{DEPARTMENTS.reduce((sum, d) => sum + getWeeklyData(prevWeekKey, d).findDrop, 0)}</td>
+                        <td style={{ padding: '6px 4px' }}>{DEPARTMENTS.reduce((sum, d) => sum + getWeeklyData(prevWeekKey, d).gospel, 0)}</td>
+                        <td style={{ padding: '6px 4px' }}>{DEPARTMENTS.reduce((sum, d) => sum + getWeeklyData(prevWeekKey, d).gospelDrop, 0)}</td>
+                        <td style={{ padding: '6px 4px' }}>{DEPARTMENTS.reduce((sum, d) => sum + getWeeklyData(prevWeekKey, d).admit, 0)}</td>
+                        <td style={{ padding: '6px 4px' }}>{DEPARTMENTS.reduce((sum, d) => sum + getWeeklyData(prevWeekKey, d).admitDrop, 0)}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Table 2: Active/Selected Week (이번주/선택주 실적) */}
+              <div style={{ background: isEditable ? '#f0fdf4' : '#fef2f2', padding: '16px', borderRadius: '12px', border: '1px solid ' + (isEditable ? '#bbf7d0' : '#fecaca') }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px', flexWrap: 'wrap', gap: '8px' }}>
+                  <h3 style={{ fontSize: '0.92rem', fontWeight: 800, color: isEditable ? '#166534' : '#991b1b', margin: 0 }}>
+                    이번 주차 ({selectedWeekAgg}) 실적 {isEditable ? '✏️' : '🔒'}
+                  </h3>
+                  {!isEditable && (
+                    <button
+                      onClick={() => {
+                        setRequestWeek(selectedWeekAgg);
+                        setIsModalOpen(true);
+                      }}
+                      style={{
+                        background: '#ffffff',
+                        border: '1px solid #fca5a5',
+                        color: '#dc2626',
+                        padding: '4px 10px',
+                        borderRadius: '6px',
+                        fontSize: '0.7rem',
+                        fontWeight: 800,
+                        cursor: 'pointer',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                        boxShadow: '0 2px 6px rgba(220, 38, 38, 0.12)'
+                      }}
+                    >
+                      <Lock size={11} /> 수정 허용 요청
+                    </button>
+                  )}
+                </div>
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem', textAlign: 'center', minWidth: '320px' }}>
+                    <thead>
+                      <tr style={{ background: '#f1f5f9', borderBottom: '2px solid #cbd5e1' }}>
+                        <th style={{ padding: '8px', textAlign: 'left', fontWeight: 800 }}>구분</th>
+                        <th style={{ padding: '6px', color: '#2563eb' }}>찾</th>
+                        <th style={{ padding: '6px', color: '#dc2626' }}>탈</th>
+                        <th style={{ padding: '6px', color: '#7c3aed' }}>복</th>
+                        <th style={{ padding: '6px', color: '#dc2626' }}>탈</th>
+                        <th style={{ padding: '6px', color: '#16a34a' }}>개</th>
+                        <th style={{ padding: '6px', color: '#dc2626' }}>탈</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {DEPARTMENTS.map((dept) => {
+                        const curr = currentWeekInputs[dept] || { reg: 20, find: 0, findDrop: 0, gospel: 0, gospelDrop: 0, admit: 0, admitDrop: 0 };
+                        return (
+                          <tr key={dept} style={{ borderBottom: '1px solid #cbd5e1' }}>
+                            <td style={{ padding: '8px', textAlign: 'left', fontWeight: 700 }}>{dept}</td>
+                            {isEditable ? (
+                              <>
+                                <td style={{ padding: '4px 2px' }}>
+                                  <input
+                                    type="number"
+                                    value={curr.find}
+                                    onChange={(e) => handleInputChange(dept, 'find', parseInt(e.target.value) || 0)}
+                                    style={{ width: '40px', padding: '4px', textAlign: 'center', border: '1px solid #cbd5e1', borderRadius: '6px', fontWeight: 800, color: '#2563eb' }}
+                                  />
+                                </td>
+                                <td style={{ padding: '4px 2px' }}>
+                                  <input
+                                    type="number"
+                                    value={curr.findDrop}
+                                    onChange={(e) => handleInputChange(dept, 'findDrop', parseInt(e.target.value) || 0)}
+                                    style={{ width: '40px', padding: '4px', textAlign: 'center', border: '1px solid #cbd5e1', borderRadius: '6px', fontWeight: 800, color: '#dc2626' }}
+                                  />
+                                </td>
+                                <td style={{ padding: '4px 2px' }}>
+                                  <input
+                                    type="number"
+                                    value={curr.gospel}
+                                    onChange={(e) => handleInputChange(dept, 'gospel', parseInt(e.target.value) || 0)}
+                                    style={{ width: '40px', padding: '4px', textAlign: 'center', border: '1px solid #cbd5e1', borderRadius: '6px', fontWeight: 800, color: '#7c3aed' }}
+                                  />
+                                </td>
+                                <td style={{ padding: '4px 2px' }}>
+                                  <input
+                                    type="number"
+                                    value={curr.gospelDrop}
+                                    onChange={(e) => handleInputChange(dept, 'gospelDrop', parseInt(e.target.value) || 0)}
+                                    style={{ width: '40px', padding: '4px', textAlign: 'center', border: '1px solid #cbd5e1', borderRadius: '6px', fontWeight: 800, color: '#dc2626' }}
+                                  />
+                                </td>
+                                <td style={{ padding: '4px 2px' }}>
+                                  <input
+                                    type="number"
+                                    value={curr.admit}
+                                    onChange={(e) => handleInputChange(dept, 'admit', parseInt(e.target.value) || 0)}
+                                    style={{ width: '40px', padding: '4px', textAlign: 'center', border: '1px solid #cbd5e1', borderRadius: '6px', fontWeight: 800, color: '#16a34a' }}
+                                  />
+                                </td>
+                                <td style={{ padding: '4px 2px' }}>
+                                  <input
+                                    type="number"
+                                    value={curr.admitDrop}
+                                    onChange={(e) => handleInputChange(dept, 'admitDrop', parseInt(e.target.value) || 0)}
+                                    style={{ width: '40px', padding: '4px', textAlign: 'center', border: '1px solid #cbd5e1', borderRadius: '6px', fontWeight: 800, color: '#dc2626' }}
+                                  />
+                                </td>
+                              </>
+                            ) : (
+                              <>
+                                <td style={{ padding: '6px 4px', color: '#2563eb', fontWeight: 700 }}>{curr.find}</td>
+                                <td style={{ padding: '6px 4px', color: '#dc2626', fontWeight: 700 }}>{curr.findDrop}</td>
+                                <td style={{ padding: '6px 4px', color: '#7c3aed', fontWeight: 700 }}>{curr.gospel}</td>
+                                <td style={{ padding: '6px 4px', color: '#dc2626', fontWeight: 700 }}>{curr.gospelDrop}</td>
+                                <td style={{ padding: '6px 4px', color: '#16a34a', fontWeight: 700 }}>{curr.admit}</td>
+                                <td style={{ padding: '6px 4px', color: '#dc2626', fontWeight: 700 }}>{curr.admitDrop}</td>
+                              </>
+                            )}
+                          </tr>
+                        );
+                      })}
+                      <tr style={{ background: '#f1f5f9', fontWeight: 900 }}>
+                        <td style={{ padding: '8px', textAlign: 'left' }}>합계</td>
+                        <td style={{ padding: '6px 4px', color: '#2563eb' }}>{DEPARTMENTS.reduce((sum, d) => sum + (currentWeekInputs[d]?.find || 0), 0)}</td>
+                        <td style={{ padding: '6px 4px', color: '#dc2626' }}>{DEPARTMENTS.reduce((sum, d) => sum + (currentWeekInputs[d]?.findDrop || 0), 0)}</td>
+                        <td style={{ padding: '6px 4px', color: '#7c3aed' }}>{DEPARTMENTS.reduce((sum, d) => sum + (currentWeekInputs[d]?.gospel || 0), 0)}</td>
+                        <td style={{ padding: '6px 4px', color: '#dc2626' }}>{DEPARTMENTS.reduce((sum, d) => sum + (currentWeekInputs[d]?.gospelDrop || 0), 0)}</td>
+                        <td style={{ padding: '6px 4px', color: '#16a34a' }}>{DEPARTMENTS.reduce((sum, d) => sum + (currentWeekInputs[d]?.admit || 0), 0)}</td>
+                        <td style={{ padding: '6px 4px', color: '#dc2626' }}>{DEPARTMENTS.reduce((sum, d) => sum + (currentWeekInputs[d]?.admitDrop || 0), 0)}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
           </div>
         );
       })()}
@@ -1267,6 +1540,62 @@ export const EvangelismModule: React.FC<EvangelismModuleProps> = ({ initialTab =
           </div>
         </div>
       )}
+
+      {/* ========================================================================= */}
+      {/* Help Modal Popup Window                                                   */}
+      {/* ========================================================================= */}
+      {activeHelpKey && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(15, 23, 42, 0.5)',
+          backdropFilter: 'blur(3px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 99999,
+          padding: '20px'
+        }} onClick={() => setActiveHelpKey(null)}>
+          <div style={{
+            background: '#ffffff',
+            borderRadius: '16px',
+            width: '100%',
+            maxWidth: '420px',
+            padding: '24px',
+            boxShadow: '0 20px 40px rgba(0,0,0,0.2)',
+            animation: 'fadeIn 0.15s ease',
+            border: '1px solid #e2e8f0'
+          }} onClick={(e) => e.stopPropagation()}>
+            <h3 style={{ fontSize: '1.05rem', fontWeight: 800, color: '#1f2a44', marginTop: 0, marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              ℹ️ {activeHelpTitle}
+            </h3>
+            <p style={{ fontSize: '0.9rem', color: '#475569', lineHeight: 1.55, margin: '0 0 20px 0', whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
+              {helpTexts[activeHelpKey] || '설명이 등록되지 않았습니다.'}
+            </p>
+            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <button
+                onClick={() => setActiveHelpKey(null)}
+                style={{
+                  background: '#2563eb',
+                  color: '#ffffff',
+                  border: 'none',
+                  borderRadius: '8px',
+                  padding: '8px 16px',
+                  fontWeight: 700,
+                  fontSize: '0.85rem',
+                  cursor: 'pointer',
+                  boxShadow: '0 2px 6px rgba(37,99,235,0.2)'
+                }}
+              >
+                닫기
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
@@ -1280,12 +1609,29 @@ function renderDetailAnalysisTable(
   weeks: string[],
   getDataFn: (w: string, dept: string) => DeptData,
   valKey: 'find' | 'gospel' | 'admit',
-  dropKey: 'findDrop' | 'gospelDrop' | 'admitDrop'
+  dropKey: 'findDrop' | 'gospelDrop' | 'admitDrop',
+  onHelpClick?: (key: string, title: string) => void
 ) {
+  let helpKey = '';
+  if (title.includes('(2)')) helpKey = 'DESC_FIND_DETAIL_2';
+  else if (title.includes('(3)')) helpKey = 'DESC_GOSPEL_DETAIL_3';
+  else if (title.includes('(4)')) helpKey = 'DESC_ADMIT_DETAIL_4';
+
   return (
     <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '16px', padding: '24px', marginBottom: '28px', boxShadow: '0 4px 14px rgba(0,0,0,0.03)' }}>
-      <h2 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#0f172a', margin: '0 0 4px 0' }}>
-        {title}
+      <h2 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#0f172a', margin: '0 0 4px 0', display: 'flex', alignItems: 'center', gap: '6px' }}>
+        <span>{title}</span>
+        {helpKey && onHelpClick && (
+          <button 
+            onClick={() => onHelpClick(helpKey, `${title} 안내`)}
+            style={{ background: 'none', border: 'none', padding: 0, display: 'inline-flex', alignItems: 'center', cursor: 'pointer', color: '#94a3b8', transition: 'color 0.15s' }}
+            onMouseEnter={(e) => e.currentTarget.style.color = '#2563eb'}
+            onMouseLeave={(e) => e.currentTarget.style.color = '#94a3b8'}
+            title="설명 보기"
+          >
+            <HelpCircle size={15} />
+          </button>
+        )}
       </h2>
       <p style={{ color: '#64748b', fontSize: '0.82rem', margin: '0 0 16px 0' }}>
         {desc}

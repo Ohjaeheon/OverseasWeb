@@ -108,7 +108,7 @@ public class AdminService {
     // Church Management
     @Transactional(readOnly = true)
     public List<Church> getAllChurches() {
-        return churchRepository.findAll();
+        return churchRepository.findAllByOrderBySortOrderAscNameAsc();
     }
 
     public Church createChurch(Church church) {
@@ -130,6 +130,7 @@ public class AdminService {
         if (updated.getTimeDiff() != null) church.setTimeDiff(updated.getTimeDiff());
         if (updated.getLanguage() != null) church.setLanguage(updated.getLanguage());
         if (updated.getReligion() != null) church.setReligion(updated.getReligion());
+        church.setSortOrder(updated.getSortOrder());
         logAudit("ADMIN", "UPDATE_CHURCH", "Updated church ID: " + churchId + ", name: " + church.getName());
         return churchRepository.save(church);
     }
@@ -166,12 +167,20 @@ public class AdminService {
         return configRepository.findAll();
     }
 
-    public SystemConfig updateConfig(String configKey, String configValue) {
+    public SystemConfig updateConfig(String configKey, String configValue, String description) {
         SystemConfig config = configRepository.findByConfigKey(configKey)
                 .orElseGet(() -> SystemConfig.builder().configKey(configKey).build());
         config.setConfigValue(configValue);
+        if (description != null) {
+            config.setDescription(description);
+        }
         logAudit("ADMIN", "UPDATE_CONFIG", "Updated key: " + configKey);
         return configRepository.save(config);
+    }
+
+    public void deleteConfig(Long configId) {
+        configRepository.deleteById(configId);
+        logAudit("ADMIN", "DELETE_CONFIG", "Deleted config ID: " + configId);
     }
 
     private void logAudit(String username, String action, String details) {

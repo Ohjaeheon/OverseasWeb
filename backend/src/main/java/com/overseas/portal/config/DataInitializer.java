@@ -69,6 +69,36 @@ public class DataInitializer implements CommandLineRunner {
                     .build());
         }
 
+        // 2-1. Initial Help Description Configs
+        if (systemConfigRepository.findByConfigKey("DESC_EVANGELISM_STATUS_1").isEmpty()) {
+            systemConfigRepository.save(SystemConfig.builder()
+                    .configKey("DESC_EVANGELISM_STATUS_1")
+                    .configValue("선택한 교회의 주차별 전도 현황을 요약하여 한눈에 볼 수 있는 메인 대시보드 표입니다.")
+                    .description("(1) 회별 전도 현황 도움말 설명")
+                    .build());
+        }
+        if (systemConfigRepository.findByConfigKey("DESC_FIND_DETAIL_2").isEmpty()) {
+            systemConfigRepository.save(SystemConfig.builder()
+                    .configKey("DESC_FIND_DETAIL_2")
+                    .configValue("주차별 찾기와 탈락수를 볼 수 있습니다.")
+                    .description("(2) 찾기 상세분석 도움말 설명")
+                    .build());
+        }
+        if (systemConfigRepository.findByConfigKey("DESC_GOSPEL_DETAIL_3").isEmpty()) {
+            systemConfigRepository.save(SystemConfig.builder()
+                    .configKey("DESC_GOSPEL_DETAIL_3")
+                    .configValue("주차별 복음방과 탈락수를 볼 수 있습니다.")
+                    .description("(3) 복음방 상세분석 도움말 설명")
+                    .build());
+        }
+        if (systemConfigRepository.findByConfigKey("DESC_ADMIT_DETAIL_4").isEmpty()) {
+            systemConfigRepository.save(SystemConfig.builder()
+                    .configKey("DESC_ADMIT_DETAIL_4")
+                    .configValue("주차별 가개강(등록)과 탈락수를 볼 수 있습니다.")
+                    .description("(4) 가개강 상세분석 도움말 설명")
+                    .build());
+        }
+
         // 3. Seed All 21 Churches and 42 Faith Records from data.js into PostgreSQL DB if count < 21
         if (churchRepository.count() < 21) {
             log.info("Seeding all 21 churches and 42 faith process records from data.js into PostgreSQL overseas database...");

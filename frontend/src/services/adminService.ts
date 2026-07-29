@@ -27,6 +27,7 @@ export interface ChurchItem {
   religion?: string;
   lat?: number;
   lon?: number;
+  sortOrder?: number;
   isActive?: boolean;
 }
 
@@ -107,8 +108,13 @@ export const adminService = {
     return res.data;
   },
 
-  updateConfig: async (configKey: string, configValue: string) => {
-    const res = await api.put('/admin/configs', { configKey, configValue });
+  updateConfig: async (configKey: string, configValue: string, description?: string) => {
+    const res = await api.put('/admin/configs', { configKey, configValue, description });
+    return res.data;
+  },
+
+  deleteConfig: async (configId: number) => {
+    const res = await api.delete(`/admin/configs/${configId}`);
     return res.data;
   }
 };

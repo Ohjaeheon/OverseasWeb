@@ -44,6 +44,7 @@ public class DiagnosisService {
         private Double lat;
         private Double lon;
         private String month;
+        private Integer sortOrder;
 
         // ① 전도
         private Integer evangReg;
@@ -186,7 +187,7 @@ public class DiagnosisService {
     }
 
     public List<Church> getAllChurches() {
-        return churchRepository.findByIsActiveTrue();
+        return churchRepository.findByIsActiveTrueOrderBySortOrderAscNameAsc();
     }
 
     private RecordDTO mapToDTO(FaithProcessRecord r) {
@@ -202,6 +203,7 @@ public class DiagnosisService {
                 .lat(c.getLat() != null ? c.getLat().doubleValue() : null)
                 .lon(c.getLon() != null ? c.getLon().doubleValue() : null)
                 .month(r.getYearMonth())
+                .sortOrder(c.getSortOrder())
                 .evangReg(r.getEvangReg())
                 .bibleMonthReg(r.getBibleMonthReg())
                 .bibleCumReg(r.getBibleCumReg())

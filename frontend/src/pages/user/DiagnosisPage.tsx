@@ -174,6 +174,24 @@ export const DiagnosisPage: React.FC<DiagnosisPageProps> = ({ section = 'home', 
       navigate('/adminsetting/dashboard');
     };
 
+    (window as any).toggleSidebar = () => {
+      const side = document.getElementById('side');
+      const overlay = document.getElementById('sidebarOverlay');
+      if (side && overlay) {
+        side.classList.toggle('open');
+        overlay.classList.toggle('open');
+      }
+    };
+
+    (window as any).closeSidebar = () => {
+      const side = document.getElementById('side');
+      const overlay = document.getElementById('sidebarOverlay');
+      if (side && overlay) {
+        side.classList.remove('open');
+        overlay.classList.remove('open');
+      }
+    };
+
     // Show Admin System Button if logged in as Admin
     setTimeout(() => {
       try {
@@ -398,13 +416,15 @@ export const DiagnosisPage: React.FC<DiagnosisPageProps> = ({ section = 'home', 
       weeklyRecords: []
     };
 
-    loadScript('diag-engine-script', getUrl('assets/diagnosisEngine.js'))
+    loadScript('diag-engine-script', `${getUrl('assets/diagnosisEngine.js')}?v=3`)
       .then(() => {
         initEngine();
       });
 
     return () => {
       delete (window as any).reactNavigate;
+      delete (window as any).toggleSidebar;
+      delete (window as any).closeSidebar;
     };
   }, [navigate, section]);
 
@@ -418,6 +438,7 @@ export const DiagnosisPage: React.FC<DiagnosisPageProps> = ({ section = 'home', 
     return (
       <div style={{ minHeight: '100vh', background: '#f8fafc' }}>
         <div className="topbar">
+          <button className="menu-toggle" id="menuToggle" onClick={() => (window as any).toggleSidebar()}>☰</button>
           <div className="logo">🌐</div>
           <div className="brandwrap">
             <div className="brand">해외선교부 <b>업무포탈</b></div>
@@ -433,7 +454,8 @@ export const DiagnosisPage: React.FC<DiagnosisPageProps> = ({ section = 'home', 
           }} style={{ background: '#ef4444', color: 'white', border: 'none', fontWeight: 700 }}>🔒 로그아웃</button>
         </div>
         <div className="shell">
-          <nav className="side" id="side" style={{ display: 'block' }}></nav>
+          <div className="sidebar-overlay" id="sidebarOverlay" onClick={() => (window as any).closeSidebar()}></div>
+          <nav className="side" id="side"></nav>
           <main className="main" style={{ flex: 1, padding: '20px', overflowY: 'auto' }}>
             {(section === 'evangelism/check' || section === 'evangelism/aggregate') ? (
               <EvangelismModule initialTab={section === 'evangelism/check' ? 'check' : 'aggregate'} />
@@ -486,6 +508,7 @@ export const DiagnosisPage: React.FC<DiagnosisPageProps> = ({ section = 'home', 
 </div>
 
 <div class="topbar">
+  <button class="menu-toggle" id="menuToggle" onclick="toggleSidebar()">☰</button>
   <div class="logo">🌐</div>
   <div class="brandwrap">
     <div class="brand" id="tbBrand">해외선교부 <b>업무포탈</b></div>
@@ -509,6 +532,7 @@ export const DiagnosisPage: React.FC<DiagnosisPageProps> = ({ section = 'home', 
 </div>
 
 <div class="shell">
+  <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
   <nav class="side" id="side"></nav>
   <main class="main">
     <div id="homeview"></div>
