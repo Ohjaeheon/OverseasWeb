@@ -47,17 +47,7 @@ export const AdminLayout: React.FC = () => {
     { s: "inspect", ico: "🚨", label: "상세 점검 (양·질)", path: "/adminsetting/church-detail" },
 
     { grp: "데이터 관리" },
-    { s: "p1", ico: "①", label: "전도·가개강", path: "/adminsetting/evangelism" },
-    { s: "p2", ico: "②", label: "센터", path: "/adminsetting/center" },
-    { s: "p3", ico: "③", label: "내무", path: "/adminsetting/membership" },
-    {
-      s: "p4", ico: "④", label: "예배", path: "/adminsetting/worship",
-      children: [
-        { label: "전월입교자", path: "/adminsetting/worship/prev-admit" },
-        { label: "전성도 예배 출석", path: "/adminsetting/worship/all-attend" },
-        { label: "결석 현황", path: "/adminsetting/worship/absent" }
-      ]
-    },
+    { s: "weekly_worship", ico: "📅", label: "주간예배 출결", path: "/adminsetting/weekly-worship" },
 
     { grp: "회원 및 권한" },
     { s: "users", ico: "🌍", label: "회원 관리", path: "/adminsetting/users" },
@@ -65,6 +55,7 @@ export const AdminLayout: React.FC = () => {
     { s: "perm", ico: "🔑", label: "권한별 접근 메뉴 설정", path: "/adminsetting/permissions" },
 
     { grp: "로그 및 시스템" },
+    { s: "admin_bot", ico: "🤖", label: "봇 연결 관리", path: "/adminsetting/bot" },
     { s: "i18n", ico: "🌐", label: "다국어 사전 관리", path: "/adminsetting/i18n" },
     { s: "sys", ico: "⚙️", label: "시스템 설정", path: "/adminsetting/settings" },
     { s: "messages", ico: "💬", label: "메세지 관리", path: "/adminsetting/messages" },

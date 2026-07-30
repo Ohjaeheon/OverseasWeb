@@ -19,6 +19,9 @@ export interface AuthResponse {
   name?: string;
   role?: string;
   assignedCountry?: string;
+  mustChangePassword?: boolean;
+  isOtpExempt?: boolean;
+  telegramChatId?: string;
   message: string;
 }
 

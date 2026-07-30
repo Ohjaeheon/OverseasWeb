@@ -77,6 +77,7 @@ public class AdminService {
         if (updated.getTelegramId() != null) user.setTelegramId(updated.getTelegramId());
         if (updated.getTelegramChatId() != null) user.setTelegramChatId(updated.getTelegramChatId());
         if (updated.getIsActive() != null) user.setIsActive(updated.getIsActive());
+        if (updated.getIsOtpExempt() != null) user.setIsOtpExempt(updated.getIsOtpExempt());
 
         logAudit("ADMIN", "UPDATE_USER", "Updated user ID: " + userId + ", username: " + user.getUsername());
         return userRepository.save(user);

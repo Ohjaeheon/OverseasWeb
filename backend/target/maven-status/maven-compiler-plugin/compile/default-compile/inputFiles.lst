@@ -7,10 +7,12 @@ E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\config\DataIniti
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\controller\AuthController.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\domain\EvangelismWeeklyRecord.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\domain\EvangelismEditRequest.java
+E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\service\TelegramBotPollingService.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\config\SecurityConfig.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\domain\AuditLog.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\security\JwtTokenProvider.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\controller\I18nController.java
+E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\domain\TelegramBotConfig.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\domain\MembershipMonthlyRecord.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\repository\I18nDictionaryRepository.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\repository\EvangelismWeeklyRecordRepository.java
@@ -18,6 +20,7 @@ E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\security\JwtAuth
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\repository\EvangelismEditRequestRepository.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\repository\FaithProcessRecordRepository.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\OverseasPortalApplication.java
+E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\controller\UserController.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\service\AdminService.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\service\AuthService.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\repository\SystemConfigRepository.java
@@ -26,8 +29,10 @@ E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\domain\User.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\repository\MembershipMonthlyRecordRepository.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\controller\MembershipController.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\domain\FaithProcessRecord.java
+E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\controller\WeeklyWorshipController.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\service\DiagnosisService.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\repository\UserRepository.java
+E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\service\WeeklyWorshipService.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\domain\TelegramOtpLog.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\controller\AdminController.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\repository\ChurchRepository.java

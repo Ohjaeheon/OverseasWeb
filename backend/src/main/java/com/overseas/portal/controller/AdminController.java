@@ -1,8 +1,12 @@
 package com.overseas.portal.controller;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.overseas.portal.domain.FaithProcessRecord;
 import com.overseas.portal.domain.SystemConfig;
+import com.overseas.portal.domain.TelegramBotConfig;
 import com.overseas.portal.domain.User;
+import com.overseas.portal.repository.SystemConfigRepository;
 import com.overseas.portal.service.AdminService;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
@@ -17,6 +21,8 @@ import java.util.List;
 public class AdminController {
 
     private final AdminService adminService;
+    private final SystemConfigRepository configRepository;
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     @GetMapping("/dashboard")
     public ResponseEntity<AdminService.AdminDashboardSummary> getDashboardSummary() {
@@ -124,5 +130,56 @@ public class AdminController {
     public ResponseEntity<Void> deleteConfig(@PathVariable("configId") Long configId) {
         adminService.deleteConfig(configId);
         return ResponseEntity.noContent().build();
+    }
+
+    // Telegram Bot Config Management
+    @GetMapping("/bots")
+    public ResponseEntity<List<TelegramBotConfig>> getTelegramBots() {
+        try {
+            SystemConfig config = configRepository.findByConfigKey("telegram_bot_configs")
+                    .orElseGet(() -> {
+                        // Create default bots config
+                        List<TelegramBotConfig> defaults = List.of(
+                                TelegramBotConfig.builder()
+                                        .botId("approval_bot")
+                                        .name("결재관리 봇")
+                                        .botToken("")
+                                        .botUsername("")
+                                        .isActive(false)
+                                        .description("결재 대기 및 결재 완료 알림을 처리하는 봇입니다.")
+                                        .build(),
+                                TelegramBotConfig.builder()
+                                        .botId("otp_bot")
+                                        .name("로그인 OTP봇")
+                                        .botToken("")
+                                        .botUsername("")
+                                        .isActive(false)
+                                        .description("2차 인증 로그인 OTP 번호를 발송하는 봇입니다.")
+                                        .build()
+                        );
+                        try {
+                            String json = objectMapper.writeValueAsString(defaults);
+                            return adminService.updateConfig("telegram_bot_configs", json, "텔레그램 봇 연결 설정 목록 (JSON)");
+                        } catch (Exception e) {
+                            throw new RuntimeException("Failed to serialize default bot configs", e);
+                        }
+                    });
+            List<TelegramBotConfig> bots = objectMapper.readValue(config.getConfigValue(),
+                    new TypeReference<List<TelegramBotConfig>>() {});
+            return ResponseEntity.ok(bots);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to load bot configs", e);
+        }
+    }
+
+    @PutMapping("/bots")
+    public ResponseEntity<List<TelegramBotConfig>> updateTelegramBots(@RequestBody List<TelegramBotConfig> bots) {
+        try {
+            String json = objectMapper.writeValueAsString(bots);
+            adminService.updateConfig("telegram_bot_configs", json, "텔레그램 봇 연결 설정 목록 (JSON)");
+            return ResponseEntity.ok(bots);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to save bot configs", e);
+        }
     }
 }

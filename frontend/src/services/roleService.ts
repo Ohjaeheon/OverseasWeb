@@ -49,17 +49,15 @@ export const DEFAULT_MENUS: { menuKey: string; menuName: string; category: strin
   { menuKey: 'admin_dash', menuName: '📊 관리자 대시보드', category: '⚙️ 관리자 전용 (adminsetting)', path: '/adminsetting/dashboard' },
   { menuKey: 'admin_faith', menuName: '🩺 해외교회 · 지역 · 개척지 관리', category: '⚙️ 관리자 전용 (adminsetting)', path: '/adminsetting/faith-records' },
   { menuKey: 'admin_detail', menuName: '🔍 교회 상세 정밀 진단 [구현예정]', category: '⚙️ 관리자 전용 (adminsetting)', path: '/adminsetting/church-detail' },
-  { menuKey: 'admin_p1', menuName: '① 전도 현황 관리 [구현예정]', category: '⚙️ 관리자 전용 (adminsetting)', path: '/adminsetting/evangelism' },
-  { menuKey: 'admin_p2', menuName: '② 센터 운영 관리 [구현예정]', category: '⚙️ 관리자 전용 (adminsetting)', path: '/adminsetting/center' },
-  { menuKey: 'admin_p3', menuName: '③ 재적 및 입교 관리 [구현예정]', category: '⚙️ 관리자 전용 (adminsetting)', path: '/adminsetting/membership' },
-  { menuKey: 'admin_p4', menuName: '④ 예배 및 출석 관리 [구현예정]', category: '⚙️ 관리자 전용 (adminsetting)', path: '/adminsetting/worship' },
+  { menuKey: 'weekly_worship', menuName: '📅 주간예배 출결', category: '⚙️ 관리자 전용 (adminsetting)', path: '/adminsetting/weekly-worship' },
   { menuKey: 'users', menuName: '🌍 회원 및 담당 범위 관리', category: '⚙️ 관리자 전용 (adminsetting)', path: '/adminsetting/users' },
   { menuKey: 'roles', menuName: '📈 권한 그룹 및 회원 할당', category: '⚙️ 관리자 전용 (adminsetting)', path: '/adminsetting/roles' },
   { menuKey: 'perm', menuName: '🔑 권한별 접근 메뉴 설정', category: '⚙️ 관리자 전용 (adminsetting)', path: '/adminsetting/permissions' },
   { menuKey: 'login_logs', menuName: '📥 로그인 로그 관리', category: '⚙️ 관리자 전용 (adminsetting)', path: '/adminsetting/login-logs' },
   { menuKey: 'access_logs', menuName: '📥 접근 로그 관리', category: '⚙️ 관리자 전용 (adminsetting)', path: '/adminsetting/access-logs' },
   { menuKey: 'i18n', menuName: '🌐 다국어 사전 관리', category: '⚙️ 관리자 전용 (adminsetting)', path: '/adminsetting/i18n' },
-  { menuKey: 'sys', menuName: '⚙️ 시스템 설정', category: '⚙️ 관리자 전용 (adminsetting)', path: '/adminsetting/settings' }
+  { menuKey: 'sys', menuName: '⚙️ 시스템 설정', category: '⚙️ 관리자 전용 (adminsetting)', path: '/adminsetting/settings' },
+  { menuKey: 'admin_bot', menuName: '🤖 봇 연결 관리', category: '⚙️ 관리자 전용 (adminsetting)', path: '/adminsetting/bot' }
 ];
 
 export const roleService = {
@@ -182,7 +180,7 @@ export const roleService = {
           if (r.roleId === 'ROLE_ADMIN') {
             permObj[r.roleId] = { read: true, write: true };
           } else if (r.roleId === 'ROLE_USER') {
-            permObj[r.roleId] = { read: true, write: !['users', 'roles', 'perm', 'sys'].includes(m.menuKey) };
+            permObj[r.roleId] = { read: true, write: !['users', 'roles', 'perm', 'sys', 'admin_bot'].includes(m.menuKey) };
           } else if (r.roleId === 'ROLE_GUEST') {
             permObj[r.roleId] = { read: ['home', 'diag', 'inspect', 'funnel', 'map'].includes(m.menuKey), write: false };
           } else {
@@ -267,7 +265,7 @@ export const roleService = {
 
     // Default fallbacks if permissions matrix is uninitialized
     if (cleanRoleId === 'ROLE_USER') {
-      return { read: true, write: !['users', 'roles', 'perm', 'sys'].includes(normKey) };
+      return { read: true, write: !['users', 'roles', 'perm', 'sys', 'admin_bot'].includes(normKey) };
     } else if (cleanRoleId === 'ROLE_GUEST') {
       return { read: ['home', 'diag', 'inspect', 'funnel', 'map', 'p1_check'].includes(normKey), write: false };
     }

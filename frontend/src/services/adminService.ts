@@ -10,6 +10,16 @@ export interface UserItem {
   telegramId?: string;
   telegramChatId?: string;
   isActive?: boolean;
+  isOtpExempt?: boolean;
+}
+
+export interface TelegramBotConfig {
+  botId: string;
+  name: string;
+  botToken: string;
+  botUsername: string;
+  isActive: boolean;
+  description: string;
 }
 
 export interface ChurchItem {
@@ -115,6 +125,16 @@ export const adminService = {
 
   deleteConfig: async (configId: number) => {
     const res = await api.delete(`/admin/configs/${configId}`);
+    return res.data;
+  },
+
+  getBots: async (): Promise<TelegramBotConfig[]> => {
+    const res = await api.get<TelegramBotConfig[]>('/admin/bots');
+    return res.data;
+  },
+
+  updateBots: async (bots: TelegramBotConfig[]): Promise<TelegramBotConfig[]> => {
+    const res = await api.put<TelegramBotConfig[]>('/admin/bots', bots);
     return res.data;
   }
 };

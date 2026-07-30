@@ -6,6 +6,7 @@ import { sessionService } from '../../services/sessionService';
 import { EvangelismModule } from '../../components/user/EvangelismModule';
 import { MembershipModule } from '../../components/user/MembershipModule';
 import { ApprovalModule } from '../../components/user/ApprovalModule';
+import { MyProfilePage } from './MyProfilePage';
 import { roleService } from '../../services/roleService';
 import api from '../../services/api';
 
@@ -48,6 +49,21 @@ export const DiagnosisPage: React.FC<DiagnosisPageProps> = ({ section = 'home', 
     }
 
     const userStr = localStorage.getItem('user');
+    
+    // OTP 연동 강제 차단 가드 (예외계정 제외)
+    if (userStr) {
+      try {
+        const u = JSON.parse(userStr);
+        const isOtpExempt = u.isOtpExempt || false;
+        if (!isOtpExempt && (!u.telegramChatId || u.telegramChatId.trim() === '') && section !== 'profile') {
+          alert("보안 정책상 2차 인증 텔레그램 연동이 필수입니다. 회원관리(프로필) 페이지로 이동합니다.");
+          // SPA navigate 대신 location.href로 안전하게 새로고침 리다이렉트
+          window.location.href = '/OverseasPortal/profile';
+          return;
+        }
+      } catch (e) {}
+    }
+
     let userRole = 'ROLE_USER';
     if (userStr) {
       try {
@@ -58,7 +74,11 @@ export const DiagnosisPage: React.FC<DiagnosisPageProps> = ({ section = 'home', 
 
     (window as any).reactNavigate = (path: string) => {
       const cleanPath = path.startsWith('/') ? path : '/' + path;
-      navigate(cleanPath);
+      if (cleanPath === '/profile' || cleanPath.startsWith('/adminsetting')) {
+        window.location.href = '/OverseasPortal' + cleanPath;
+      } else {
+        navigate(cleanPath);
+      }
     };
 
     // Redirect /evangelism to /evangelism/check or /evangelism/aggregate ONLY IF user lacks access to the main p1 dashboard
@@ -154,7 +174,7 @@ export const DiagnosisPage: React.FC<DiagnosisPageProps> = ({ section = 'home', 
 
     console.warn("DiagnosisPage Auth Guard Check:", { section, targetKey, userRole, normRole });
 
-    if (normRole !== 'ROLE_ADMIN' && normRole !== 'ADMIN' && normRole !== 'ROLE_관리자') {
+    if (normRole !== 'ROLE_ADMIN' && normRole !== 'ADMIN' && normRole !== 'ROLE_관리자' && targetKey !== 'profile') {
       const access = roleService.canRoleAccessMenu(userRole, targetKey);
       console.warn("canRoleAccessMenu result:", access);
       if (!access.read) {
@@ -472,7 +492,7 @@ export const DiagnosisPage: React.FC<DiagnosisPageProps> = ({ section = 'home', 
     }
   }, [section]);
 
-  if (section === 'evangelism/check' || section === 'evangelism/aggregate' || section === 'membership/check' || section === 'membership/input' || section === 'approvals/pending' || section === 'approvals/completed') {
+  if (section === 'evangelism/check' || section === 'evangelism/aggregate' || section === 'membership/check' || section === 'membership/input' || section === 'approvals/pending' || section === 'approvals/completed' || section === 'profile') {
     return (
       <div style={{ minHeight: '100vh', background: '#f8fafc' }}>
         <div className="topbar">
@@ -484,6 +504,7 @@ export const DiagnosisPage: React.FC<DiagnosisPageProps> = ({ section = 'home', 
           </div>
           <span className="spacer"></span>
           <button className="repbtn" onClick={() => navigate('/')}>🏠 인트로</button>
+          <button className="repbtn" onClick={() => window.location.href = '/OverseasPortal/profile'}>👤 회원관리</button>
           <button className="repbtn" id="btnLogout" onClick={() => {
             if (window.confirm("정말 로그아웃 하시겠습니까?")) {
               sessionService.clearSession();
@@ -495,7 +516,9 @@ export const DiagnosisPage: React.FC<DiagnosisPageProps> = ({ section = 'home', 
           <div className="sidebar-overlay" id="sidebarOverlay" onClick={() => (window as any).closeSidebar()}></div>
           <nav className="side" id="side"></nav>
           <main className="main" style={{ flex: 1, padding: '20px', overflowY: 'auto' }}>
-            {(section === 'evangelism/check' || section === 'evangelism/aggregate') ? (
+            {section === 'profile' ? (
+              <MyProfilePage />
+            ) : (section === 'evangelism/check' || section === 'evangelism/aggregate') ? (
               <EvangelismModule initialTab={section === 'evangelism/check' ? 'check' : 'aggregate'} />
             ) : (section === 'membership/check' || section === 'membership/input') ? (
               <MembershipModule initialTab={section === 'membership/check' ? 'check' : 'input'} />
@@ -564,9 +587,8 @@ export const DiagnosisPage: React.FC<DiagnosisPageProps> = ({ section = 'home', 
   <select class="langSel tb-langsel" onchange="setLang(this.value)" title="Language / 语言 / 言語">
     <option value="ko">한국어</option><option value="en">English</option><option value="zh">中文</option><option value="ja">日本語</option>
   </select>
-  <button class="repbtn" id="btnCover" onclick="showIntro()" title="인트로 화면으로 돌아가기">🏠 인트로</button>
-  <button class="repbtn" id="btnShare" onclick="openShareModal()" title="선택한 교회/구역의 데이터를 포함한 Standalone HTML 파일을 생성합니다">📤 공유</button>
-  <button class="repbtn" id="btnPrint" onclick="window.print()" title="선택한 교회의 진단서만 컬러로 인쇄 — 인쇄창에서 '대상: PDF로 저장'을 고르면 컬러 PDF로 저장됩니다">📄 출력 · PDF 저장</button>
+  <button class="repbtn" id="btnCover" onclick="showIntro()">🏠 인트로</button>
+  <button class="repbtn" id="btnProfile" onclick="reactNavigate('/profile')" title="회원 정보 및 텔레그램 연동을 관리합니다">👤 회원관리</button>
   <button class="repbtn" id="btnAdminSystem" onclick="handleGoToAdminSystem()" style="display:none;background:#2563eb;color:white;border:none;font-weight:700" title="관리자 시스템으로 이동">⚙️ 관리자 시스템</button>
   <button class="repbtn" id="btnLogout" onclick="handleUserLogout()" style="background:#ef4444;color:white;border:none;font-weight:700" title="로그아웃">🔒 로그아웃</button>
 </div>

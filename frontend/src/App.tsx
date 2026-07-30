@@ -4,6 +4,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 // User Pages
 import { DiagnosisPage } from './pages/user/DiagnosisPage';
 import { LoginPage } from './pages/auth/LoginPage';
+import { MyProfilePage } from './pages/user/MyProfilePage';
 
 // Admin Protection & Pages
 import { AdminGuard } from './components/admin/AdminGuard';
@@ -19,6 +20,8 @@ import { AdminMessagePage } from './pages/admin/AdminMessagePage';
 import { AdminLoginLogsPage } from './pages/admin/AdminLoginLogsPage';
 import { AdminAccessLogsPage } from './pages/admin/AdminAccessLogsPage';
 import { AdminPlaceholderPage } from './pages/admin/AdminPlaceholderPage';
+import { AdminBotPage } from './pages/admin/AdminBotPage';
+import { AdminWeeklyWorshipPage } from './pages/admin/AdminWeeklyWorshipPage';
 
 import { roleService } from './services/roleService';
 
@@ -60,6 +63,7 @@ export const App: React.FC = () => {
         <Route path="/approvals/pending" element={<DiagnosisPage section="approvals/pending" />} />
         <Route path="/approvals/completed" element={<DiagnosisPage section="approvals/completed" />} />
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/profile" element={<DiagnosisPage section="profile" />} />
 
         {/* Protected Admin Routes (ROLE_ADMIN Only) */}
         <Route element={<AdminGuard />}>
@@ -71,14 +75,8 @@ export const App: React.FC = () => {
             <Route path="faith-records" element={<AdminFaithPage />} />
             <Route path="church-detail" element={<AdminPlaceholderPage title="교회 상세 정밀 진단" />} />
 
-            {/* 데이터 관리 (구현예정 모듈) */}
-            <Route path="evangelism" element={<AdminPlaceholderPage title="① 전도 및 가개강 관리" />} />
-            <Route path="center" element={<AdminPlaceholderPage title="② 센터 운영 및 수강 관리" />} />
-            <Route path="membership" element={<AdminPlaceholderPage title="③ 내무(재적/입교) 관리" />} />
-            <Route path="worship" element={<AdminPlaceholderPage title="④ 예배 및 출석 통합 관리" />} />
-            <Route path="worship/prev-admit" element={<AdminPlaceholderPage title="④-1 전월 입교자 출석 관리" />} />
-            <Route path="worship/all-attend" element={<AdminPlaceholderPage title="④-2 전성도 출석률 집계" />} />
-            <Route path="worship/absent" element={<AdminPlaceholderPage title="④-3 장기/원거리 결석 관리" />} />
+            {/* 데이터 관리 */}
+            <Route path="weekly-worship" element={<AdminWeeklyWorshipPage />} />
 
             {/* 회원 및 권한 */}
             <Route path="users" element={<AdminUserPage />} />
@@ -86,6 +84,7 @@ export const App: React.FC = () => {
             <Route path="permissions" element={<AdminPermissionPage />} />
 
             {/* 로그 및 시스템 */}
+            <Route path="bot" element={<AdminBotPage />} />
             <Route path="i18n" element={<AdminI18nPage />} />
             <Route path="settings" element={<AdminSettingsPage />} />
             <Route path="messages" element={<AdminMessagePage />} />

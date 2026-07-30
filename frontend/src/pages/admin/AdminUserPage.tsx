@@ -22,7 +22,8 @@ export const AdminUserPage: React.FC = () => {
     assignedCountry: '전체',
     telegramId: '',
     telegramChatId: '',
-    isActive: true
+    isActive: true,
+    isOtpExempt: false
   });
 
   const loadData = async () => {
@@ -94,7 +95,8 @@ export const AdminUserPage: React.FC = () => {
       assignedCountry: '전체',
       telegramId: '',
       telegramChatId: '',
-      isActive: true
+      isActive: true,
+      isOtpExempt: false
     });
     setIsModalOpen(true);
   };
@@ -117,7 +119,8 @@ export const AdminUserPage: React.FC = () => {
     setFormData({
       ...user,
       role: matchedRoleId,
-      assignedCountry: user.assignedCountry || '전체'
+      assignedCountry: user.assignedCountry || '전체',
+      isOtpExempt: user.isOtpExempt || false
     });
     setIsModalOpen(true);
   };
@@ -230,6 +233,7 @@ export const AdminUserPage: React.FC = () => {
               <th style={{ padding: '14px 18px', fontWeight: 700 }}>Telegram ID (@username)</th>
               <th style={{ padding: '14px 18px', fontWeight: 700 }}>Telegram Chat ID</th>
               <th style={{ padding: '14px 18px', fontWeight: 700 }}>상태</th>
+              <th style={{ padding: '14px 18px', fontWeight: 700 }}>OTP 예외</th>
               <th style={{ padding: '14px 18px', fontWeight: 700, textAlign: 'right' }}>관리</th>
             </tr>
           </thead>
@@ -286,6 +290,17 @@ export const AdminUserPage: React.FC = () => {
                     ) : (
                       <span style={{ color: '#dc2626', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
                         <XCircle size={14} /> 정지
+                      </span>
+                    )}
+                  </td>
+                  <td style={{ padding: '14px 18px' }}>
+                    {user.isOtpExempt ? (
+                      <span style={{ color: '#f59e0b', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '4px', background: 'rgba(245, 158, 11, 0.08)', padding: '2px 8px', borderRadius: '6px' }}>
+                        예외(OTP제외)
+                      </span>
+                    ) : (
+                      <span style={{ color: '#64748b', fontWeight: 600 }}>
+                        적용대상
                       </span>
                     )}
                   </td>
@@ -480,6 +495,21 @@ export const AdminUserPage: React.FC = () => {
                     style={{ width: '100%', padding: '10px', background: '#ffffff', border: '1px solid #dbe2ef', borderRadius: '8px', color: '#1f2a44' }}
                   />
                 </div>
+              </div>
+
+              <div>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.85rem', color: '#475569', fontWeight: 600, cursor: 'pointer', background: 'rgba(245, 158, 11, 0.04)', padding: '10px 14px', borderRadius: '8px', border: '1px solid rgba(245, 158, 11, 0.15)' }}>
+                  <input
+                    type="checkbox"
+                    checked={formData.isOtpExempt || false}
+                    onChange={(e) => setFormData({ ...formData, isOtpExempt: e.target.checked })}
+                    style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+                  />
+                  <div>
+                    <span style={{ display: 'block', fontWeight: 700, color: '#d97706' }}>OTP 2차 인증 예외 (테스트 계정)</span>
+                    <span style={{ display: 'block', fontSize: '0.75rem', color: '#94a3b8', fontWeight: 500, marginTop: '2px' }}>체크 시 로그인할 때 텔레그램 2차 OTP 인증 단계를 요구하지 않고 즉시 로그인됩니다.</span>
+                  </div>
+                </label>
               </div>
 
               <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '10px' }}>

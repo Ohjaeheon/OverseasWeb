@@ -1,7 +1,7 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { Globe, Search, Settings, LogIn, LogOut, Share2, FileText } from 'lucide-react';
+import { Globe, Search, Settings, LogIn, LogOut, Share2, FileText, User } from 'lucide-react';
 import api from '../../services/api';
 
 interface TopNavProps {
@@ -149,24 +149,26 @@ export const TopNav: React.FC<TopNavProps> = ({
           />
         </div>
 
-        {/* Share Button */}
-        <button
-          onClick={onOpenShareModal}
-          style={{
-            background: 'rgba(255,255,255,0.08)',
-            border: '1px solid var(--navy-border)',
-            color: 'white',
-            padding: '8px 14px',
-            borderRadius: '8px',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px',
-            fontSize: '0.85rem'
-          }}
-        >
-          <Share2 size={16} /> 공유/출력
-        </button>
+        {/* User Profile Link (회원관리) */}
+        {token && (
+          <button
+            onClick={() => window.location.href = '/OverseasPortal/profile'}
+            style={{
+              background: 'rgba(255,255,255,0.08)',
+              border: '1px solid var(--navy-border)',
+              color: 'white',
+              padding: '8px 14px',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              fontSize: '0.85rem'
+            }}
+          >
+            <User size={16} /> 회원관리
+          </button>
+        )}
 
         {/* Language Selector */}
         <select

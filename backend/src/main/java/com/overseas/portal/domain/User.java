@@ -67,6 +67,11 @@ public class User {
     @Builder.Default
     private Boolean isActive = true;
 
+    @Column(name = "is_otp_exempt")
+    @Comment("OTP 2차인증 제외 여부 (테스트 계정 등)")
+    @Builder.Default
+    private Boolean isOtpExempt = false;
+
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     @Comment("생성 일시")
