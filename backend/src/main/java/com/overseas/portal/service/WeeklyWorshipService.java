@@ -24,7 +24,7 @@ import java.util.zip.ZipOutputStream;
 @Service
 public class WeeklyWorshipService {
 
-    private final File modelingDir = new File("../모델링").getAbsoluteFile();
+    private final File modelingDir = new File("worship_modeling").getAbsoluteFile();
     private final Map<String, WorshipJobInfo> activeJobs = new ConcurrentHashMap<>();
 
     @Data
