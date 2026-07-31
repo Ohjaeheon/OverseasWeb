@@ -101,20 +101,25 @@ public class WeeklyWorshipService {
                 logBuilder.append("[시스템] 중첩 폴더 보정 - 상위 폴더로 이동함: ").append(newDir.getFileName()).append("\n");
             }
 
-            // 4. 스크립트 및 템플릿 복사
-            Path scriptSrc = modelingDir.toPath().resolve("merge_attendance.py");
-            Path templateSrc = modelingDir.toPath().resolve("양식.xlsx");
+            // 4. 스크립트 및 템플릿 복사 (Classpath 리소스로부터 추출 복제하여 Docker 및 JAR 독립실행 보장)
+            Path scriptDest = jobDir.resolve("merge_attendance.py");
+            Path templateDest = jobDir.resolve("양식.xlsx");
 
-            if (!Files.exists(scriptSrc)) {
-                throw new FileNotFoundException("메인 모델링 디렉토리에 'merge_attendance.py' 파일이 존재하지 않습니다.");
-            }
-            if (!Files.exists(templateSrc)) {
-                throw new FileNotFoundException("메인 모델링 디렉토리에 '양식.xlsx' 파일이 존재하지 않습니다.");
+            try (InputStream scriptStream = getClass().getResourceAsStream("/worship_modeling/merge_attendance.py")) {
+                if (scriptStream == null) {
+                    throw new FileNotFoundException("Classpath 리소스에서 'merge_attendance.py' 파일을 찾을 수 없습니다.");
+                }
+                Files.copy(scriptStream, scriptDest, StandardCopyOption.REPLACE_EXISTING);
             }
 
-            Files.copy(scriptSrc, jobDir.resolve("merge_attendance.py"), StandardCopyOption.REPLACE_EXISTING);
-            Files.copy(templateSrc, jobDir.resolve("양식.xlsx"), StandardCopyOption.REPLACE_EXISTING);
-            logBuilder.append("[시스템] 취합 템플릿 및 파이썬 연산 스크립트 배치 완료\n");
+            try (InputStream templateStream = getClass().getResourceAsStream("/worship_modeling/양식.xlsx")) {
+                if (templateStream == null) {
+                    throw new FileNotFoundException("Classpath 리소스에서 '양식.xlsx' 파일을 찾을 수 없습니다.");
+                }
+                Files.copy(templateStream, templateDest, StandardCopyOption.REPLACE_EXISTING);
+            }
+
+            logBuilder.append("[시스템] 취합 템플릿 및 파이썬 연산 스크립트 배치 완료 (Classpath 리소스 추출)\n");
 
             // 5. 파이썬 스크립트 실행
             logBuilder.append("[시스템] Excel 매니페스트 통합 스크립트 구동 시작...\n\n");
