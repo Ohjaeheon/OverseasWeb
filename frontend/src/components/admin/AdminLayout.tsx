@@ -8,7 +8,9 @@ import {
   ChevronDown,
   ChevronRight,
   LogOut,
-  ArrowLeft
+  ArrowLeft,
+  Menu,
+  X
 } from 'lucide-react';
 
 interface SidebarItem {
@@ -27,6 +29,12 @@ export const AdminLayout: React.FC = () => {
   const location = useLocation();
   const { t } = useTranslation();
   const [openSubMenu, setOpenSubMenu] = useState<boolean>(true);
+  const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(false);
+
+  // Close sidebar drawer on route navigation change (for mobile usability)
+  useEffect(() => {
+    setIsSidebarOpen(false);
+  }, [location.pathname]);
 
   // Get current logged-in user's role
   const userStr = localStorage.getItem('user');
@@ -105,6 +113,56 @@ export const AdminLayout: React.FC = () => {
 
   return (
     <div style={{ minHeight: '100vh', background: '#eef3fb', color: '#1f2a44', fontFamily: '"Pretendard", "Malgun Gothic", sans-serif' }}>
+      {/* CSS Media Queries for Mobile Responsiveness */}
+      <style dangerouslySetInnerHTML={{ __html: `
+        @media (max-width: 991px) {
+          .admin-layout-shell {
+            flex-direction: column !important;
+          }
+          .admin-sidebar {
+            position: fixed !important;
+            left: -260px !important;
+            top: 61px !important;
+            bottom: 0 !important;
+            height: calc(100vh - 61px) !important;
+            z-index: 9999 !important;
+            transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+          }
+          .admin-sidebar.open {
+            left: 0 !important;
+          }
+          .admin-sidebar-overlay {
+            position: fixed !important;
+            inset: 0 !important;
+            top: 61px !important;
+            background: rgba(15, 23, 42, 0.4) !important;
+            backdrop-filter: blur(4px) !important;
+            z-index: 9998 !important;
+            display: block !important;
+          }
+          .admin-main {
+            padding: 20px 16px !important;
+          }
+          .admin-menu-toggle {
+            display: flex !important;
+          }
+          .admin-header-btn-txt {
+            display: none !important;
+          }
+          .admin-header-logo-container {
+            gap: 8px !important;
+          }
+        }
+        @media (min-width: 992px) {
+          .admin-sidebar-overlay {
+            display: none !important;
+          }
+          .admin-menu-toggle {
+            display: none !important;
+          }
+        }
+      ` }} />
+
       {/* Top Bar matching Diagnosis Page */}
       <header style={{
         position: 'sticky',
@@ -119,6 +177,27 @@ export const AdminLayout: React.FC = () => {
         padding: '11px 24px',
         boxShadow: '0 1px 10px rgba(20, 40, 90, 0.05)'
       }}>
+        {/* Mobile Hamburger Menu Toggle */}
+        <button
+          className="admin-menu-toggle"
+          onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+          style={{
+            display: 'none',
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: '36px',
+            height: '36px',
+            background: '#ffffff',
+            border: '1px solid #e2e8f0',
+            borderRadius: '9px',
+            color: '#1f2a44',
+            cursor: 'pointer',
+            flexShrink: 0
+          }}
+        >
+          {isSidebarOpen ? <X size={20} /> : <Menu size={20} />}
+        </button>
+
         {/* Logo */}
         <div style={{
           width: '38px',
@@ -166,7 +245,7 @@ export const AdminLayout: React.FC = () => {
             boxShadow: '0 2px 6px rgba(0,0,0,0.02)'
           }}
         >
-          <ArrowLeft size={16} /> 사용자 진단서 포탈로 이동
+          <ArrowLeft size={16} /> <span className="admin-header-btn-txt">해선부 업무 포탈로 이동</span>
         </button>
 
         <button
@@ -186,14 +265,22 @@ export const AdminLayout: React.FC = () => {
             boxShadow: '0 4px 10px rgba(239, 68, 68, 0.25)'
           }}
         >
-          <LogOut size={16} /> 로그아웃
+          <LogOut size={16} /> <span className="admin-header-btn-txt">로그아웃</span>
         </button>
       </header>
 
       {/* Main Layout Body */}
-      <div style={{ display: 'flex', minHeight: 'calc(100vh - 61px)' }}>
+      <div className="admin-layout-shell" style={{ display: 'flex', minHeight: 'calc(100vh - 61px)' }}>
+        {/* Mobile Sidebar Overlay */}
+        {isSidebarOpen && (
+          <div
+            className="admin-sidebar-overlay"
+            onClick={() => setIsSidebarOpen(false)}
+          />
+        )}
+
         {/* Left Navigation Sidebar matching Image 2 */}
-        <aside style={{
+        <aside className={`admin-sidebar ${isSidebarOpen ? 'open' : ''}`} style={{
           width: '260px',
           background: 'linear-gradient(185deg, #22337a, #172554)',
           color: '#ffffff',
@@ -320,7 +407,7 @@ export const AdminLayout: React.FC = () => {
         </aside>
 
         {/* Right Main Content Area */}
-        <main style={{ flex: 1, padding: '28px 32px', overflowY: 'auto' }}>
+        <main className="admin-main" style={{ flex: 1, padding: '28px 32px', overflowY: 'auto' }}>
           <Outlet />
         </main>
       </div>

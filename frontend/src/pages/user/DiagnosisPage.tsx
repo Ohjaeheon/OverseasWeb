@@ -519,8 +519,8 @@ export const DiagnosisPage: React.FC<DiagnosisPageProps> = ({ section = 'home', 
     if (!(window as any).DATA) {
       (window as any).DATA = {
         months: ["2026년 6월"],
-        jipaOrder: ["맛디아", "서울", "무등", "베드로", "요한"],
-        jipaColors: { "맛디아": "#6FBA2C", "서울": "#6FBA2C", "무등": "#3b82f6", "베드로": "#06b6d4", "요한": "#f59e0b" },
+        jipaOrder: ["맛디아"],
+        jipaColors: { "맛디아": "#6FBA2C" },
         records: [],
         weeklyRecords: []
       };
@@ -556,13 +556,13 @@ export const DiagnosisPage: React.FC<DiagnosisPageProps> = ({ section = 'home', 
           </div>
           <span className="spacer"></span>
           {/*<button className="repbtn" onClick={() => navigate('/')}>🏠 인트로</button>*/}
-          <button className="repbtn" onClick={() => window.location.href = '/OverseasPortal/profile'}>👤 회원관리</button>
+          <button className="repbtn" onClick={() => window.location.href = '/OverseasPortal/profile'}>👤 <span className="btn-txt-label">회원관리</span></button>
           <button className="repbtn" id="btnLogout" onClick={() => {
             if (window.confirm("정말 로그아웃 하시겠습니까?")) {
               sessionService.clearSession();
               navigate('/login', { replace: true });
             }
-          }} style={{ background: '#ef4444', color: 'white', border: 'none', fontWeight: 700 }}>🔒 로그아웃</button>
+          }} style={{ background: '#ef4444', color: 'white', border: 'none', fontWeight: 700 }}>🔒 <span className="btn-txt-label">로그아웃</span></button>
         </div>
         <div className="shell">
           <div className="sidebar-overlay" id="sidebarOverlay" onClick={() => (window as any).closeSidebar()}></div>
@@ -641,10 +641,10 @@ export const DiagnosisPage: React.FC<DiagnosisPageProps> = ({ section = 'home', 
   <select class="langSel tb-langsel" onchange="setLang(this.value)" title="Language / 语言 / 言語">
     <option value="ko">한국어</option><option value="en">English</option><option value="zh">中文</option><option value="ja">日本語</option>
   </select>
-  <button class="repbtn" id="btnCover" onclick="showIntro()">🏠 인트로</button>
-  <button class="repbtn" id="btnProfile" onclick="reactNavigate('/profile')" title="회원 정보 및 텔레그램 연동을 관리합니다">👤 회원관리</button>
-  <button class="repbtn" id="btnAdminSystem" onclick="handleGoToAdminSystem()" style="display:none;background:#2563eb;color:white;border:none;font-weight:700" title="관리자 시스템으로 이동">⚙️ 관리자 시스템</button>
-  <button class="repbtn" id="btnLogout" onclick="handleUserLogout()" style="background:#ef4444;color:white;border:none;font-weight:700" title="로그아웃">🔒 로그아웃</button>
+  <button class="repbtn" id="btnCover" onclick="showIntro()">🏠 <span class="btn-txt-label">인트로</span></button>
+  <button class="repbtn" id="btnProfile" onclick="reactNavigate('/profile')" title="회원 정보 및 텔레그램 연동을 관리합니다">👤 <span class="btn-txt-label">회원관리</span></button>
+  <button class="repbtn" id="btnAdminSystem" onclick="handleGoToAdminSystem()" style="display:none;background:#2563eb;color:white;border:none;font-weight:700" title="관리자 시스템으로 이동">⚙️ <span class="btn-txt-label">관리자 시스템</span></button>
+  <button class="repbtn" id="btnLogout" onclick="handleUserLogout()" style="background:#ef4444;color:white;border:none;font-weight:700" title="로그아웃">🔒 <span class="btn-txt-label">로그아웃</span></button>
 </div>
 
 <div class="shell">

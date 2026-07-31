@@ -2474,7 +2474,7 @@ function renderHome(){
   const links=[["diag","교회 진단서"],["inspect","점검 (양·질)"],["funnel","전환율 퍼널"],["map","지도·지구본"],["trend","추이·비교"],["p1","전도·가개강"]];
   const html=`
     <div class="hero">
-      <h1>전세계 12지파 해외교회의 현황을 한눈에</h1>
+      <h1>전세계 맛디아지파 해외교회의 현황을 한눈에</h1>
       <span class="spirit">✠ 양에 속지 말고 질을 보라 — 확인·점검에서 행함으로</span>
     </div>
     <div class="kpis k5">${kpiHTML}</div>

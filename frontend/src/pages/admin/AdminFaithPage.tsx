@@ -24,7 +24,51 @@ const COUNTRY_INFO: Record<string, { lang: string; rel: string }> = {
   "카메룬": { lang: "프랑스어·영어", rel: "기독교·이슬람교" }
 };
 
-export function computeLocationInfo(lat?: number, lon?: number, country?: string, currentTimeDate?: Date) {
+export function parseTimeDiff(val: string): { sign: '+' | '-'; hours: number } {
+  if (!val) return { sign: '-', hours: 0 };
+  
+  // Check if it's already in "+4" or "-4" format
+  const signedMatch = val.match(/^([+-])\s*(\d+(\.\d+)?)$/);
+  if (signedMatch) {
+    return {
+      sign: signedMatch[1] as '+' | '-',
+      hours: parseFloat(signedMatch[2])
+    };
+  }
+
+  // Check if it's a simple number without sign (assume + if positive, - if negative)
+  const numVal = parseFloat(val);
+  if (!isNaN(numVal) && isFinite(numVal)) {
+    return {
+      sign: numVal >= 0 ? '+' : '-',
+      hours: Math.abs(numVal)
+    };
+  }
+
+  // Parse legacy format "한국보다 4시간 느림" or "한국보다 +2시간 빠름"
+  if (val.includes('동일')) {
+    return { sign: '+', hours: 0 };
+  }
+  const hoursMatch = val.match(/(\d+(\.\d+)?)\s*시간/);
+  const hours = hoursMatch ? parseFloat(hoursMatch[1]) : 0;
+  if (val.includes('빠름') || val.includes('+')) {
+    return { sign: '+', hours };
+  } else {
+    return { sign: '-', hours: hours };
+  }
+}
+
+export function formatTimeDiffLabel(val: string): string {
+  if (!val) return '';
+  const parsed = parseTimeDiff(val);
+  return parsed.hours === 0
+    ? '한국과 동일'
+    : parsed.sign === '+'
+    ? `한국보다 +${parsed.hours}시간 빠름`
+    : `한국보다 ${parsed.hours}시간 느림`;
+}
+
+export function computeLocationInfo(lat?: number, lon?: number, country?: string, currentTimeDate?: Date, timeDiffStr?: string) {
   const cLat = lat || 35.68;
   const cLon = lon || 139.76;
   const ICN = { lat: 37.46, lng: 126.44 };
@@ -38,9 +82,15 @@ export function computeLocationInfo(lat?: number, lon?: number, country?: string
   const km = Math.round(2 * 6371 * Math.asin(Math.min(1, Math.sqrt(hav))));
   const hrs = (km / 900 + 1.0).toFixed(1);
 
-  // Timezone Offset Calculation from Longitude
-  const tzo = Math.round(cLon / 15);
-  const diffHours = tzo - 9; // Korea is UTC+9
+  // Timezone Offset Calculation from Longitude or explicit offset string
+  let diffHours = Math.round(cLon / 15) - 9;
+  if (timeDiffStr) {
+    const parsed = parseTimeDiff(timeDiffStr);
+    diffHours = parsed.sign === '+' ? parsed.hours : -parsed.hours;
+  }
+
+  const tzo = 9 + diffHours;
+
   const diffLabel =
     diffHours === 0
       ? '한국과 동일'
@@ -233,8 +283,10 @@ export const AdminFaithPage: React.FC = () => {
       }
       setIsModalOpen(false);
       loadChurches();
-    } catch (err) {
-      alert("저장 중 오류가 발생했습니다.");
+    } catch (err: any) {
+      console.error("Save error details:", err);
+      const msg = err.response?.data?.message || err.response?.data || err.message;
+      alert(`저장 중 오류가 발생했습니다.\n상세 정보: ${JSON.stringify(msg)}`);
     }
   };
 
@@ -351,7 +403,8 @@ export const AdminFaithPage: React.FC = () => {
         overflow: 'hidden',
         boxShadow: '0 4px 14px rgba(20, 40, 90, 0.04)'
       }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.88rem' }}>
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '950px', textAlign: 'left', fontSize: '0.88rem' }}>
           <thead>
             <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0', color: '#475569' }}>
               <th style={{ padding: '14px 18px', fontWeight: 700 }}>구분</th>
@@ -380,7 +433,7 @@ export const AdminFaithPage: React.FC = () => {
             ) : (
               filteredChurches.map((item) => {
                 const displayName = `${item.jipa} · ${item.name}`;
-                const locInfo = computeLocationInfo(item.lat, item.lon, item.country, nowDate);
+                const locInfo = computeLocationInfo(item.lat, item.lon, item.country, nowDate, item.timeDiff);
 
                 let badgeBg = '#dbeafe';
                 let badgeColor = '#1d4ed8';
@@ -425,7 +478,7 @@ export const AdminFaithPage: React.FC = () => {
                         <Clock size={13} /> {locInfo.currentTime}
                       </span>
                       <br />
-                      <span style={{ color: '#d97706', fontWeight: 600 }}>🕒 {item.timeDiff || locInfo.timeDiff}</span>
+                      <span style={{ color: '#d97706', fontWeight: 600 }}>🕒 {formatTimeDiffLabel(item.timeDiff || locInfo.timeDiff)}</span>
                     </td>
                     <td style={{ padding: '14px 18px', color: '#64748b', fontSize: '0.82rem' }}>
                       🗣️ {item.language || locInfo.language}
@@ -478,6 +531,7 @@ export const AdminFaithPage: React.FC = () => {
             )}
           </tbody>
         </table>
+        </div>
       </div>
 
       {/* Add / Edit Modal Dialog */}
@@ -539,10 +593,6 @@ export const AdminFaithPage: React.FC = () => {
                     style={{ width: '100%', padding: '10px', background: '#f8fafc', border: '1px solid #dbe2ef', borderRadius: '8px', color: '#1f2a44' }}
                   >
                     <option value="맛디아">맛디아</option>
-                    <option value="서울">서울</option>
-                    <option value="무등">무등</option>
-                    <option value="베드로">베드로</option>
-                    <option value="요한">요한</option>
                   </select>
                 </div>
               </div>
@@ -639,14 +689,49 @@ export const AdminFaithPage: React.FC = () => {
                     />
                   </div>
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.75rem', color: '#64748b', marginBottom: '4px' }}>현지 시각 / 시차</label>
-                    <input
-                      type="text"
-                      placeholder="예: 한국보다 4시간 느림"
-                      value={formData.timeDiff || ''}
-                      onChange={(e) => setFormData({ ...formData, timeDiff: e.target.value })}
-                      style={{ width: '100%', padding: '8px', background: '#ffffff', border: '1px solid #dbe2ef', borderRadius: '6px', color: '#1f2a44', fontSize: '0.85rem' }}
-                    />
+                    <label style={{ display: 'block', fontSize: '0.75rem', color: '#64748b', marginBottom: '4px' }}>현지 시각 / 시차 설정 (+ 또는 -)</label>
+                    <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                      <select
+                        value={parseTimeDiff(formData.timeDiff || '').sign}
+                        onChange={(e) => {
+                          const parsed = parseTimeDiff(formData.timeDiff || '');
+                          const newSign = e.target.value as '+' | '-';
+                          const newDiff = `${newSign}${parsed.hours}`;
+                          setFormData({ ...formData, timeDiff: newDiff });
+                        }}
+                        style={{ padding: '8px', background: '#ffffff', border: '1px solid #dbe2ef', borderRadius: '6px', color: '#1f2a44', fontSize: '0.85rem', outline: 'none' }}
+                      >
+                        <option value="+">+</option>
+                        <option value="-">-</option>
+                      </select>
+                      <input
+                        type="number"
+                        step="0.5"
+                        min="0"
+                        max="24"
+                        placeholder="시차 (시간)"
+                        value={parseTimeDiff(formData.timeDiff || '').hours}
+                        onChange={(e) => {
+                          const parsed = parseTimeDiff(formData.timeDiff || '');
+                          const newHours = parseFloat(e.target.value) || 0;
+                          const newDiff = `${parsed.sign}${newHours}`;
+                          setFormData({ ...formData, timeDiff: newDiff });
+                        }}
+                        style={{ flex: 1, padding: '8px', background: '#ffffff', border: '1px solid #dbe2ef', borderRadius: '6px', color: '#1f2a44', fontSize: '0.85rem' }}
+                      />
+                    </div>
+                    <div style={{ fontSize: '0.7rem', color: '#64748b', marginTop: '4px', fontStyle: 'italic' }}>
+                      표시 형식: {
+                        (() => {
+                          const parsed = parseTimeDiff(formData.timeDiff || '');
+                          return parsed.hours === 0
+                            ? '한국과 동일'
+                            : parsed.sign === '+'
+                            ? `한국보다 +${parsed.hours}시간 빠름`
+                            : `한국보다 ${parsed.hours}시간 느림`;
+                        })()
+                      }
+                    </div>
                   </div>
                 </div>
               </div>

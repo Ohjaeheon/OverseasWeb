@@ -582,3 +582,137 @@
     .dwrap{ display:block !important; }
     .dcard, .dwrap > div{ break-inside:avoid; page-break-inside:avoid; box-shadow:none !important; }
   }
+
+  /* ==========================================================================
+     ── 텔레그램 웹앱 (Telegram WebApp / Mini App) 전용 테마 및 레이아웃 분기 ──
+     ========================================================================== */
+  body.telegram-webapp-mode {
+    --bg: var(--tg-theme-bg-color, #111a2e);
+    --panel: var(--tg-theme-bg-color, #111a2e);
+    --panel2: var(--tg-theme-secondary-bg-color, #17233d);
+    --line: rgba(255, 255, 255, 0.08);
+    --line2: rgba(255, 255, 255, 0.04);
+    --txt: var(--tg-theme-text-color, #ffffff);
+    --muted: var(--tg-theme-hint-color, #94a3b8);
+    --blue: var(--tg-theme-button-color, #3b82f6);
+    --blue2: var(--tg-theme-button-color, #3b82f6);
+    --navy: var(--tg-theme-secondary-bg-color, #17233d);
+    --navy2: var(--tg-theme-secondary-bg-color, #17233d);
+    --ink: var(--tg-theme-text-color, #ffffff);
+    --side1: var(--tg-theme-bg-color, #111a2e);
+    --side2: var(--tg-theme-secondary-bg-color, #17233d);
+
+    background-color: var(--tg-theme-bg-color, #111a2e);
+    color: var(--tg-theme-text-color, #ffffff);
+  }
+
+  /* 텔레그램 웹앱 모드 시 외부 브라우저용 UI 숨김 처리 (단, 관리자시스템과 로그아웃은 노출) */
+  body.telegram-webapp-mode #btnCover,
+  body.telegram-webapp-mode #btnProfile,
+  body.telegram-webapp-mode .topbar .repbtn:not(#btnLogout):not(#btnAdminSystem) {
+    display: none !important;
+  }
+
+  body.telegram-webapp-mode #btnLogout,
+  body.telegram-webapp-mode #btnAdminSystem {
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    padding: 8px 12px !important;
+  }
+
+  /* 텔레그램 웹앱 모드 및 모바일 환경에서 버튼의 텍스트 숨김 */
+  body.telegram-webapp-mode .btn-txt-label {
+    display: none !important;
+  }
+
+  @media (max-width: 768px) {
+    .btn-txt-label {
+      display: none !important;
+    }
+    .topbar button.repbtn {
+      padding: 8px 12px !important;
+    }
+  }
+
+  body.telegram-webapp-mode .searchwrap {
+    display: none !important;
+  }
+
+  body.telegram-webapp-mode .langSel,
+  body.telegram-webapp-mode .in-langsel,
+  body.telegram-webapp-mode .tb-langsel {
+    display: none !important;
+  }
+
+  /* 헤더/탑바를 텔레그램 모바일에 맞춰 조율 */
+  body.telegram-webapp-mode .topbar {
+    padding: 8px 14px;
+    background: var(--tg-theme-secondary-bg-color, #17233d) !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: none;
+  }
+
+  body.telegram-webapp-mode .topbar .brand {
+    color: var(--tg-theme-text-color, #ffffff) !important;
+  }
+
+  /* 쉘 레이아웃 높이 및 백그라운드 재조정 */
+  body.telegram-webapp-mode .shell {
+    height: calc(100vh - 54px);
+    background-color: var(--tg-theme-bg-color, #111a2e);
+  }
+
+  body.telegram-webapp-mode .side {
+    background: var(--tg-theme-secondary-bg-color, #17233d) !important;
+    border-right: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  body.telegram-webapp-mode .main {
+    background-color: var(--tg-theme-bg-color, #111a2e) !important;
+    padding: 12px !important;
+  }
+
+  /* 카드 및 패널 디자인 텔레그램 테마와 통일 */
+  body.telegram-webapp-mode .card,
+  body.telegram-webapp-mode .glass-panel,
+  body.telegram-webapp-mode .modal {
+    background: var(--tg-theme-secondary-bg-color, #17233d) !important;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    box-shadow: none !important;
+    color: var(--tg-theme-text-color, #ffffff) !important;
+  }
+
+  body.telegram-webapp-mode .card h3 {
+    color: var(--tg-theme-text-color, #ffffff) !important;
+  }
+
+  body.telegram-webapp-mode select,
+  body.telegram-webapp-mode input,
+  body.telegram-webapp-mode textarea {
+    background-color: var(--tg-theme-bg-color, #111a2e) !important;
+    color: var(--tg-theme-text-color, #ffffff) !important;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  }
+
+  body.telegram-webapp-mode table th,
+  body.telegram-webapp-mode table td {
+    border-color: rgba(255, 255, 255, 0.08) !important;
+    color: var(--tg-theme-text-color, #ffffff) !important;
+  }
+
+  body.telegram-webapp-mode table tr:hover {
+    background: rgba(255, 255, 255, 0.02) !important;
+  }
+
+  body.telegram-webapp-mode .chip {
+    background: var(--tg-theme-bg-color, #111a2e) !important;
+    color: var(--tg-theme-hint-color, #94a3b8) !important;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  }
+
+  body.telegram-webapp-mode .chip.on {
+    background: var(--tg-theme-button-color, #3b82f6) !important;
+    color: var(--tg-theme-button-text-color, #ffffff) !important;
+    border-color: var(--tg-theme-button-color, #3b82f6) !important;
+  }

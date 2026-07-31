@@ -48,6 +48,7 @@ com\overseas\portal\repository\MembershipMonthlyRecordRepository.class
 com\overseas\portal\repository\UserRepository.class
 com\overseas\portal\controller\DiagnosisController.class
 com\overseas\portal\service\DiagnosisService$RecordDTO$RecordDTOBuilder.class
+com\overseas\portal\controller\AuthController$TelegramLoginRequest.class
 com\overseas\portal\repository\SystemConfigRepository.class
 com\overseas\portal\service\WeeklyWorshipService.class
 com\overseas\portal\domain\EvangelismEditRequest$EvangelismEditRequestBuilder.class
@@ -66,6 +67,7 @@ com\overseas\portal\controller\UserController$PasswordUpdateRequest.class
 com\overseas\portal\controller\UserController$1.class
 com\overseas\portal\controller\UserController$ProfileUpdateRequest.class
 com\overseas\portal\controller\WeeklyWorshipController.class
+com\overseas\portal\service\AuthService$TelegramUser.class
 com\overseas\portal\service\DiagnosisService.class
 com\overseas\portal\service\WeeklyWorshipService$WorshipJobResult$WorshipJobResultBuilder.class
 com\overseas\portal\domain\MembershipMonthlyRecord$MembershipMonthlyRecordBuilder.class
@@ -74,6 +76,7 @@ com\overseas\portal\controller\EvangelismController.class
 com\overseas\portal\domain\MembershipEditRequest$MembershipEditRequestBuilder.class
 com\overseas\portal\controller\AuthController$VerifyOtpRequest.class
 com\overseas\portal\controller\UserController$ProfileBotTestRequest.class
+com\overseas\portal\service\AuthService$2.class
 com\overseas\portal\domain\I18nDictionary.class
 com\overseas\portal\repository\TelegramOtpLogRepository.class
 com\overseas\portal\domain\User.class

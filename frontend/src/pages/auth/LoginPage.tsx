@@ -4,6 +4,7 @@ import { authService } from '../../services/authService';
 import { logService } from '../../services/logService';
 import { sessionService } from '../../services/sessionService';
 import { roleService } from '../../services/roleService';
+import { telegramService } from '../../services/telegramService';
 
 export const LoginPage: React.FC = () => {
   const navigate = useNavigate();
@@ -20,10 +21,77 @@ export const LoginPage: React.FC = () => {
   
   const [errorMsg, setErrorMsg] = useState('');
   const [loading, setLoading] = useState(false);
+  const [telegramInitData, setTelegramInitData] = useState<string | undefined>(undefined);
 
   useEffect(() => {
     logService.addAccessLog('🔑 로그인 페이지', '/login', 'guest');
-  }, []);
+
+    console.log("[Telegram WebApp Debug] isTelegramWebApp:", telegramService.isTelegramWebApp());
+    const debugTg = telegramService.getWebApp();
+    console.log("[Telegram WebApp Debug] WebApp object present:", !!debugTg);
+    if (debugTg) {
+      console.log("[Telegram WebApp Debug] initData length:", debugTg.initData ? debugTg.initData.length : 0);
+    }
+
+    // 세션이 이미 유효한 경우 로그인 생략 및 바로 대시보드로 이동
+    if (sessionService.isSessionValid()) {
+      const userStr = localStorage.getItem('user');
+      if (userStr) {
+        try {
+          const u = JSON.parse(userStr);
+          const redirectPath = roleService.getLoginRedirectPath(u.role);
+          navigate(redirectPath);
+          return;
+        } catch (e) {}
+      }
+    }
+
+    // 텔레그램 웹앱 자동 로그인 확인
+    const checkTelegramAutoLogin = async () => {
+      if (telegramService.isTelegramWebApp()) {
+        const tg = telegramService.getWebApp();
+        if (tg && tg.initData) {
+          setTelegramInitData(tg.initData);
+          setLoading(true);
+          try {
+            const response = await authService.telegramLogin(tg.initData);
+            if (response.accessToken) {
+              const userInfo = {
+                username: response.username,
+                name: response.name,
+                role: response.role,
+                assignedCountry: response.assignedCountry,
+                mustChangePassword: response.mustChangePassword || false,
+                isOtpExempt: response.isOtpExempt || false,
+                telegramChatId: response.telegramChatId || ''
+              };
+              sessionService.startSession(userInfo, response.accessToken);
+              try {
+                await roleService.fetchMenuPermissionsFromDb();
+              } catch (e) {
+                console.warn("Failed to fetch menu permissions on tg auto login", e);
+              }
+              logService.addLoginLog(response.username, 'SUCCESS', '127.0.0.1', '텔레그램 자동 로그인 성공');
+              
+              const redirectPath = roleService.getLoginRedirectPath(response.role);
+              navigate(redirectPath);
+            } else if (response.message === 'NOT_LINKED') {
+              setErrorMsg('이 텔레그램 계정과 연동된 포탈 계정이 없습니다. 최초 1회 로그인을 완료하여 계정을 연동해 주세요.');
+            } else {
+              setErrorMsg(response.message || '텔레그램 자동 로그인 실패');
+            }
+          } catch (err: any) {
+            const msg = err.response?.data?.message || err.message || '텔레그램 자동 로그인 중 오류가 발생했습니다.';
+            setErrorMsg(msg);
+          } finally {
+            setLoading(false);
+          }
+        }
+      }
+    };
+
+    checkTelegramAutoLogin();
+  }, [navigate]);
 
   // OTP Countdown Timer
   useEffect(() => {
@@ -60,10 +128,12 @@ export const LoginPage: React.FC = () => {
     setLoading(true);
 
     try {
+      const isTg = telegramService.isTelegramWebApp();
       const response = await authService.login({
         username: username.trim(),
         password: password.trim(),
-        isTelegramWebApp: false
+        isTelegramWebApp: isTg,
+        telegramInitData: telegramInitData
       });
 
       if (response.requireOtp && response.preAuthToken) {

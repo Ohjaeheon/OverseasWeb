@@ -1663,7 +1663,7 @@ function renderFunnel(){
 // ── render ──
 function render(){
   const sec=ST.section||"home";
-  if (sec === 'evangelism/check' || sec === 'evangelism/aggregate' || sec === 'membership/check' || sec === 'membership/input' || sec === 'approvals/pending' || sec === 'approvals/completed') {
+  if (sec === 'evangelism/check' || sec === 'evangelism/aggregate' || sec === 'membership/check' || sec === 'membership/input' || sec === 'approvals/pending' || sec === 'approvals/completed' || sec === 'profile' || (sec && sec.startsWith('business'))) {
     buildSidebar();
     return;
   }
@@ -1918,6 +1918,9 @@ function setSection(sec, cat){
   if (sec && sec.startsWith('evangelism') && sec !== 'evangelism/check' && sec !== 'evangelism/aggregate') {
     sec = 'p1';
   }
+  if (sec && sec.startsWith('business') && sec !== 'business/ledger' && sec !== 'business/ledger/report' && sec !== 'business/fruit' && sec !== 'business/transport' && sec !== 'business/mission') {
+    sec = 'business';
+  }
   ST.section=sec;
   
   if (typeof DATA !== "undefined" && DATA.weeklyRecords && DATA.weeklyRecords.length > 0) {
@@ -1953,12 +1956,14 @@ function setSection(sec, cat){
       p1: 'evangelism',
       p2: 'center',
       p3: 'membership',
-      p4: 'worship'
+      p4: 'worship',
+      business: 'business'
     };
     const targetSub = routePaths[sec] !== undefined ? routePaths[sec] : sec;
     const targetUrl = '/OverseasPortal/' + targetSub;
     if (window.location.pathname !== targetUrl && window.history && window.history.pushState) {
       window.history.pushState(null, '', targetUrl);
+      window.dispatchEvent(new Event('popstate'));
     }
 
     if (typeof window !== "undefined" && typeof window.addAccessLog === "function") {
@@ -1973,7 +1978,8 @@ function setSection(sec, cat){
         p1: "① 전도 · 가개강",
         p2: "② 센터",
         p3: "③ 내무",
-        p4: "④ 예배 · 전성도"
+        p4: "④ 예배 · 전성도",
+        business: "💼 재정 업무"
       };
       const name = labels[sec] || ("📌 " + (sec || "포탈 메뉴"));
       window.addAccessLog(name, targetUrl);
@@ -1986,7 +1992,10 @@ function setSection(sec, cat){
     document.querySelectorAll("#mapGlobeToggle button").forEach(x=>x.classList.toggle("on",x.dataset.v===ST.mode)); }
   else if(PROC_CATS[sec]){ ST.mode="data"; ST.view="교회별"; ST.cat=cat||PROC_CATS[sec][0]; ST.sortIdx=null; }
   buildSidebar();
-  window.scrollTo(0,0); render();
+  if (sec && !sec.startsWith('business')) {
+    window.scrollTo(0,0);
+  }
+  render();
 }
 var SIDEBAR=[
   {s:"home",ico:"🏠",label:"홈 (종합 현황)"},
@@ -2008,6 +2017,14 @@ var SIDEBAR=[
     {cat:"④예배·전월입교자",label:"전월입교자"},
     {cat:"④예배·전성도",label:"전성도 예배 출석"},
     {cat:"④예배·결석",label:"결석 현황"},
+  ]},
+  {grp:"업 무"},
+  {s:"business",ico:"💼",label:"재정",path:"/business",children:[
+    {tab:"ledger",label:"원장헌금",path:"/business/ledger"},
+    {tab:"ledger_report",label:"ㄴ 품의서 및 회의록 작성",path:"/business/ledger/report"},
+    {tab:"fruit",label:"열매헌금",path:"/business/fruit"},
+    {tab:"transport",label:"교통비",path:"/business/transport"},
+    {tab:"mission",label:"선교비",path:"/business/mission"}
   ]},
   {grp:"보 기"},
   {s:"map",ico:"🌍",label:"지도·지구본"},
@@ -2036,7 +2053,7 @@ function checkMenuAccess(menuKey){
       normRole = 'ROLE_GUEST';
     }
 
-    if (menuKey === 'approvals/pending' || menuKey === 'approvals/completed') {
+    if (menuKey === 'approvals/pending' || menuKey === 'approvals/completed' || menuKey.startsWith('business')) {
       if (normRole === 'ROLE_USER' || normRole === 'ROLE_JIPA') return true;
     }
 
@@ -2081,15 +2098,16 @@ function buildSidebar(){
 
     const isParentActive = (it.s===ST.section || 
       (it.s==='p1' && ST.section && ST.section.startsWith('evangelism')) ||
-      (it.s==='p3' && ST.section && ST.section.startsWith('membership')));
-    const on=isParentActive?'on':'';
+      (it.s==='p3' && ST.section && ST.section.startsWith('membership')) ||
+      (it.s==='business' && ST.section && ST.section.startsWith('business')));
+    const on=(!it.children && isParentActive)?'on':'';
     const arrow=it.children?`<span style="margin-left:auto;color:var(--muted);font-size:11px">${isParentActive?'▾':'▸'}</span>`:'';
 
     html+=`<div class="mitem ${on}" data-s="${it.s}" data-cat="${it.cat||''}"><span class="ico">${it.ico}</span>${it.label}${it.tag?`<span class="tag">${it.tag}</span>`:''}${arrow}</div>`;
 
     if(it.children && isParentActive){
       it.children.forEach(ch=>{
-        const isChildOn = (ch.path && window.location.pathname.endsWith(ch.path)) || (ch.cat && ch.cat===ST.cat);
+        const isChildOn = (ch.path && window.location.pathname.endsWith(ch.path)) || (ch.cat && ch.cat===ST.cat) || (ch.tab && ch.tab===ST.tab);
         html+=`<div class="mitem ${isChildOn?'on':''}" style="padding-left:36px;font-size:13px" data-s="${it.s}" data-path="${ch.path||''}" data-cat="${ch.cat||''}"><span class="ico" style="font-size:10px;color:var(--muted)">·</span>${ch.label}</div>`;
       });
     }
@@ -2145,7 +2163,8 @@ function buildSidebar(){
           p1: 'evangelism',
           p2: 'center',
           p3: 'membership',
-          p4: 'worship'
+          p4: 'worship',
+          business: 'business'
         };
         const targetSub = routePaths[m.dataset.s] !== undefined ? routePaths[m.dataset.s] : m.dataset.s;
         window.reactNavigate(targetSub);
@@ -2455,7 +2474,7 @@ function renderHome(){
   const links=[["diag","교회 진단서"],["inspect","점검 (양·질)"],["funnel","전환율 퍼널"],["map","지도·지구본"],["trend","추이·비교"],["p1","전도·가개강"]];
   const html=`
     <div class="hero">
-      <h1>전세계 12지파 해외교회의 현황을 한눈에</h1>
+      <h1>전세계 맛디아지파 해외교회의 현황을 한눈에</h1>
       <span class="spirit">✠ 양에 속지 말고 질을 보라 — 확인·점검에서 행함으로</span>
     </div>
     <div class="kpis k5">${kpiHTML}</div>
@@ -2997,10 +3016,7 @@ function renderJipaTrend(){
 // ── UI build ──
 function buildUI(){
   ST.month = getSecMonth(ST.section);
-  document.getElementById("months").innerHTML=
-    `<span style="font-size:12.5px;color:#2563eb;font-weight:800;background:#eff6ff;padding:5px 12px;border-radius:10px;border:1.5px solid #bfdbfe;display:inline-flex;align-items:center;gap:6px">
-       🌐 해외선교 포탈 통합 진단
-     </span>`;
+
 
   const gubuns=["전체","교회","지역","개척지"];
   document.getElementById("chips").innerHTML=gubuns.map(g=>

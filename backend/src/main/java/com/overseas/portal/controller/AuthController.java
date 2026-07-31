@@ -18,6 +18,12 @@ public class AuthController {
         private String username;
         private String password;
         private boolean isTelegramWebApp;
+        private String telegramInitData;
+    }
+
+    @Data
+    public static class TelegramLoginRequest {
+        private String initData;
     }
 
     @Data
@@ -29,7 +35,13 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<AuthService.LoginResponse> login(@RequestBody LoginRequest request) {
         AuthService.LoginResponse response = authService.login(
-                request.getUsername(), request.getPassword(), request.isTelegramWebApp());
+                request.getUsername(), request.getPassword(), request.isTelegramWebApp(), request.getTelegramInitData());
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/telegram-login")
+    public ResponseEntity<AuthService.LoginResponse> telegramLogin(@RequestBody TelegramLoginRequest request) {
+        AuthService.LoginResponse response = authService.telegramLogin(request.getInitData());
         return ResponseEntity.ok(response);
     }
 
