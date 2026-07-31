@@ -17,7 +17,7 @@ export const AdminWeeklyWorshipPage: React.FC = () => {
   const [dragActive, setDragActive] = useState<boolean>(false);
   const [executing, setExecuting] = useState<boolean>(false);
   const [logs, setLogs] = useState<string>('');
-  const [result, setResult] = useState<{ jobId: string; sundayFileName: string; wednesdayFileName: string } | null>(null);
+  const [result, setResult] = useState<{ historyId: number; sundayFileName: string; wednesdayFileName: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState<boolean>(false);
 
@@ -93,7 +93,7 @@ export const AdminWeeklyWorshipPage: React.FC = () => {
       if (data.success) {
         setLogs(data.logs);
         setResult({
-          jobId: data.jobId,
+          historyId: data.historyId,
           sundayFileName: data.sundayFileName,
           wednesdayFileName: data.wednesdayFileName
         });
@@ -127,17 +127,19 @@ export const AdminWeeklyWorshipPage: React.FC = () => {
   const handleDownload = async (type: 'SUNDAY' | 'WEDNESDAY' | 'ALL_ZIP', defaultName: string) => {
     if (!result) return;
     try {
-      const response = await api.get(`/admin/weekly-worship/download?jobId=${result.jobId}&type=${type}`, {
+      const response = await api.get('/admin/weekly-worship/history/download', {
+        params: { historyId: result.historyId, type },
         responseType: 'blob'
       });
 
-      const blob = new Blob([response.data], { type: 'application/octet-stream' });
+      const contentType = response.headers['content-type'] as string;
+      const blob = new Blob([response.data], { type: contentType });
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
 
       let filename = defaultName;
-      const disposition = response.headers['content-disposition'];
+      const disposition = response.headers['content-disposition'] as string;
       if (disposition && disposition.indexOf('attachment') !== -1) {
         const filenameRegex = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/;
         const matches = filenameRegex.exec(disposition);

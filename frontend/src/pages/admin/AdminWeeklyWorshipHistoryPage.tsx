@@ -58,13 +58,14 @@ export const AdminWeeklyWorshipHistoryPage: React.FC = () => {
         responseType: 'blob'
       });
       
-      const blob = new Blob([response.data], { type: response.headers['content-type'] });
+      const contentType = response.headers['content-type'] as string;
+      const blob = new Blob([response.data], { type: contentType });
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
       
       // Content-Disposition 헤더에서 파일명 추출 디코딩
-      const contentDisposition = response.headers['content-disposition'];
+      const contentDisposition = response.headers['content-disposition'] as string;
       let filename = defaultName;
       if (contentDisposition) {
         const filenameMatch = contentDisposition.match(/filename\*=UTF-8''(.+)$/) || contentDisposition.match(/filename="(.+)"/);
@@ -81,6 +82,22 @@ export const AdminWeeklyWorshipHistoryPage: React.FC = () => {
     } catch (e) {
       console.error("Download failed", e);
       alert("파일 다운로드에 실패했습니다. 서버에서 파일이 영구 삭제되었거나 경로를 찾을 수 없습니다.");
+    }
+  };
+
+  const handleDeleteFiles = async (historyId: number, weekInfo: string) => {
+    const confirm = window.confirm(`[${weekInfo || '선택한 주차'}] 이력의 보관된 모든 물리 파일(원본 ZIP, 주일/수요 결과물)을 서버 디스크에서 영구 삭제하시겠습니까?\n(당시 실행 이력 및 표준 로그는 그대로 보존됩니다.)`);
+    if (!confirm) return;
+
+    try {
+      await api.post(`/admin/weekly-worship/history/delete-files`, null, {
+        params: { historyId }
+      });
+      alert('물리 파일들이 성공적으로 삭제되었습니다.');
+      fetchHistory(); // 새로고침
+    } catch (e) {
+      console.error("Failed to delete history files", e);
+      alert('파일 삭제에 실패했습니다.');
     }
   };
 
@@ -312,91 +329,128 @@ export const AdminWeeklyWorshipHistoryPage: React.FC = () => {
                       {/* Download button groups */}
                       <td style={{ padding: '14px 12px', textAlign: 'center' }}>
                         {isSuccess ? (
-                          <div style={{ display: 'flex', gap: '6px', justifyContent: 'center' }}>
-                            {/* 업로드 원본 ZIP */}
-                            <button
-                              onClick={() => handleDownload(item.historyId, 'ORIGINAL', '원본업로드.zip')}
-                              title="업로드했던 원본 압축파일(.zip)을 다운로드합니다."
-                              style={{
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '4px',
-                                background: '#f8fafc',
-                                border: '1px solid #cbd5e1',
-                                borderRadius: '6px',
-                                padding: '5px 8px',
-                                fontSize: '0.75rem',
-                                fontWeight: 700,
-                                color: '#475569',
-                                cursor: 'pointer'
-                              }}
-                            >
-                              <FileArchive size={12} /> 원본
-                            </button>
+                          item.originalZipPath ? (
+                            <div style={{ display: 'flex', gap: '6px', justifyContent: 'center' }}>
+                              {/* 업로드 원본 ZIP */}
+                              <button
+                                onClick={() => handleDownload(item.historyId, 'ORIGINAL', '원본업로드.zip')}
+                                title="업로드했던 원본 압축파일(.zip)을 다운로드합니다."
+                                style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '4px',
+                                  background: '#f8fafc',
+                                  border: '1px solid #cbd5e1',
+                                  borderRadius: '6px',
+                                  padding: '5px 8px',
+                                  fontSize: '0.75rem',
+                                  fontWeight: 700,
+                                  color: '#475569',
+                                  cursor: 'pointer'
+                                }}
+                              >
+                                <FileArchive size={12} /> 원본
+                              </button>
 
-                            {/* 주일 엑셀 */}
-                            <button
-                              onClick={() => handleDownload(item.historyId, 'SUNDAY', '해외예배출결_주일.xlsx')}
-                              title="취합 완성된 주일예배 출결 현황 엑셀을 다운로드합니다."
-                              style={{
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '4px',
-                                background: '#f0fdf4',
-                                border: '1px solid #bbf7d0',
-                                borderRadius: '6px',
-                                padding: '5px 8px',
-                                fontSize: '0.75rem',
-                                fontWeight: 700,
-                                color: '#166534',
-                                cursor: 'pointer'
-                              }}
-                            >
-                              <FileSpreadsheet size={12} /> 주일결과
-                            </button>
+                              {/* 주일 엑셀 */}
+                              <button
+                                onClick={() => handleDownload(item.historyId, 'SUNDAY', '해외예배출결_주일.xlsx')}
+                                title="취합 완성된 주일예배 출결 현황 엑셀을 다운로드합니다."
+                                style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '4px',
+                                  background: '#f0fdf4',
+                                  border: '1px solid #bbf7d0',
+                                  borderRadius: '6px',
+                                  padding: '5px 8px',
+                                  fontSize: '0.75rem',
+                                  fontWeight: 700,
+                                  color: '#166534',
+                                  cursor: 'pointer'
+                                }}
+                              >
+                                <FileSpreadsheet size={12} /> 주일결과
+                              </button>
 
-                            {/* 수요 엑셀 */}
-                            <button
-                              onClick={() => handleDownload(item.historyId, 'WEDNESDAY', '해외예배출결_수요.xlsx')}
-                              title="취합 완성된 수요예배 출결 현황 엑셀을 다운로드합니다."
-                              style={{
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '4px',
-                                background: '#eff6ff',
-                                border: '1px solid #bfdbfe',
-                                borderRadius: '6px',
-                                padding: '5px 8px',
-                                fontSize: '0.75rem',
-                                fontWeight: 700,
-                                color: '#1e40af',
-                                cursor: 'pointer'
-                              }}
-                            >
-                              <FileSpreadsheet size={12} /> 수요결과
-                            </button>
+                              {/* 수요 엑셀 */}
+                              <button
+                                onClick={() => handleDownload(item.historyId, 'WEDNESDAY', '해외예배출결_수요.xlsx')}
+                                title="취합 완성된 수요예배 출결 현황 엑셀을 다운로드합니다."
+                                style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '4px',
+                                  background: '#eff6ff',
+                                  border: '1px solid #bfdbfe',
+                                  borderRadius: '6px',
+                                  padding: '5px 8px',
+                                  fontSize: '0.75rem',
+                                  fontWeight: 700,
+                                  color: '#1e40af',
+                                  cursor: 'pointer'
+                                }}
+                              >
+                                <FileSpreadsheet size={12} /> 수요결과
+                              </button>
 
-                            {/* 전체 ZIP */}
-                            <button
-                              onClick={() => handleDownload(item.historyId, 'ALL_ZIP', '해외예배출결_결과전체.zip')}
-                              title="주일 및 수요 결과 엑셀이 모두 담긴 통합 압축파일을 다운로드합니다."
-                              style={{
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '4px',
-                                background: '#f5f3ff',
-                                border: '1px solid #ddd6fe',
-                                borderRadius: '6px',
-                                padding: '5px 8px',
-                                fontSize: '0.75rem',
-                                fontWeight: 700,
-                                color: '#5b21b6',
-                                cursor: 'pointer'
-                              }}
-                            >
-                              <Download size={12} /> 전체합본
-                            </button>
-                          </div>
+                              {/* 전체 ZIP */}
+                              <button
+                                onClick={() => handleDownload(item.historyId, 'ALL_ZIP', '해외예배출결_결과전체.zip')}
+                                title="주일 및 수요 결과 엑셀이 모두 담긴 통합 압축파일을 다운로드합니다."
+                                style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '4px',
+                                  background: '#f5f3ff',
+                                  border: '1px solid #ddd6fe',
+                                  borderRadius: '6px',
+                                  padding: '5px 8px',
+                                  fontSize: '0.75rem',
+                                  fontWeight: 700,
+                                  color: '#5b21b6',
+                                  cursor: 'pointer'
+                                }}
+                              >
+                                <Download size={12} /> 전체합본
+                              </button>
+
+                              {/* 파일 삭제 버튼 */}
+                              <button
+                                onClick={() => handleDeleteFiles(item.historyId, item.weekInfo)}
+                                title="보관된 물리 파일들을 서버 디스크에서 삭제합니다. (이력은 보존)"
+                                style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '4px',
+                                  background: '#fef2f2',
+                                  border: '1px solid #fca5a5',
+                                  borderRadius: '6px',
+                                  padding: '5px 8px',
+                                  fontSize: '0.75rem',
+                                  fontWeight: 700,
+                                  color: '#b91c1c',
+                                  cursor: 'pointer'
+                                }}
+                              >
+                                <XCircle size={12} /> 파일 삭제
+                              </button>
+                            </div>
+                          ) : (
+                            <span style={{ 
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                              background: '#f1f5f9', 
+                              color: '#94a3b8', 
+                              padding: '4px 10px', 
+                              borderRadius: '6px', 
+                              fontWeight: 700,
+                              fontSize: '0.78rem'
+                            }}>
+                              📁 파일 삭제됨 (로그 보존)
+                            </span>
+                          )
                         ) : (
                           <span style={{ color: '#94a3b8', fontSize: '0.8rem', fontStyle: 'italic' }}>
                             실패 건은 보관된 파일이 없습니다

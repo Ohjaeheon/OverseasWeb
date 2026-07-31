@@ -59,7 +59,6 @@ com\overseas\portal\controller\AdminController$ConfigUpdateRequest.class
 com\overseas\portal\controller\I18nController.class
 com\overseas\portal\domain\EvangelismEditRequest.class
 com\overseas\portal\security\EncryptionUtil.class
-com\overseas\portal\service\WeeklyWorshipService$WorshipJobInfo.class
 com\overseas\portal\service\AdminService.class
 com\overseas\portal\controller\AdminController$1.class
 com\overseas\portal\domain\AuditLog.class

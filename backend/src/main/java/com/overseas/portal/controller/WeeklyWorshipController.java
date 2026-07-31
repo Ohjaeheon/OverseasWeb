@@ -53,65 +53,7 @@ public class WeeklyWorshipController {
         }
     }
 
-    /**
-     * 취합 결과 임시 파일 다운로드 (실행 직후 페이지용 - 10분 유예 시간 제공)
-     */
-    @GetMapping("/download")
-    public ResponseEntity<Resource> downloadFile(
-            @RequestParam("jobId") String jobId,
-            @RequestParam("type") String type) {
-        log.info("Received download request for Job: {}, Type: {}", jobId, type);
-        try {
-            WeeklyWorshipService.WorshipJobInfo jobInfo = weeklyWorshipService.getJobInfo(jobId);
-            if (jobInfo == null) {
-                log.warn("Job info not found for Job ID: {}", jobId);
-                return ResponseEntity.notFound().build();
-            }
 
-            Path filePath;
-            String fileName;
-
-            if ("SUNDAY".equalsIgnoreCase(type)) {
-                filePath = jobInfo.getSundayFile();
-                fileName = (filePath != null) ? filePath.getFileName().toString() : "해외-예배출결현황_주일.xlsx";
-            } else if ("WEDNESDAY".equalsIgnoreCase(type)) {
-                filePath = jobInfo.getWednesdayFile();
-                fileName = (filePath != null) ? filePath.getFileName().toString() : "해외-예배출결현황_수요.xlsx";
-            } else {
-                filePath = jobInfo.getZipFile();
-                fileName = "해외-예배출결현황_결과.zip";
-            }
-
-            if (filePath == null || !Files.exists(filePath)) {
-                log.warn("Result file not found at path: {}", filePath);
-                return ResponseEntity.notFound().build();
-            }
-
-            Resource resource = new UrlResource(filePath.toUri());
-            String encodedFileName = URLEncoder.encode(fileName, StandardCharsets.UTF_8.toString()).replaceAll("\\+", "%20");
-
-            // 10분 후에 임시 작업 리소스를 정리하는 비동기 태스크 실행 (다운로드 완료 대기 및 복수 파일 다운로드 여유 시간 제공)
-            java.util.concurrent.CompletableFuture.runAsync(() -> {
-                try {
-                    java.util.concurrent.TimeUnit.MINUTES.sleep(10);
-                    weeklyWorshipService.cleanupJob(jobId);
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                } catch (Exception e) {
-                    log.error("Failed to cleanup job " + jobId + " after download", e);
-                }
-            });
-
-            return ResponseEntity.ok()
-                    .contentType(MediaType.APPLICATION_OCTET_STREAM)
-                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + encodedFileName + "\"; filename*=UTF-8''" + encodedFileName)
-                    .body(resource);
-
-        } catch (IOException e) {
-            log.error("Failed to download merged worship file", e);
-            return ResponseEntity.internalServerError().build();
-        }
-    }
 
     /**
      * 주간예배 취합 과거 전체 이력 조회
@@ -155,6 +97,21 @@ public class WeeklyWorshipController {
 
         } catch (IOException | IllegalArgumentException e) {
             log.error("Failed to download history file for historyId: " + historyId, e);
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    /**
+     * 특정 이력의 보관된 물리 파일 삭제 (이력 및 로그는 유지)
+     */
+    @PostMapping("/history/delete-files")
+    public ResponseEntity<Void> deleteHistoryFiles(@RequestParam("historyId") Long historyId) {
+        log.info("Received request to delete history files for historyId: {}", historyId);
+        try {
+            weeklyWorshipService.deleteHistoryFiles(historyId);
+            return ResponseEntity.ok().build();
+        } catch (Exception e) {
+            log.error("Failed to delete history files", e);
             return ResponseEntity.internalServerError().build();
         }
     }

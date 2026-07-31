@@ -17,7 +17,6 @@ import java.nio.charset.Charset;
 import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
@@ -29,24 +28,13 @@ import java.util.zip.ZipOutputStream;
 public class WeeklyWorshipService {
 
     private final File modelingDir = new File("worship_modeling").getAbsoluteFile();
-    private final Map<String, WorshipJobInfo> activeJobs = new ConcurrentHashMap<>();
     private final WeeklyWorshipHistoryRepository weeklyWorshipHistoryRepository;
-
-    @Data
-    @AllArgsConstructor
-    public static class WorshipJobInfo {
-        private String jobId;
-        private Path jobDir;
-        private Path sundayFile;
-        private Path wednesdayFile;
-        private Path zipFile;
-        private long createdAt;
-    }
 
     @Data
     @Builder
     public static class WorshipJobResult {
         private String jobId;
+        private Long historyId;
         private String logs;
         private boolean success;
         private String sundayFileName;
@@ -55,7 +43,7 @@ public class WeeklyWorshipService {
     }
 
     /**
-     * 주간예배출결 취합 메인 로직 실행
+     * 주간예배출결 취합 메인 로직 실행 (임시 폴더는 취합 완료 후 즉시 삭제)
      */
     public WorshipJobResult executeMerge(MultipartFile file) throws Exception {
         String jobId = UUID.randomUUID().toString();
@@ -235,19 +223,17 @@ public class WeeklyWorshipService {
 
             logBuilder.append("[시스템] 이력 등록 완료. (이력 번호: ").append(historyId).append(")\n");
 
-            // 9. activeJobs 맵에 등록 (임시 다운로드 지원)
-            WorshipJobInfo jobInfo = new WorshipJobInfo(
-                    jobId,
-                    jobDir,
-                    sundayFile,
-                    wednesdayFile,
-                    zipFile,
-                    System.currentTimeMillis()
-            );
-            activeJobs.put(jobId, jobInfo);
+            // 9. 임시 작업 폴더 즉시 삭제 (temp_jobs 파일 찌꺼기 방지)
+            try {
+                deleteDirectory(jobDir);
+                logBuilder.append("[시스템] 임시 작업 폴더 즉시 삭제 완료.\n");
+            } catch (Exception ex) {
+                log.warn("Failed to delete temporary job directory: " + jobDir, ex);
+            }
 
             return WorshipJobResult.builder()
                     .jobId(jobId)
+                    .historyId(historyId)
                     .logs(logBuilder.toString())
                     .success(true)
                     .sundayFileName(sundayFile.getFileName().toString())
@@ -273,7 +259,7 @@ public class WeeklyWorshipService {
                 log.error("Failed to save failed job history", ex);
             }
 
-            // 실패 시 생성했던 폴더 안전 삭제
+            // 실패 시 생성했던 임시 폴더 삭제
             try {
                 deleteDirectory(jobDir);
             } catch (Exception ex) {
@@ -286,28 +272,6 @@ public class WeeklyWorshipService {
                     .success(false)
                     .errorMessage(e.getMessage())
                     .build();
-        }
-    }
-
-    /**
-     * 특정 Job ID의 리소스를 조회
-     */
-    public WorshipJobInfo getJobInfo(String jobId) {
-        return activeJobs.get(jobId);
-    }
-
-    /**
-     * 특정 Job ID의 임시 파일 정리 및 맵에서 삭제
-     */
-    public void cleanupJob(String jobId) {
-        WorshipJobInfo info = activeJobs.remove(jobId);
-        if (info != null) {
-            try {
-                deleteDirectory(info.getJobDir());
-                log.info("Cleaned up worship job resources after download: {}", jobId);
-            } catch (Exception e) {
-                log.error("Failed to delete directory for job: " + jobId, e);
-            }
         }
     }
 
@@ -336,8 +300,8 @@ public class WeeklyWorshipService {
             relPath = history.getMergedZipPath();
         }
 
-        if (relPath == null) {
-            throw new IllegalArgumentException("잘못된 파일 다운로드 타입입니다: " + type);
+        if (relPath == null || relPath.isEmpty()) {
+            throw new FileNotFoundException("해당 파일은 삭제되었거나 존재하지 않습니다.");
         }
 
         Path filePath = modelingDir.toPath().resolve(relPath).toAbsolutePath().normalize();
@@ -345,6 +309,42 @@ public class WeeklyWorshipService {
             throw new FileNotFoundException("보관 디렉토리에 물리 파일이 존재하지 않습니다: " + filePath.getFileName());
         }
         return filePath;
+    }
+
+    /**
+     * 특정 이력의 물리 파일들을 서버 디렉토리에서 삭제하고 DB 경로 정보를 null로 비웁니다. (로그 이력은 유지)
+     */
+    public void deleteHistoryFiles(Long historyId) {
+        WeeklyWorshipHistory history = weeklyWorshipHistoryRepository.findById(historyId)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 이력 번호입니다: " + historyId));
+
+        // 물리 파일 삭제
+        deletePhysicalFile(history.getOriginalZipPath());
+        deletePhysicalFile(history.getMergedSundayPath());
+        deletePhysicalFile(history.getMergedWednesdayPath());
+        deletePhysicalFile(history.getMergedZipPath());
+
+        // DB 경로 비우기
+        history.setOriginalZipPath(null);
+        history.setMergedSundayPath(null);
+        history.setMergedWednesdayPath(null);
+        history.setMergedZipPath(null);
+        weeklyWorshipHistoryRepository.save(history);
+        
+        log.info("Physically deleted files for history ID: {}", historyId);
+    }
+
+    private void deletePhysicalFile(String relPath) {
+        if (relPath != null && !relPath.isEmpty()) {
+            try {
+                Path filePath = modelingDir.toPath().resolve(relPath).toAbsolutePath().normalize();
+                if (Files.exists(filePath)) {
+                    Files.delete(filePath);
+                }
+            } catch (Exception e) {
+                log.error("Failed to delete physical file: " + relPath, e);
+            }
+        }
     }
 
     /**
@@ -469,27 +469,14 @@ public class WeeklyWorshipService {
     }
 
     /**
-     * 30분이 지난 임시 작업 리소스 및 디렉토리 자동 정리 (10분 간격 실행)
+     * 혹시 에러 등으로 삭제되지 못하고 temp_jobs 폴더에 남겨진 30분이 경과한 임시 폴더 청소 (10분 간격 실행)
      */
     @Scheduled(fixedDelay = 600000)
     public void cleanUpOldWorshipJobs() {
-        log.info("Running scheduled cleanup for old Weekly Worship Jobs...");
+        log.info("Running scheduled cleanup for abandoned Weekly Worship temp folders...");
         long now = System.currentTimeMillis();
         long limit = now - (30 * 60 * 1000); // 30분 전
 
-        activeJobs.forEach((jobId, info) -> {
-            if (info.getCreatedAt() < limit) {
-                try {
-                    deleteDirectory(info.getJobDir());
-                    activeJobs.remove(jobId);
-                    log.info("Cleaned up expired worship job resources: {}", jobId);
-                } catch (Exception e) {
-                    log.error("Failed to clean up old worship job: " + jobId, e);
-                }
-            }
-        });
-
-        // 맵에 없더라도 temp_jobs 폴더의 물리 파일 중 30분이 지난 폴더 정리
         Path tempJobsDir = modelingDir.toPath().resolve("temp_jobs");
         if (Files.exists(tempJobsDir)) {
             try (DirectoryStream<Path> stream = Files.newDirectoryStream(tempJobsDir)) {
@@ -499,7 +486,7 @@ public class WeeklyWorshipService {
                         if (attrs.creationTime().toMillis() < limit) {
                             try {
                                 deleteDirectory(entry);
-                                log.info("Physically cleaned up abandoned worship job folder: {}", entry.getFileName());
+                                log.info("Physically cleaned up abandoned temp folder: {}", entry.getFileName());
                             } catch (Exception e) {
                                 // ignore
                             }
