@@ -1,8 +1,11 @@
 package com.overseas.portal.service;
 
+import com.overseas.portal.domain.WeeklyWorshipHistory;
+import com.overseas.portal.repository.WeeklyWorshipHistoryRepository;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -22,10 +25,12 @@ import java.util.zip.ZipOutputStream;
 
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class WeeklyWorshipService {
 
     private final File modelingDir = new File("worship_modeling").getAbsoluteFile();
     private final Map<String, WorshipJobInfo> activeJobs = new ConcurrentHashMap<>();
+    private final WeeklyWorshipHistoryRepository weeklyWorshipHistoryRepository;
 
     @Data
     @AllArgsConstructor
@@ -65,6 +70,7 @@ public class WeeklyWorshipService {
         StringBuilder logBuilder = new StringBuilder();
         logBuilder.append("[시스템] 임시 작업 폴더 생성 완료: ").append(jobDir.getFileName()).append("\n");
 
+        Path finalDataDir = null;
         try {
             // 1. ZIP 압축 해제
             logBuilder.append("[시스템] 업로드된 ZIP 파일 압축 해제 중...\n");
@@ -78,20 +84,18 @@ public class WeeklyWorshipService {
 
             logBuilder.append("[시스템] 데이터 감지 폴더: ").append(jobDir.relativize(dataDir)).append("\n");
 
-            // 3. 디렉토리 구조 보정 (파이썬 스크립트 실행을 위해 immediate subdirectory로 생성)
-            Path finalDataDir = dataDir;
+            // 3. 디렉토리 구조 보정
+            finalDataDir = dataDir;
             if (dataDir.equals(jobDir)) {
-                // 루트에 파일들이 직접 풀린 경우 -> 압축파일 이름 혹은 기본 이름으로 서브디렉토리 생성
                 String origName = StringUtils.cleanPath(Objects.requireNonNull(file.getOriginalFilename()));
                 int dotIdx = origName.lastIndexOf('.');
                 String folderName = dotIdx > 0 ? origName.substring(0, dotIdx) : "주간예배출결";
-                folderName = folderName.replaceAll("[^a-zA-Z0-9ㄱ-ㅎㅏ-ㅣ가-힣_\\-]", "_"); // 특수문자 정제
+                folderName = folderName.replaceAll("[^a-zA-Z0-9ㄱ-ㅎㅏ-ㅣ가-힣_\\-]", "_");
                 if (folderName.isEmpty()) folderName = "주간예배출결";
 
                 Path subDir = jobDir.resolve(folderName);
                 Files.createDirectories(subDir);
 
-                // 파일들 이동
                 try (DirectoryStream<Path> stream = Files.newDirectoryStream(jobDir)) {
                     for (Path entry : stream) {
                         String name = entry.getFileName().toString();
@@ -103,7 +107,6 @@ public class WeeklyWorshipService {
                 finalDataDir = subDir;
                 logBuilder.append("[시스템] 루트 압축 해제 대응 - 파일을 서브폴더로 이동함: ").append(folderName).append("\n");
             } else if (!dataDir.getParent().equals(jobDir)) {
-                // 너무 깊게 중첩된 경우 -> jobDir 바로 하위로 이동
                 Path newDir = jobDir.resolve(dataDir.getFileName());
                 Files.move(dataDir, newDir, StandardCopyOption.REPLACE_EXISTING);
                 finalDataDir = newDir;
@@ -132,10 +135,8 @@ public class WeeklyWorshipService {
             pb.redirectErrorStream(true);
             Process process = pb.start();
 
-            // 한글 윈도우 인코딩(MS949/EUC-KR) 지원을 위해 문자셋 설정
             Charset charset = Charset.forName("x-windows-949");
             try {
-                // 시스템 환경에 맞춰 인코딩 확인
                 String systemEncoding = System.getProperty("sun.jnu.encoding");
                 if (systemEncoding != null && Charset.isSupported(systemEncoding)) {
                     charset = Charset.forName(systemEncoding);
@@ -195,7 +196,46 @@ public class WeeklyWorshipService {
             zipFiles(List.of(sundayFile, wednesdayFile), zipFile);
             logBuilder.append("[시스템] 압축 패키지 생성 완료.\n");
 
-            // 8. activeJobs 맵에 등록 (나중 다운로드 지원)
+            // 8. DB 이력 테이블 저장 & 파일 보관 이동
+            logBuilder.append("[시스템] 취합 이력 데이터베이스 및 파일 보관함 등록 중...\n");
+            String weekInfo = extractWeekInfo(finalDataDir.getFileName().toString());
+
+            WeeklyWorshipHistory history = WeeklyWorshipHistory.builder()
+                    .fileName(file.getOriginalFilename())
+                    .weekInfo(weekInfo)
+                    .status("SUCCESS")
+                    .logs(logBuilder.toString())
+                    .uploadedBy("admin")
+                    .build();
+            history = weeklyWorshipHistoryRepository.save(history);
+            Long historyId = history.getHistoryId();
+
+            Path historyFilesDir = modelingDir.toPath().resolve("history_files");
+            Files.createDirectories(historyFilesDir);
+
+            // 파일 이동 및 복제
+            Path historyOriginalFile = historyFilesDir.resolve("original_" + historyId + ".zip");
+            Path historySundayFile = historyFilesDir.resolve("sunday_" + historyId + ".xlsx");
+            Path historyWednesdayFile = historyFilesDir.resolve("wednesday_" + historyId + ".xlsx");
+            Path historyZipFile = historyFilesDir.resolve("merged_" + historyId + ".zip");
+
+            try (InputStream is = file.getInputStream()) {
+                Files.copy(is, historyOriginalFile, StandardCopyOption.REPLACE_EXISTING);
+            }
+            Files.copy(sundayFile, historySundayFile, StandardCopyOption.REPLACE_EXISTING);
+            Files.copy(wednesdayFile, historyWednesdayFile, StandardCopyOption.REPLACE_EXISTING);
+            Files.copy(zipFile, historyZipFile, StandardCopyOption.REPLACE_EXISTING);
+
+            // 파일 상대 경로 등록
+            history.setOriginalZipPath("history_files/original_" + historyId + ".zip");
+            history.setMergedSundayPath("history_files/sunday_" + historyId + ".xlsx");
+            history.setMergedWednesdayPath("history_files/wednesday_" + historyId + ".xlsx");
+            history.setMergedZipPath("history_files/merged_" + historyId + ".zip");
+            weeklyWorshipHistoryRepository.save(history);
+
+            logBuilder.append("[시스템] 이력 등록 완료. (이력 번호: ").append(historyId).append(")\n");
+
+            // 9. activeJobs 맵에 등록 (임시 다운로드 지원)
             WorshipJobInfo jobInfo = new WorshipJobInfo(
                     jobId,
                     jobDir,
@@ -218,6 +258,21 @@ public class WeeklyWorshipService {
             log.error("Failed to execute weekly worship merge job " + jobId, e);
             logBuilder.append("\n[에러] ").append(e.getMessage()).append("\n");
 
+            // 실패 이력 등록
+            try {
+                String weekInfo = finalDataDir != null ? extractWeekInfo(finalDataDir.getFileName().toString()) : "알수없음";
+                WeeklyWorshipHistory history = WeeklyWorshipHistory.builder()
+                        .fileName(file.getOriginalFilename())
+                        .weekInfo(weekInfo)
+                        .status("FAILED")
+                        .logs(logBuilder.toString())
+                        .uploadedBy("admin")
+                        .build();
+                weeklyWorshipHistoryRepository.save(history);
+            } catch (Exception ex) {
+                log.error("Failed to save failed job history", ex);
+            }
+
             // 실패 시 생성했던 폴더 안전 삭제
             try {
                 deleteDirectory(jobDir);
@@ -239,6 +294,69 @@ public class WeeklyWorshipService {
      */
     public WorshipJobInfo getJobInfo(String jobId) {
         return activeJobs.get(jobId);
+    }
+
+    /**
+     * 특정 Job ID의 임시 파일 정리 및 맵에서 삭제
+     */
+    public void cleanupJob(String jobId) {
+        WorshipJobInfo info = activeJobs.remove(jobId);
+        if (info != null) {
+            try {
+                deleteDirectory(info.getJobDir());
+                log.info("Cleaned up worship job resources after download: {}", jobId);
+            } catch (Exception e) {
+                log.error("Failed to delete directory for job: " + jobId, e);
+            }
+        }
+    }
+
+    /**
+     * 주간예배취합 과거 이력 전체 조회
+     */
+    public List<WeeklyWorshipHistory> getHistoryList() {
+        return weeklyWorshipHistoryRepository.findAllByOrderByCreatedAtDesc();
+    }
+
+    /**
+     * 보관된 이력 파일 경로 반환
+     */
+    public Path getHistoryFile(Long historyId, String type) throws IOException {
+        WeeklyWorshipHistory history = weeklyWorshipHistoryRepository.findById(historyId)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 이력 번호입니다: " + historyId));
+
+        String relPath = null;
+        if ("ORIGINAL".equalsIgnoreCase(type)) {
+            relPath = history.getOriginalZipPath();
+        } else if ("SUNDAY".equalsIgnoreCase(type)) {
+            relPath = history.getMergedSundayPath();
+        } else if ("WEDNESDAY".equalsIgnoreCase(type)) {
+            relPath = history.getMergedWednesdayPath();
+        } else if ("ALL_ZIP".equalsIgnoreCase(type)) {
+            relPath = history.getMergedZipPath();
+        }
+
+        if (relPath == null) {
+            throw new IllegalArgumentException("잘못된 파일 다운로드 타입입니다: " + type);
+        }
+
+        Path filePath = modelingDir.toPath().resolve(relPath).toAbsolutePath().normalize();
+        if (!Files.exists(filePath)) {
+            throw new FileNotFoundException("보관 디렉토리에 물리 파일이 존재하지 않습니다: " + filePath.getFileName());
+        }
+        return filePath;
+    }
+
+    /**
+     * 폴더명에서 주차 정규식 정보 추출
+     */
+    private String extractWeekInfo(String folderName) {
+        java.util.regex.Pattern pattern = java.util.regex.Pattern.compile("(\\d+월\\s*\\d+주)");
+        java.util.regex.Matcher matcher = pattern.matcher(folderName);
+        if (matcher.find()) {
+            return matcher.group(1).replace(" ", "");
+        }
+        return folderName;
     }
 
     /**

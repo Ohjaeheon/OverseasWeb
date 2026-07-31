@@ -14,6 +14,7 @@ com\overseas\portal\controller\AuthController.class
 com\overseas\portal\repository\ChurchRepository.class
 com\overseas\portal\domain\EvangelismWeeklyRecord$EvangelismWeeklyRecordBuilder.class
 com\overseas\portal\domain\SystemConfig$SystemConfigBuilder.class
+com\overseas\portal\repository\WeeklyWorshipHistoryRepository.class
 com\overseas\portal\service\DiagnosisService$SummaryMetric$SummaryMetricBuilder.class
 com\overseas\portal\security\JwtAuthenticationFilter.class
 com\overseas\portal\service\AuthService$LoginResponse.class
@@ -47,6 +48,7 @@ com\overseas\portal\domain\FaithProcessRecord$FaithProcessRecordBuilder.class
 com\overseas\portal\repository\MembershipMonthlyRecordRepository.class
 com\overseas\portal\repository\UserRepository.class
 com\overseas\portal\controller\DiagnosisController.class
+com\overseas\portal\domain\WeeklyWorshipHistory$WeeklyWorshipHistoryBuilder.class
 com\overseas\portal\service\DiagnosisService$RecordDTO$RecordDTOBuilder.class
 com\overseas\portal\controller\AuthController$TelegramLoginRequest.class
 com\overseas\portal\repository\SystemConfigRepository.class
@@ -81,3 +83,4 @@ com\overseas\portal\domain\I18nDictionary.class
 com\overseas\portal\repository\TelegramOtpLogRepository.class
 com\overseas\portal\domain\User.class
 com\overseas\portal\repository\I18nDictionaryRepository.class
+com\overseas\portal\domain\WeeklyWorshipHistory.class

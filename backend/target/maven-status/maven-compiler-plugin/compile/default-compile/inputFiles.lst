@@ -17,6 +17,7 @@ E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\domain\Membershi
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\repository\I18nDictionaryRepository.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\repository\EvangelismWeeklyRecordRepository.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\security\JwtAuthenticationFilter.java
+E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\domain\WeeklyWorshipHistory.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\repository\EvangelismEditRequestRepository.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\repository\FaithProcessRecordRepository.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\OverseasPortalApplication.java
@@ -30,6 +31,7 @@ E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\repository\Membe
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\controller\MembershipController.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\domain\FaithProcessRecord.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\controller\WeeklyWorshipController.java
+E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\repository\WeeklyWorshipHistoryRepository.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\service\DiagnosisService.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\repository\UserRepository.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\service\WeeklyWorshipService.java

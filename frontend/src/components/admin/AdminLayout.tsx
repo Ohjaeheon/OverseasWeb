@@ -55,7 +55,13 @@ export const AdminLayout: React.FC = () => {
     { s: "inspect", ico: "🚨", label: "상세 점검 (양·질)", path: "/adminsetting/church-detail" },
 
     { grp: "데이터 관리" },
-    { s: "weekly_worship", ico: "📅", label: "주간예배 출결", path: "/adminsetting/weekly-worship" },
+    {
+      s: "weekly_worship", ico: "📅", label: "주간예배 출결", path: "/adminsetting/weekly-worship",
+      children: [
+        { label: "자동 취합 실행", path: "/adminsetting/weekly-worship" },
+        { label: "이전 데이터 확인", path: "/adminsetting/weekly-worship/history" }
+      ]
+    },
 
     { grp: "회원 및 권한" },
     { s: "users", ico: "🌍", label: "회원 관리", path: "/adminsetting/users" },
