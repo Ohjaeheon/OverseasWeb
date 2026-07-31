@@ -1,7 +1,9 @@
 import os
 import re
-import shutil
-import win32com.client
+import io
+import openpyxl
+import msoffcrypto
+from msoffcrypto.format.ooxml import OOXMLFile
 
 # 설정
 PASSWORD = "gotjsqn"
@@ -31,61 +33,55 @@ def find_target_sheet(filename, sheetnames):
             return sname
     return None
 
-def copy_sheet_data_com(ws_src, ws_dst):
-    """
-    원본 시트(ws_src)의 데이터를 대상 시트(ws_dst)로 고속 복사합니다. (Excel COM 방식)
-    수식 열을 제외한 5개의 데이터 입력 블록을 단 5번의 COM 호출로 한 번에 복사하여 속도를 극대화합니다.
-    A1 셀의 날짜 정보도 복사하고 반환합니다.
-    """
+def load_encrypted_workbook(path, password):
+    decrypted = io.BytesIO()
+    with open(path, "rb") as f:
+        file = msoffcrypto.OfficeFile(f)
+        file.load_key(password=password)
+        file.decrypt(decrypted)
+    decrypted.seek(0)
+    return openpyxl.load_workbook(decrypted, data_only=True)
+
+def copy_sheet_data_openpyxl(ws_src, ws_dst):
     extracted_date = None
     try:
-        # A1 셀 (날짜 등) 복사
-        a1_val = ws_src.Range("A1").Value
-        ws_dst.Range("A1").Value = a1_val
+        # A1 셀 복사
+        a1_val = ws_src["A1"].value
+        ws_dst["A1"].value = a1_val
         if a1_val:
-            # 괄호 속 날짜 추출 (예: (7월 1일 수요일))
             m = re.search(r"(\([^)]+\))", str(a1_val))
             if m:
                 extracted_date = m.group(1)
 
-        # C6:W13 범위의 모든 데이터 값을 한 번에 가져옴 (8개 행, 21개 열)
-        src_values = ws_src.Range("C6:W13").Value
-        if not src_values:
-            return None
-            
-        # 튜플 데이터를 다루기 편하게 리스트로 변환
-        src_list = [list(row) for row in src_values]
+        # C6:W13 범위의 데이터 복사 (수식 열 G, H, O, P, T, U 제외)
+        ranges = [
+            (3, 6),
+            (9, 11),
+            (12, 14),
+            (17, 19),
+            (22, 23)
+        ]
         
-        # 1. 블록 1: C6:F13 (C:등록, D:대면, E:온라인, F:기타) - 인덱스 0~3 (4개 열)
-        ws_dst.Range("C6:F13").Value = [row[0:4] for row in src_list]
-        
-        # 2. 블록 2: I6:K13 (I:총재적, J:출결제외/근신, K:등록재적) - 인덱스 6~8 (3개 열, G/H 수식 제외)
-        ws_dst.Range("I6:K13").Value = [row[6:9] for row in src_list]
-        
-        # 3. 블록 3: L6:N13 (L:대면, M:온라인, N:기타) - 인덱스 9~11 (3개 열)
-        ws_dst.Range("L6:N13").Value = [row[9:12] for row in src_list]
-        
-        # 4. 블록 4: Q6:S13 (Q:미출석재적, R:미출석대면, S:미출석온라인) - 인덱스 14~16 (3개 열, O/P 수식 제외)
-        ws_dst.Range("Q6:S13").Value = [row[14:17] for row in src_list]
-        
-        # 5. 블록 5: V6:W13 (V:미출석률/미출석기타일부, W:비고) - 인덱스 19~20 (2개 열, T/U 수식 제외)
-        ws_dst.Range("V6:W13").Value = [row[19:21] for row in src_list]
-        
+        for r in range(6, 14):
+            for start_col, end_col in ranges:
+                for c in range(start_col, end_col + 1):
+                    val = ws_src.cell(row=r, column=c).value
+                    ws_dst.cell(row=r, column=c).value = val
     except Exception as e:
-        print(f"    [오류] 데이터 블록 고속 복사 중 실패: {e}")
+        print(f"    [오류] 데이터 복사 중 실패: {e}")
     return extracted_date
 
 def update_common_sheets_date(wb, new_date):
     """공통 시트(해외-전체예배출석현황, 해외-자장부청)의 A1 셀 날짜 부분을 업데이트합니다."""
     for sname in ["해외-전체예배출석현황", "해외-자장부청"]:
         try:
-            sh = wb.Sheets(sname)
-            a1_val = sh.Range("A1").Value
-            if a1_val:
-                # 기존의 괄호 부분을 새 날짜로 치환
-                updated_val = re.sub(r"\([^)]+\)", new_date, str(a1_val))
-                sh.Range("A1").Value = updated_val
-                print(f"    [공통] '{sname}' A1 날짜 업데이트 완료: {new_date}")
+            if sname in wb.sheetnames:
+                sh = wb[sname]
+                a1_val = sh["A1"].value
+                if a1_val:
+                    updated_val = re.sub(r"\([^)]+\)", new_date, str(a1_val))
+                    sh["A1"].value = updated_val
+                    print(f"    [공통] '{sname}' A1 날짜 업데이트 완료: {new_date}")
         except Exception as e:
             print(f"    [경고] '{sname}' A1 날짜 업데이트 중 오류: {e}")
 
@@ -101,7 +97,6 @@ def process_merge():
     subfolders = []
     for entry in os.scandir(base_dir):
         if entry.is_dir() and not entry.name.startswith('.'):
-            # 파일 번호(01.~19.)로 시작하는 파일이 들어있는 폴더인지 확인
             has_regional = False
             for f in os.scandir(entry.path):
                 if f.is_file() and f.name.endswith('.xlsx'):
@@ -117,14 +112,14 @@ def process_merge():
         
     print(f"[정보] 총 {len(subfolders)}개의 작업 대상 폴더 발견: {[f.name for f in subfolders]}")
     
-    excel = None
     try:
-        # Excel 백그라운드 어플리케이션 시작
-        print("[진행] Excel 어플리케이션을 구동하여 고속 취합을 시작합니다...")
-        excel = win32com.client.Dispatch("Excel.Application")
-        excel.Visible = False
-        excel.DisplayAlerts = False
-        excel.ScreenUpdating = False
+        # 템플릿 복호화
+        print("[진행] 공통 엑셀 템플릿 파일 로드 중...")
+        template_data = io.BytesIO()
+        with open(template_path, "rb") as f:
+            file = msoffcrypto.OfficeFile(f)
+            file.load_key(password=PASSWORD)
+            file.decrypt(template_data)
         
         for folder in subfolders:
             folder_name = folder.name
@@ -144,16 +139,15 @@ def process_merge():
                     os.remove(final_수요_enc)
             except PermissionError:
                 print(f"[오류] 취합 결과 파일이 이미 열려 있어 접근할 수 없습니다.")
-                print(f"작업 폴더 내의 '해외-예배출결현황({week_info})' 엑셀 창을 완전히 닫고 다시 실행해 주세요.")
+                print(f"작업 폴더 내의 엑셀 창을 완전히 닫고 다시 실행해 주세요.")
                 return
             
-            # 템플릿 복사본 생성 (암호화 상태 유지)
-            shutil.copy(template_path, final_주일_enc)
-            shutil.copy(template_path, final_수요_enc)
+            # Load template workbooks from decrypted stream (data_only=False to keep formulas)
+            template_data.seek(0)
+            wb_주일 = openpyxl.load_workbook(template_data)
             
-            # 취합 대상 파일 열기 (위치 인수 사용: Filename, UpdateLinks, ReadOnly, Format, Password)
-            wb_주일 = excel.Workbooks.Open(final_주일_enc, 0, False, None, PASSWORD)
-            wb_수요 = excel.Workbooks.Open(final_수요_enc, 0, False, None, PASSWORD)
+            template_data.seek(0)
+            wb_수요 = openpyxl.load_workbook(template_data)
             
             # 하위 폴더 내 19개 지역별 파일 목록
             regional_files = [f.name for f in os.scandir(folder.path) 
@@ -162,7 +156,7 @@ def process_merge():
             
             print(f"[정보] '{folder_name}' 폴더 내 지역별 파일 개수: {len(regional_files)}개")
             
-            dest_sheetnames = [sh.Name for sh in wb_주일.Sheets]
+            dest_sheetnames = wb_주일.sheetnames
             
             extracted_date_주일 = None
             extracted_date_수요 = None
@@ -170,81 +164,79 @@ def process_merge():
             for r_file in regional_files:
                 r_path = os.path.join(folder.path, r_file)
                 
-                wb_src = None
                 try:
-                    # 지역별 파일 열기 (위치 인수 사용: Filename, UpdateLinks, ReadOnly, Format, Password)
-                    wb_src = excel.Workbooks.Open(r_path, 0, True, None, PASSWORD)
+                    # 지역별 파일 열기 (data_only=True to copy values)
+                    wb_src = load_encrypted_workbook(r_path, PASSWORD)
                     
                     # 템플릿 시트 매칭
                     dst_sheet_name = find_target_sheet(r_file, dest_sheetnames)
                     if not dst_sheet_name:
                         print(f"  [경고] '{r_file}' 매칭되는 템플릿 시트를 찾을 수 없어 건너뜁니다.")
-                        wb_src.Close(False)
                         continue
                     
                     # 주일 취합
                     has_주일 = False
-                    for sh in wb_src.Sheets:
-                        if sh.Name == "(주일)예배출석현황":
-                            has_주일 = True
-                            date_found = copy_sheet_data_com(sh, wb_주일.Sheets(dst_sheet_name))
-                            if date_found:
-                                if not extracted_date_주일:
-                                    extracted_date_주일 = date_found
-                                elif date_found != extracted_date_주일:
-                                    print(f"  [경고] '{r_file}'의 주일 날짜({date_found})가 기준 날짜({extracted_date_주일})와 다릅니다.")
-                            print(f"  [완료] '{r_file}' -> '{dst_sheet_name}' (주일) 값 병합 완료")
-                            break
+                    if "(주일)예배출석현황" in wb_src.sheetnames:
+                        has_주일 = True
+                        sh_src = wb_src["(주일)예배출석현황"]
+                        sh_dst = wb_주일[dst_sheet_name]
+                        date_found = copy_sheet_data_openpyxl(sh_src, sh_dst)
+                        if date_found:
+                            if not extracted_date_주일:
+                                extracted_date_주일 = date_found
+                            elif date_found != extracted_date_주일:
+                                print(f"  [경고] '{r_file}'의 주일 날짜({date_found})가 기준 날짜({extracted_date_주일})와 다릅니다.")
+                        print(f"  [완료] '{r_file}' -> '{dst_sheet_name}' (주일) 값 병합 완료")
                     if not has_주일:
-                        print(f"  [정보] '{r_file}' 파일에 '(주일)예배출석현황' 시트가 없어 해당 국가(시트)는 건너뜁니다.")
+                        print(f"  [정보] '{r_file}' 파일에 '(주일)예배출석현황' 시트가 없어 해당 국가(시트)는 건너뜀")
                         
                     # 수요 취합
                     has_수요 = False
-                    for sh in wb_src.Sheets:
-                        if sh.Name == "(수요)예배출석현황":
-                            has_수요 = True
-                            date_found = copy_sheet_data_com(sh, wb_수요.Sheets(dst_sheet_name))
-                            if date_found:
-                                if not extracted_date_수요:
-                                    extracted_date_수요 = date_found
-                                elif date_found != extracted_date_수요:
-                                    print(f"  [경고] '{r_file}'의 수요 날짜({date_found})가 기준 날짜({extracted_date_수요})와 다릅니다.")
-                            print(f"  [완료] '{r_file}' -> '{dst_sheet_name}' (수요) 값 병합 완료")
-                            break
+                    if "(수요)예배출석현황" in wb_src.sheetnames:
+                        has_수요 = True
+                        sh_src = wb_src["(수요)예배출석현황"]
+                        sh_dst = wb_수요[dst_sheet_name]
+                        date_found = copy_sheet_data_openpyxl(sh_src, sh_dst)
+                        if date_found:
+                            if not extracted_date_수요:
+                                extracted_date_수요 = date_found
+                            elif date_found != extracted_date_수요:
+                                print(f"  [경고] '{r_file}'의 수요 날짜({date_found})가 기준 날짜({extracted_date_수요})와 다릅니다.")
+                        print(f"  [완료] '{r_file}' -> '{dst_sheet_name}' (수요) 값 병합 완료")
                     if not has_수요:
-                        print(f"  [정보] '{r_file}' 파일에 '(수요)예배출석현황' 시트가 없어 해당 국가(시트)는 건너뜁니다.")
+                        print(f"  [정보] '{r_file}' 파일에 '(수요)예배출석현황' 시트가 없어 해당 국가(시트)는 건너뜜")
                         
                 except Exception as e:
                     print(f"  [오류] '{r_file}' 파일 처리 중 에러 발생: {e}")
-                finally:
-                    if wb_src is not None:
-                        try:
-                            wb_src.Close(False)
-                        except Exception:
-                            pass
             
             # 공통 시트 날짜 업데이트
             if extracted_date_주일:
                 update_common_sheets_date(wb_주일, extracted_date_주일)
             if extracted_date_수요:
                 update_common_sheets_date(wb_수요, extracted_date_수요)
+            
+            # Save and encrypt 주일 file
+            temp_out = io.BytesIO()
+            wb_주일.save(temp_out)
+            temp_out.seek(0)
+            with open(final_주일_enc, "wb") as f_out:
+                file = OOXMLFile(temp_out)
+                file.encrypt(PASSWORD, f_out)
+                
+            # Save and encrypt 수요 file
+            temp_out = io.BytesIO()
+            wb_수요.save(temp_out)
+            temp_out.seek(0)
+            with open(final_수요_enc, "wb") as f_out:
+                file = OOXMLFile(temp_out)
+                file.encrypt(PASSWORD, f_out)
 
-            # 저장 후 닫기
-            wb_주일.Close(True)
-            wb_수요.Close(True)
             print(f"  [성공] 생성 완료: {os.path.basename(final_주일_enc)}")
             print(f"  [성공] 생성 완료: {os.path.basename(final_수요_enc)}")
             
     except Exception as e:
         print(f"[오류] 대형 에러 발생: {e}")
-    finally:
-        # Excel 프로세스 강제 종료 방지 및 안전하게 닫기
-        if excel is not None:
-            try:
-                excel.Quit()
-            except Exception:
-                pass
-                
+        
     print("\n[알림] 모든 취합 작업이 성료되었습니다!")
 
 if __name__ == "__main__":
