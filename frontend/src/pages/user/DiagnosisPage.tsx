@@ -6,13 +6,14 @@ import { sessionService } from '../../services/sessionService';
 import { EvangelismModule } from '../../components/user/EvangelismModule';
 import { MembershipModule } from '../../components/user/MembershipModule';
 import { ApprovalModule } from '../../components/user/ApprovalModule';
+import { BusinessModule } from '../../components/user/BusinessModule';
 import { MyProfilePage } from './MyProfilePage';
 import { roleService } from '../../services/roleService';
 import api from '../../services/api';
 
 interface DiagnosisPageProps {
   section?: string;
-  tab?: 'check' | 'aggregate' | 'input';
+  tab?: 'check' | 'aggregate' | 'input' | 'ledger' | 'ledger_report' | 'fruit' | 'transport' | 'mission';
 }
 
 export const DiagnosisPage: React.FC<DiagnosisPageProps> = ({ section = 'home', tab = 'check' }) => {
@@ -141,6 +142,45 @@ export const DiagnosisPage: React.FC<DiagnosisPageProps> = ({ section = 'home', 
       }
     }
 
+    // Redirect /business to /business/ledger ... ONLY IF user lacks access to the main business dashboard
+    if (section === 'business') {
+      const cleanRole = userRole.toUpperCase().startsWith('ROLE_') ? userRole.toUpperCase() : `ROLE_${userRole.toUpperCase()}`;
+      let normRole = cleanRole;
+      if (cleanRole === 'ROLE_해외선교부 담당자' || cleanRole === 'ROLE_USER') {
+        normRole = 'ROLE_USER';
+      } else if (cleanRole === 'ROLE_지파 담당자' || cleanRole === 'ROLE_JIPA') {
+        normRole = 'ROLE_JIPA';
+      } else if (cleanRole === 'ROLE_일반 회원' || cleanRole === 'ROLE_GUEST') {
+        normRole = 'ROLE_GUEST';
+      }
+
+      const isAdmin = normRole === 'ROLE_ADMIN' || normRole === 'ADMIN' || normRole === 'ROLE_관리자';
+      const hasMainAccess = isAdmin || roleService.canRoleAccessMenu(userRole, 'business').read;
+
+      if (!hasMainAccess) {
+        const canLedger = roleService.canRoleAccessMenu(userRole, 'business_ledger').read;
+        const canLedgerReport = roleService.canRoleAccessMenu(userRole, 'business_ledger_report').read;
+        const canFruit = roleService.canRoleAccessMenu(userRole, 'business_fruit').read;
+        const canTransport = roleService.canRoleAccessMenu(userRole, 'business_transport').read;
+        const canMission = roleService.canRoleAccessMenu(userRole, 'business_mission').read;
+        if (canLedger) {
+          navigate('/business/ledger', { replace: true });
+        } else if (canLedgerReport) {
+          navigate('/business/ledger/report', { replace: true });
+        } else if (canFruit) {
+          navigate('/business/fruit', { replace: true });
+        } else if (canTransport) {
+          navigate('/business/transport', { replace: true });
+        } else if (canMission) {
+          navigate('/business/mission', { replace: true });
+        } else {
+          alert("해당 메뉴에 대한 접근 권한이 없습니다.");
+          navigate('/', { replace: true });
+        }
+        return;
+      }
+    }
+
     const sectionToMenuKey: Record<string, string> = {
       'home': 'home',
       'diag': 'diag',
@@ -157,6 +197,12 @@ export const DiagnosisPage: React.FC<DiagnosisPageProps> = ({ section = 'home', 
       'membership/check': 'p3_check',
       'membership/input': 'p3_input',
       'worship': 'p4',
+      'business': 'business',
+      'business/ledger': 'business_ledger',
+      'business/ledger/report': 'business_ledger_report',
+      'business/fruit': 'business_fruit',
+      'business/transport': 'business_transport',
+      'business/mission': 'business_mission',
       'approvals/pending': 'approvals_pending',
       'approvals/completed': 'approvals_completed'
     };
@@ -206,7 +252,13 @@ export const DiagnosisPage: React.FC<DiagnosisPageProps> = ({ section = 'home', 
       evangelism: '① 전도 · 가개강 종합 포탈',
       center: '② 센터',
       membership: '③ 내무',
-      worship: '④ 예배 · 전성도'
+      worship: '④ 예배 · 전성도',
+      business: '💼 업무 종합 포탈',
+      'business/ledger': '💼 원장헌금',
+      'business/ledger/report': '💼 품의서 및 회의록 작성',
+      'business/fruit': '💼 열매헌금',
+      'business/transport': '💼 교통비',
+      'business/mission': '💼 선교비'
     };
     const currentLabel = sectionLabels[section] || '🏠 사용자 진단서 포탈';
     const currentPath = section === 'home' ? '/' : `/${section}`;
@@ -492,7 +544,7 @@ export const DiagnosisPage: React.FC<DiagnosisPageProps> = ({ section = 'home', 
     }
   }, [section]);
 
-  if (section === 'evangelism/check' || section === 'evangelism/aggregate' || section === 'membership/check' || section === 'membership/input' || section === 'approvals/pending' || section === 'approvals/completed' || section === 'profile') {
+  if (section === 'evangelism/check' || section === 'evangelism/aggregate' || section === 'membership/check' || section === 'membership/input' || section === 'approvals/pending' || section === 'approvals/completed' || section === 'profile' || section === 'business' || section.startsWith('business/')) {
     return (
       <div style={{ minHeight: '100vh', background: '#f8fafc' }}>
         <div className="topbar">
@@ -503,7 +555,7 @@ export const DiagnosisPage: React.FC<DiagnosisPageProps> = ({ section = 'home', 
             <div className="brandsub">GLOBAL MISSION DASHBOARD</div>
           </div>
           <span className="spacer"></span>
-          <button className="repbtn" onClick={() => navigate('/')}>🏠 인트로</button>
+          {/*<button className="repbtn" onClick={() => navigate('/')}>🏠 인트로</button>*/}
           <button className="repbtn" onClick={() => window.location.href = '/OverseasPortal/profile'}>👤 회원관리</button>
           <button className="repbtn" id="btnLogout" onClick={() => {
             if (window.confirm("정말 로그아웃 하시겠습니까?")) {
@@ -522,6 +574,8 @@ export const DiagnosisPage: React.FC<DiagnosisPageProps> = ({ section = 'home', 
               <EvangelismModule initialTab={section === 'evangelism/check' ? 'check' : 'aggregate'} />
             ) : (section === 'membership/check' || section === 'membership/input') ? (
               <MembershipModule initialTab={section === 'membership/check' ? 'check' : 'input'} />
+            ) : (section === 'business' || section.startsWith('business/')) ? (
+              <BusinessModule initialTab={tab as any} />
             ) : (
               <ApprovalModule mode={section === 'approvals/pending' ? 'pending' : 'completed'} />
             )}

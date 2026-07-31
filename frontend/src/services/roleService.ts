@@ -42,6 +42,12 @@ export const DEFAULT_MENUS: { menuKey: string; menuName: string; category: strin
   { menuKey: 'p3_check', menuName: '   ㄴ ③-1. 교회별 데이터 확인', category: '🖥️ 일반 사용자 진단서 포탈', path: '/membership/check' },
   { menuKey: 'p3_input', menuName: '   ㄴ ③-2. 월별 데이터 입력', category: '🖥️ 일반 사용자 진단서 포탈', path: '/membership/input' },
   { menuKey: 'p4', menuName: '④ 예배 · 전성도', category: '🖥️ 일반 사용자 진단서 포탈', path: '/worship' },
+  { menuKey: 'business', menuName: '💼 업무 (전체)', category: '🖥️ 일반 사용자 진단서 포탈', path: '/business' },
+  { menuKey: 'business_ledger', menuName: '   ㄴ 원장헌금', category: '🖥️ 일반 사용자 진단서 포탈', path: '/business/ledger' },
+  { menuKey: 'business_ledger_report', menuName: '     ㄴ 품의서 및 회의록 작성', category: '🖥️ 일반 사용자 진단서 포탈', path: '/business/ledger/report' },
+  { menuKey: 'business_fruit', menuName: '   ㄴ 열매헌금', category: '🖥️ 일반 사용자 진단서 포탈', path: '/business/fruit' },
+  { menuKey: 'business_transport', menuName: '   ㄴ 교통비', category: '🖥️ 일반 사용자 진단서 포탈', path: '/business/transport' },
+  { menuKey: 'business_mission', menuName: '   ㄴ 선교비', category: '🖥️ 일반 사용자 진단서 포탈', path: '/business/mission' },
   { menuKey: 'approvals_pending', menuName: '📥 결재 대기중인 건', category: '🖥️ 일반 사용자 진단서 포탈', path: '/approvals/pending' },
   { menuKey: 'approvals_completed', menuName: '📋 결재 완료 건', category: '🖥️ 일반 사용자 진단서 포탈', path: '/approvals/completed' },
 
@@ -252,6 +258,12 @@ export const roleService = {
     if (menuKey === 'membership/check') normKey = 'p3_check';
     if (menuKey === 'membership/input') normKey = 'p3_input';
     if (menuKey === 'membership') normKey = 'p3';
+    if (menuKey === 'business/ledger/report') normKey = 'business_ledger_report';
+    if (menuKey === 'business/ledger') normKey = 'business_ledger';
+    if (menuKey === 'business/fruit') normKey = 'business_fruit';
+    if (menuKey === 'business/transport') normKey = 'business_transport';
+    if (menuKey === 'business/mission') normKey = 'business_mission';
+    if (menuKey === 'business') normKey = 'business';
 
     const permissions = roleService.getMenuPermissions();
     const matchedMenu = permissions.find(m => m.menuKey === normKey || m.path.includes(normKey));

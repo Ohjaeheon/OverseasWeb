@@ -24,6 +24,7 @@ import { AdminBotPage } from './pages/admin/AdminBotPage';
 import { AdminWeeklyWorshipPage } from './pages/admin/AdminWeeklyWorshipPage';
 
 import { roleService } from './services/roleService';
+import { TelegramLifecycleHandler } from './components/TelegramLifecycleHandler';
 
 export const App: React.FC = () => {
   React.useEffect(() => {
@@ -43,6 +44,7 @@ export const App: React.FC = () => {
 
   return (
     <BrowserRouter basename="/OverseasPortal">
+      <TelegramLifecycleHandler />
       <Routes>
         {/* User Routes (Diagnosis Portal Sub-views with Explicit Route Links) */}
         <Route path="/" element={<DiagnosisPage section="home" />} />
@@ -60,6 +62,12 @@ export const App: React.FC = () => {
         <Route path="/membership/check" element={<DiagnosisPage section="membership/check" tab="check" />} />
         <Route path="/membership/input" element={<DiagnosisPage section="membership/input" tab="input" />} />
         <Route path="/worship" element={<DiagnosisPage section="worship" />} />
+        <Route path="/business" element={<DiagnosisPage section="business" tab="ledger" />} />
+        <Route path="/business/ledger" element={<DiagnosisPage section="business/ledger" tab="ledger" />} />
+        <Route path="/business/ledger/report" element={<DiagnosisPage section="business/ledger/report" tab="ledger_report" />} />
+        <Route path="/business/fruit" element={<DiagnosisPage section="business/fruit" tab="fruit" />} />
+        <Route path="/business/transport" element={<DiagnosisPage section="business/transport" tab="transport" />} />
+        <Route path="/business/mission" element={<DiagnosisPage section="business/mission" tab="mission" />} />
         <Route path="/approvals/pending" element={<DiagnosisPage section="approvals/pending" />} />
         <Route path="/approvals/completed" element={<DiagnosisPage section="approvals/completed" />} />
         <Route path="/login" element={<LoginPage />} />

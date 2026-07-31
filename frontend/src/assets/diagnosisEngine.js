@@ -1465,7 +1465,7 @@ function renderFunnel(){
 // ── render ──
 function render(){
   const sec=ST.section||"home";
-  if (sec === 'evangelism/check' || sec === 'evangelism/aggregate' || sec === 'membership/check' || sec === 'membership/input' || sec === 'approvals/pending' || sec === 'approvals/completed') {
+  if (sec === 'evangelism/check' || sec === 'evangelism/aggregate' || sec === 'membership/check' || sec === 'membership/input' || sec === 'approvals/pending' || sec === 'approvals/completed' || sec === 'profile' || (sec && sec.startsWith('business'))) {
     buildSidebar();
     return;
   }
@@ -1539,7 +1539,10 @@ function setSection(sec, cat){
     document.querySelectorAll("#mapGlobeToggle button").forEach(x=>x.classList.toggle("on",x.dataset.v===ST.mode)); }
   else if(PROC_CATS[sec]){ ST.mode="data"; ST.view="교회별"; ST.cat=cat||PROC_CATS[sec][0]; ST.sortIdx=null; }
   buildSidebar();
-  window.scrollTo(0,0); render();
+  if (sec && !sec.startsWith('business')) {
+    window.scrollTo(0,0);
+  }
+  render();
 }
 const SIDEBAR=[
   {s:"home",ico:"🏠",label:"홈 (종합 현황)"},
@@ -1562,6 +1565,14 @@ const SIDEBAR=[
     {cat:"④예배·전성도",label:"전성도 예배 출석"},
     {cat:"④예배·결석",label:"결석 현황"},
   ]},
+  {grp:"업 무"},
+  {s:"business",ico:"💼",label:"재정",path:"/business",children:[
+    {tab:"ledger",label:"원장헌금",path:"/business/ledger"},
+    {tab:"ledger_report",label:"ㄴ 품의서 및 회의록 작성",path:"/business/ledger/report"},
+    {tab:"fruit",label:"열매헌금",path:"/business/fruit"},
+    {tab:"transport",label:"교통비",path:"/business/transport"},
+    {tab:"mission",label:"선교비",path:"/business/mission"}
+  ]},
   {grp:"보 기"},
   {s:"map",ico:"🌍",label:"지도·지구본"},
   {s:"trend",ico:"📈",label:"추이·비교"},
@@ -1576,7 +1587,8 @@ function buildSidebar(){
     
     const isCurrentSection = (it.s === ST.section) || 
       (it.s === 'p1' && (ST.section === 'evangelism/check' || ST.section === 'evangelism/aggregate')) ||
-      (it.s === 'p3' && (ST.section === 'membership/check' || ST.section === 'membership/input'));
+      (it.s === 'p3' && (ST.section === 'membership/check' || ST.section === 'membership/input')) ||
+      (it.s === 'business' && ST.section && ST.section.startsWith('business'));
 
     const on=(!it.children && isCurrentSection && (!it.cat||it.cat===ST.cat))?'on':'';
     const arrow=it.children?`<span style="margin-left:auto;color:var(--muted);font-size:11px">${isCurrentSection?'▾':'▸'}</span>`:'';
@@ -1584,13 +1596,18 @@ function buildSidebar(){
     
     if(it.children && isCurrentSection){
       it.children.forEach(ch=>{
-        const isChildOn = (ch.cat === ST.cat) ||
+        const isChildOn = (ch.cat === ST.cat) || (ch.tab && ch.tab === ST.tab) ||
           (ch.cat === 'p1_check' && ST.section === 'evangelism/check') ||
           (ch.cat === 'p1_agg' && ST.section === 'evangelism/aggregate') ||
           (ch.cat === 'p3_check' && ST.section === 'membership/check') ||
-          (ch.cat === 'p3_input' && ST.section === 'membership/input');
+          (ch.cat === 'p3_input' && ST.section === 'membership/input') ||
+          (ch.tab === 'ledger' && ST.section === 'business/ledger') ||
+          (ch.tab === 'ledger_report' && ST.section === 'business/ledger/report') ||
+          (ch.tab === 'fruit' && ST.section === 'business/fruit') ||
+          (ch.tab === 'transport' && ST.section === 'business/transport') ||
+          (ch.tab === 'mission' && ST.section === 'business/mission');
 
-        html+=`<div class="mitem ${isChildOn?'on':''}" style="padding-left:36px;font-size:13px" data-s="${it.s}" data-cat="${ch.cat}" data-path="${ch.path||''}"><span class="ico" style="font-size:10px;color:var(--muted)">·</span>${ch.label}</div>`;
+        html+=`<div class="mitem ${isChildOn?'on':''}" style="padding-left:36px;font-size:13px" data-s="${it.s}" data-cat="${ch.cat||''}" data-path="${ch.path||''}"><span class="ico" style="font-size:10px;color:var(--muted)">·</span>${ch.label}</div>`;
       });
     }
   });
@@ -1621,7 +1638,7 @@ function buildSidebar(){
     } else if (m.dataset.path && typeof window.reactNavigate === 'function') {
       window.reactNavigate(m.dataset.path);
     } else {
-      const isReactRoute = ['/evangelism', '/membership', '/approvals'].some(p => window.location.pathname.includes(p));
+      const isReactRoute = ['/evangelism', '/membership', '/approvals', '/business'].some(p => window.location.pathname.includes(p));
       if (isReactRoute && typeof window.reactNavigate === 'function') {
         const dest = m.dataset.s === 'home' ? '/' : `/${m.dataset.s}`;
         window.reactNavigate(dest);
