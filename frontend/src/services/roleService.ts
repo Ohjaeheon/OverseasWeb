@@ -187,12 +187,13 @@ export const roleService = {
           if (r.roleId === 'ROLE_ADMIN') {
             permObj[r.roleId] = { read: true, write: true };
           } else if (r.roleId === 'ROLE_USER') {
-            permObj[r.roleId] = { read: true, write: !['users', 'roles', 'perm', 'sys', 'admin_bot'].includes(m.menuKey) };
+            const isRestricted = ['users', 'roles', 'perm', 'sys', 'admin_bot', 'business', 'business_ledger', 'business_ledger_report', 'business_fruit', 'business_transport', 'business_mission', 'approvals_pending', 'approvals_completed'].includes(m.menuKey);
+            permObj[r.roleId] = { read: !isRestricted, write: !isRestricted };
           } else if (r.roleId === 'ROLE_GUEST') {
             permObj[r.roleId] = { read: ['home', 'diag', 'inspect', 'funnel', 'map'].includes(m.menuKey), write: false };
           } else {
             // Custom roles default read access
-            permObj[r.roleId] = { read: true, write: false };
+            permObj[r.roleId] = { read: ['home', 'diag'].includes(m.menuKey), write: false };
           }
         }
       });
@@ -265,6 +266,8 @@ export const roleService = {
     if (menuKey === 'business/transport') normKey = 'business_transport';
     if (menuKey === 'business/mission') normKey = 'business_mission';
     if (menuKey === 'business') normKey = 'business';
+    if (menuKey === 'approvals/pending') normKey = 'approvals_pending';
+    if (menuKey === 'approvals/completed') normKey = 'approvals_completed';
 
     const permissions = roleService.getMenuPermissions();
     const matchedMenu = permissions.find(m => m.menuKey === normKey || m.path.includes(normKey));
@@ -278,34 +281,40 @@ export const roleService = {
 
     // Default fallbacks if permissions matrix is uninitialized
     if (cleanRoleId === 'ROLE_USER') {
-      return { read: true, write: !['users', 'roles', 'perm', 'sys', 'admin_bot'].includes(normKey) };
+      const isRestricted = ['users', 'roles', 'perm', 'sys', 'admin_bot', 'business', 'business_ledger', 'business_ledger_report', 'business_fruit', 'business_transport', 'business_mission', 'approvals_pending', 'approvals_completed'].includes(normKey);
+      return { read: !isRestricted, write: !isRestricted };
     } else if (cleanRoleId === 'ROLE_GUEST') {
-      return { read: ['home', 'diag', 'inspect', 'funnel', 'map', 'p1_check'].includes(normKey), write: false };
+      return { read: ['home', 'diag', 'inspect', 'funnel', 'map'].includes(normKey), write: false };
     }
-    return { read: true, write: false };
+    return { read: ['home', 'diag'].includes(normKey), write: false };
   },
 
   getLoginRedirectPath: (role: string): string => {
     const cleanRole = (role || '').toUpperCase();
     const roleId = cleanRole.startsWith('ROLE_') ? cleanRole : `ROLE_${cleanRole}`;
 
-    if (roleId === 'ROLE_ADMIN' || roleId === 'ADMIN' || roleId === '관리자') {
+    if (roleId === 'ROLE_ADMIN' || roleId === 'ADMIN' || roleId === '관리자' || roleId === 'ROLE_관리자') {
       return '/adminsetting/dashboard';
     }
 
     try {
-      const rawPerms = localStorage.getItem('OVERSEAS_PORTAL_PERMISSIONS');
-      if (rawPerms) {
-        const perms = JSON.parse(rawPerms);
-        const homePerm = perms['home']?.[roleId] || { read: true };
-        const checkPerm = perms['p1_check']?.[roleId] || { read: false };
-        
-        if (!homePerm.read && checkPerm.read) {
-          return '/evangelism/check';
-        }
+      // 1. If user has home access, return main root path
+      if (roleService.canRoleAccessMenu(roleId, 'home').read) {
+        return '/';
       }
-    } catch (e) {}
+
+      // 2. If no home access, dynamically find the first menu that has read permission
+      const permissions = roleService.getMenuPermissions();
+      const accessibleMenu = permissions.find(m => roleService.canRoleAccessMenu(roleId, m.menuKey).read);
+      if (accessibleMenu) {
+        return accessibleMenu.path;
+      }
+    } catch (e) {
+      console.warn("Failed to determine login redirect path dynamically", e);
+    }
 
     return '/';
   }
 };
+
+(window as any).roleService = roleService;

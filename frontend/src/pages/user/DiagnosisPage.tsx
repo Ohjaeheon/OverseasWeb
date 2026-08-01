@@ -227,11 +227,14 @@ export const DiagnosisPage: React.FC<DiagnosisPageProps> = ({ section = 'home', 
         alert("해당 메뉴에 대한 접근 권한이 없습니다.");
         const permissions = roleService.getMenuPermissions();
         const accessible = permissions.find(m => {
-          const mPerm = m.permissions[normRole] || { read: false };
-          return mPerm.read && !m.path.startsWith('/adminsetting');
+          return roleService.canRoleAccessMenu(userRole, m.menuKey).read;
         });
         if (accessible) {
-          navigate(accessible.path, { replace: true });
+          if (accessible.path.startsWith('/adminsetting')) {
+            window.location.href = '/OverseasPortal' + accessible.path;
+          } else {
+            navigate(accessible.path, { replace: true });
+          }
         } else {
           sessionService.clearSession();
           navigate('/login', { replace: true });
@@ -297,13 +300,20 @@ export const DiagnosisPage: React.FC<DiagnosisPageProps> = ({ section = 'home', 
       }
     };
 
-    // Show Admin System Button if logged in as Admin
+    // Show Admin System Button if logged in as Admin or has any administrative access
     setTimeout(() => {
       try {
         if (userStr) {
           const u = JSON.parse(userStr);
           const role = u.role || '';
-          if (role === 'ROLE_ADMIN' || role === 'ADMIN' || role === '관리자') {
+          const isAdmin = role === 'ROLE_ADMIN' || role === 'ADMIN' || role === '관리자' || role === 'ROLE_관리자';
+          
+          const hasAdminAccess = isAdmin || roleService.getMenuPermissions().some(m => {
+            const isAdminMenu = m.category.includes('adminsetting') || m.path.startsWith('/adminsetting');
+            return isAdminMenu && roleService.canRoleAccessMenu(role, m.menuKey).read;
+          });
+
+          if (hasAdminAccess) {
             const adminBtn = document.getElementById('btnAdminSystem');
             if (adminBtn) adminBtn.style.display = 'inline-flex';
           }

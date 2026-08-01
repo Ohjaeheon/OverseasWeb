@@ -1582,7 +1582,75 @@ const SIDEBAR=[
 ];
 function buildSidebar(){
   let html="";
-  SIDEBAR.forEach(it=>{
+  
+  const userStr = localStorage.getItem('user');
+  let userRole = 'ROLE_USER';
+  if (userStr) {
+    try {
+      const u = JSON.parse(userStr);
+      userRole = u.role || 'ROLE_USER';
+    } catch (e) {}
+  }
+  
+  const isAdmin = userRole === 'ROLE_ADMIN' || userRole === 'ADMIN' || userRole === '관리자' || userRole === 'ROLE_관리자';
+  
+  const hasAccess = (key) => {
+    if (isAdmin) return true;
+    if (window.roleService && typeof window.roleService.canRoleAccessMenu === 'function') {
+      return window.roleService.canRoleAccessMenu(userRole, key).read;
+    }
+    return true;
+  };
+
+  const hasChildAccess = (ch, parentKey) => {
+    const chKey = ch.cat || ch.tab;
+    if (!chKey) return hasAccess(parentKey);
+    
+    // Check if chKey is officially mapped in DEFAULT_MENUS matrix
+    const permissions = window.roleService ? window.roleService.getMenuPermissions() : [];
+    const hasKeyInMenus = permissions.some(m => m.menuKey === chKey);
+    
+    if (hasKeyInMenus) {
+      return hasAccess(chKey);
+    } else {
+      // Fallback to parent menu's permission if not in configuration
+      return hasAccess(parentKey);
+    }
+  };
+
+  const canShowItem = (it) => {
+    if (it.grp) return false;
+    if (!it.children) {
+      return hasAccess(it.s);
+    }
+    const hasParentAccess = hasAccess(it.s);
+    const hasAnyChildAccess = it.children.some(ch => hasChildAccess(ch, it.s));
+    return hasParentAccess || hasAnyChildAccess;
+  };
+
+  // Group header is shown only if there is at least one visible menu item following it
+  const filteredSidebar = [];
+  for (let i = 0; i < SIDEBAR.length; i++) {
+    const item = SIDEBAR[i];
+    if (item.grp) {
+      let hasVisibleChildren = false;
+      for (let j = i + 1; j < SIDEBAR.length; j++) {
+        const next = SIDEBAR[j];
+        if (next.grp) break;
+        if (canShowItem(next)) {
+          hasVisibleChildren = true;
+          break;
+        }
+      }
+      if (hasVisibleChildren) {
+        filteredSidebar.push(item);
+      }
+    } else if (canShowItem(item)) {
+      filteredSidebar.push(item);
+    }
+  }
+
+  filteredSidebar.forEach(it=>{
     if(it.grp){ html+=`<div class="grp">${it.grp}</div>`; return; }
     
     const isCurrentSection = (it.s === ST.section) || 
@@ -1596,6 +1664,8 @@ function buildSidebar(){
     
     if(it.children && isCurrentSection){
       it.children.forEach(ch=>{
+        if (!hasChildAccess(ch, it.s)) return;
+
         const isChildOn = (ch.cat === ST.cat) || (ch.tab && ch.tab === ST.tab) ||
           (ch.cat === 'p1_check' && ST.section === 'evangelism/check') ||
           (ch.cat === 'p1_agg' && ST.section === 'evangelism/aggregate') ||
