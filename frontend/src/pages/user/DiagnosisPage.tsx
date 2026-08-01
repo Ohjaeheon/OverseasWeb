@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { diagnosisService } from '../../services/diagnosisService';
 import { logService } from '../../services/logService';
 import { sessionService } from '../../services/sessionService';
+import { telegramService } from '../../services/telegramService';
 import { EvangelismModule } from '../../components/user/EvangelismModule';
 import { MembershipModule } from '../../components/user/MembershipModule';
 import { ApprovalModule } from '../../components/user/ApprovalModule';
@@ -567,12 +568,14 @@ export const DiagnosisPage: React.FC<DiagnosisPageProps> = ({ section = 'home', 
           <span className="spacer"></span>
           {/*<button className="repbtn" onClick={() => navigate('/')}>🏠 인트로</button>*/}
           <button className="repbtn" onClick={() => window.location.href = '/OverseasPortal/profile'}>👤 <span className="btn-txt-label">회원관리</span></button>
-          <button className="repbtn" id="btnLogout" onClick={() => {
-            if (window.confirm("정말 로그아웃 하시겠습니까?")) {
-              sessionService.clearSession();
-              navigate('/login', { replace: true });
-            }
-          }} style={{ background: '#ef4444', color: 'white', border: 'none', fontWeight: 700 }}>🔒 <span className="btn-txt-label">로그아웃</span></button>
+          {!telegramService.isTelegramWebApp() && (
+            <button className="repbtn" id="btnLogout" onClick={() => {
+              if (window.confirm("정말 로그아웃 하시겠습니까?")) {
+                sessionService.clearSession();
+                navigate('/login', { replace: true });
+              }
+            }} style={{ background: '#ef4444', color: 'white', border: 'none', fontWeight: 700 }}>🔒 <span className="btn-txt-label">로그아웃</span></button>
+          )}
         </div>
         <div className="shell">
           <div className="sidebar-overlay" id="sidebarOverlay" onClick={() => (window as any).closeSidebar()}></div>

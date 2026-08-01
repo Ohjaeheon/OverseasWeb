@@ -609,16 +609,20 @@
   /* 텔레그램 웹앱 모드 시 외부 브라우저용 UI 숨김 처리 (단, 관리자시스템과 로그아웃은 노출) */
   body.telegram-webapp-mode #btnCover,
   body.telegram-webapp-mode #btnProfile,
-  body.telegram-webapp-mode .topbar .repbtn:not(#btnLogout):not(#btnAdminSystem) {
+  body.telegram-webapp-mode #btnLogout,
+  body.telegram-webapp-mode .topbar .repbtn:not(#btnAdminSystem) {
     display: none !important;
   }
 
-  body.telegram-webapp-mode #btnLogout,
   body.telegram-webapp-mode #btnAdminSystem {
     display: inline-flex !important;
     align-items: center;
     justify-content: center;
     padding: 8px 12px !important;
+  }
+
+  @keyframes spin {
+    to { transform: rotate(360deg); }
   }
 
   /* 텔레그램 웹앱 모드 및 모바일 환경에서 버튼의 텍스트 숨김 */

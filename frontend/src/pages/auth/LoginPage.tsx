@@ -76,7 +76,7 @@ export const LoginPage: React.FC = () => {
               const redirectPath = roleService.getLoginRedirectPath(response.role);
               navigate(redirectPath);
             } else if (response.message === 'NOT_LINKED') {
-              setErrorMsg('이 텔레그램 계정과 연동된 포탈 계정이 없습니다. 최초 1회 로그인을 완료하여 계정을 연동해 주세요.');
+              setErrorMsg('이 텔레그램 계정은 본 시스템에 등록되지 않았습니다. 관리자에게 문의하여 연동을 진행해 주세요.');
             } else {
               setErrorMsg(response.message || '텔레그램 자동 로그인 실패');
             }
@@ -278,170 +278,232 @@ export const LoginPage: React.FC = () => {
 
         {/* Title & Subtitle */}
         <h2 style={{ fontSize: '1.75rem', fontWeight: 800, color: '#f8fafc', marginBottom: '6px' }}>
-          {isOtpRequired ? '2차 OTP 인증' : '해선부 업무포탈'}
+          {telegramService.isTelegramWebApp()
+            ? (errorMsg ? '접근 제한됨' : '텔레그램 간편 로그인')
+            : (isOtpRequired ? '2차 OTP 인증' : '해선부 업무포탈')}
         </h2>
         <p style={{ color: '#94a3b8', fontSize: '0.9rem', marginBottom: '32px' }}>
-          {isOtpRequired ? '텔레그램으로 전송된 인증번호를 입력하세요' : '인증사용자만 가능'}
+          {telegramService.isTelegramWebApp()
+            ? (errorMsg ? '보안 정책에 따라 접속이 불가합니다' : '텔레그램 앱 보안 인증 진행 중')
+            : (isOtpRequired ? '텔레그램으로 전송된 인증번호를 입력하세요' : '인증사용자만 가능')}
         </p>
 
-        {/* Dynamic Forms */}
-        {!isOtpRequired ? (
-          /* 1. Login Form (ID/PW) */
-          <form onSubmit={handleLoginSubmit} style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '20px', textAlign: 'left' }}>
-            <div>
-              <label style={{ display: 'block', fontSize: '0.875rem', color: '#94a3b8', marginBottom: '8px', fontWeight: 600 }}>
-                아이디
-              </label>
-              <input
-                type="text"
-                required
-                placeholder="아이디 입력"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '14px 16px',
+        {/* Dynamic Forms / Telegram WebApp Status Card */}
+        {telegramService.isTelegramWebApp() ? (
+          <div style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '20px' }}>
+            {loading ? (
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px', margin: '20px 0' }}>
+                <div className="telegram-loading-spinner" style={{
+                  width: '40px',
+                  height: '40px',
+                  border: '3px solid rgba(59, 110, 245, 0.2)',
+                  borderTop: '3px solid #3b6ef5',
+                  borderRadius: '50%',
+                  animation: 'spin 1s linear infinite'
+                }} />
+                <p style={{ color: '#94a3b8', fontSize: '0.95rem', fontWeight: 600 }}>
+                  텔레그램 계정 정보 인증 중...
+                </p>
+              </div>
+            ) : errorMsg ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', width: '100%' }}>
+                <div style={{ fontSize: '48px', color: '#f87171', marginBottom: '8px' }}>⚠️</div>
+                <div style={{
                   background: '#17233d',
                   border: '1px solid rgba(255, 255, 255, 0.08)',
                   borderRadius: '12px',
-                  color: '#ffffff',
-                  fontSize: '0.95rem',
-                  outline: 'none',
-                  boxSizing: 'border-box'
-                }}
-              />
-            </div>
-
-            <div>
-              <label style={{ display: 'block', fontSize: '0.875rem', color: '#94a3b8', marginBottom: '8px', fontWeight: 600 }}>
-                비밀번호
-              </label>
-              <input
-                type="password"
-                required
-                placeholder="비밀번호 입력"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '14px 16px',
-                  background: '#17233d',
-                  border: '1px solid rgba(255, 255, 255, 0.08)',
-                  borderRadius: '12px',
-                  color: '#ffffff',
-                  fontSize: '0.95rem',
-                  outline: 'none',
-                  boxSizing: 'border-box'
-                }}
-              />
-            </div>
-
-            {errorMsg && (
-              <div style={{ color: '#f87171', fontSize: '0.85rem', fontWeight: 600, textAlign: 'center' }}>
-                {errorMsg}
-              </div>
-            )}
-
-            <button
-              type="submit"
-              disabled={loading}
-              style={{
-                width: '100%',
-                padding: '15px',
-                marginTop: '8px',
-                borderRadius: '14px',
-                border: 'none',
-                background: 'linear-gradient(135deg, #5b5cf6, #4f46e5)',
-                color: '#ffffff',
-                fontSize: '1rem',
-                fontWeight: 700,
-                cursor: 'pointer',
-                boxShadow: '0 6px 20px rgba(91, 92, 246, 0.4)',
-                transition: 'all 0.2s ease'
-              }}
-            >
-              {loading ? '로그인 중...' : '로그인'}
-            </button>
-          </form>
-        ) : (
-          /* 2. OTP Form (6 Digits & Timer) */
-          <form onSubmit={handleOtpSubmit} style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '20px', textAlign: 'left' }}>
-            <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                <label style={{ fontSize: '0.875rem', color: '#94a3b8', fontWeight: 600 }}>
-                  인증번호 (6자리 숫자)
-                </label>
-                <span style={{ fontSize: '0.875rem', color: '#f59e0b', fontWeight: 800 }}>
-                  ⏱️ {formatTimer(otpTimeLeft)}
-                </span>
-              </div>
-              <input
-                type="text"
-                required
-                maxLength={6}
-                placeholder="000000"
-                value={otpCode}
-                onChange={(e) => setOtpCode(e.target.value.replace(/[^0-9]/g, ''))}
-                style={{
-                  width: '100%',
-                  padding: '14px 16px',
-                  background: '#17233d',
-                  border: '1px solid rgba(255, 255, 255, 0.08)',
-                  borderRadius: '12px',
-                  color: '#ffffff',
-                  fontSize: '1.25rem',
-                  fontWeight: 700,
-                  textAlign: 'center',
-                  letterSpacing: '6px',
-                  outline: 'none',
-                  boxSizing: 'border-box'
-                }}
-              />
-            </div>
-
-            {errorMsg && (
-              <div style={{ color: '#f87171', fontSize: '0.85rem', fontWeight: 600, textAlign: 'center' }}>
-                {errorMsg}
-              </div>
-            )}
-
-            <div style={{ display: 'flex', gap: '10px' }}>
-              <button
-                type="button"
-                onClick={handleBackToLogin}
-                style={{
-                  flex: 1,
-                  padding: '14px',
-                  borderRadius: '12px',
-                  border: '1px solid rgba(255,255,255,0.08)',
-                  background: '#17233d',
+                  padding: '16px',
+                  textAlign: 'left',
+                  fontSize: '0.875rem',
                   color: '#94a3b8',
-                  fontSize: '0.95rem',
-                  fontWeight: 700,
-                  cursor: 'pointer'
-                }}
-              >
-                이전으로
-              </button>
+                  lineHeight: '1.6'
+                }}>
+                  <div style={{ marginBottom: '8px', color: '#f8fafc', fontWeight: 600 }}>감지된 텔레그램 계정:</div>
+                  {(() => {
+                    const tg = telegramService.getWebApp();
+                    const username = tg?.initDataUnsafe?.user?.username;
+                    const firstName = tg?.initDataUnsafe?.user?.first_name;
+                    const lastName = tg?.initDataUnsafe?.user?.last_name;
+                    const fullName = [firstName, lastName].filter(Boolean).join(' ') || '이름 없음';
+                    return (
+                      <>
+                        <div style={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>• <b>사용자 ID:</b> {username ? `@${username}` : 'Username 없음'}</div>
+                        <div style={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>• <b>이름:</b> {fullName}</div>
+                        <div>• <b>Chat ID:</b> {tg?.initDataUnsafe?.user?.id || '알 수 없음'}</div>
+                      </>
+                    );
+                  })()}
+                </div>
+                <p style={{ color: '#f87171', fontSize: '0.85rem', lineHeight: '1.6', margin: 0, textAlign: 'center', fontWeight: 600 }}>
+                  {errorMsg}
+                </p>
+                <p style={{ color: '#94a3b8', fontSize: '0.8rem', lineHeight: '1.5', margin: '4px 0 0', textAlign: 'center' }}>
+                  본 포탈 시스템을 이용하시려면 관리자에게 이 텔레그램 정보를 전달하여 계정 등록/연동을 요청하시기 바랍니다.
+                </p>
+              </div>
+            ) : (
+              <div style={{ color: '#94a3b8', fontSize: '0.95rem' }}>인증 절차를 시작하고 있습니다...</div>
+            )}
+          </div>
+        ) : (
+          !isOtpRequired ? (
+            /* 1. Login Form (ID/PW) */
+            <form onSubmit={handleLoginSubmit} style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '20px', textAlign: 'left' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.875rem', color: '#94a3b8', marginBottom: '8px', fontWeight: 600 }}>
+                  아이디
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="아이디 입력"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '14px 16px',
+                    background: '#17233d',
+                    border: '1px solid rgba(255, 255, 255, 0.08)',
+                    borderRadius: '12px',
+                    color: '#ffffff',
+                    fontSize: '0.95rem',
+                    outline: 'none',
+                    boxSizing: 'border-box'
+                  }}
+                />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '0.875rem', color: '#94a3b8', marginBottom: '8px', fontWeight: 600 }}>
+                  비밀번호
+                </label>
+                <input
+                  type="password"
+                  required
+                  placeholder="비밀번호 입력"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '14px 16px',
+                    background: '#17233d',
+                    border: '1px solid rgba(255, 255, 255, 0.08)',
+                    borderRadius: '12px',
+                    color: '#ffffff',
+                    fontSize: '0.95rem',
+                    outline: 'none',
+                    boxSizing: 'border-box'
+                  }}
+                />
+              </div>
+
+              {errorMsg && (
+                <div style={{ color: '#f87171', fontSize: '0.85rem', fontWeight: 600, textAlign: 'center' }}>
+                  {errorMsg}
+                </div>
+              )}
+
               <button
                 type="submit"
-                disabled={loading || otpTimeLeft <= 0}
+                disabled={loading}
                 style={{
-                  flex: 2,
-                  padding: '14px',
-                  borderRadius: '12px',
+                  width: '100%',
+                  padding: '15px',
+                  marginTop: '8px',
+                  borderRadius: '14px',
                   border: 'none',
-                  background: 'linear-gradient(135deg, #10b981, #059669)',
+                  background: 'linear-gradient(135deg, #5b5cf6, #4f46e5)',
                   color: '#ffffff',
-                  fontSize: '0.95rem',
+                  fontSize: '1rem',
                   fontWeight: 700,
-                  cursor: (loading || otpTimeLeft <= 0) ? 'not-allowed' : 'pointer'
+                  cursor: 'pointer',
+                  boxShadow: '0 6px 20px rgba(91, 92, 246, 0.4)',
+                  transition: 'all 0.2s ease'
                 }}
               >
-                {loading ? '인증 중...' : '인증 완료'}
+                {loading ? '로그인 중...' : '로그인'}
               </button>
-            </div>
-          </form>
+            </form>
+          ) : (
+            /* 2. OTP Form (6 Digits & Timer) */
+            <form onSubmit={handleOtpSubmit} style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '20px', textAlign: 'left' }}>
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                  <label style={{ fontSize: '0.875rem', color: '#94a3b8', fontWeight: 600 }}>
+                    인증번호 (6자리 숫자)
+                  </label>
+                  <span style={{ fontSize: '0.875rem', color: '#f59e0b', fontWeight: 800 }}>
+                    ⏱️ {formatTimer(otpTimeLeft)}
+                  </span>
+                </div>
+                <input
+                  type="text"
+                  required
+                  maxLength={6}
+                  placeholder="000000"
+                  value={otpCode}
+                  onChange={(e) => setOtpCode(e.target.value.replace(/[^0-9]/g, ''))}
+                  style={{
+                    width: '100%',
+                    padding: '14px 16px',
+                    background: '#17233d',
+                    border: '1px solid rgba(255, 255, 255, 0.08)',
+                    borderRadius: '12px',
+                    color: '#ffffff',
+                    fontSize: '1.25rem',
+                    fontWeight: 700,
+                    textAlign: 'center',
+                    letterSpacing: '6px',
+                    outline: 'none',
+                    boxSizing: 'border-box'
+                  }}
+                />
+              </div>
+
+              {errorMsg && (
+                <div style={{ color: '#f87171', fontSize: '0.85rem', fontWeight: 600, textAlign: 'center' }}>
+                  {errorMsg}
+                </div>
+              )}
+
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <button
+                  type="button"
+                  onClick={handleBackToLogin}
+                  style={{
+                    flex: 1,
+                    padding: '14px',
+                    borderRadius: '12px',
+                    border: '1px solid rgba(255,255,255,0.08)',
+                    background: '#17233d',
+                    color: '#94a3b8',
+                    fontSize: '0.95rem',
+                    fontWeight: 700,
+                    cursor: 'pointer'
+                  }}
+                >
+                  이전으로
+                </button>
+                <button
+                  type="submit"
+                  disabled={loading || otpTimeLeft <= 0}
+                  style={{
+                    flex: 2,
+                    padding: '14px',
+                    borderRadius: '12px',
+                    border: 'none',
+                    background: 'linear-gradient(135deg, #10b981, #059669)',
+                    color: '#ffffff',
+                    fontSize: '0.95rem',
+                    fontWeight: 700,
+                    cursor: (loading || otpTimeLeft <= 0) ? 'not-allowed' : 'pointer'
+                  }}
+                >
+                  {loading ? '인증 중...' : '인증 완료'}
+                </button>
+              </div>
+            </form>
+          )
         )}
       </div>
     </div>

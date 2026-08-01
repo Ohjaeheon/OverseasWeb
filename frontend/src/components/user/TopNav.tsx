@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { Globe, Search, Settings, LogIn, LogOut, Share2, FileText, User } from 'lucide-react';
 import api from '../../services/api';
+import { telegramService } from '../../services/telegramService';
 
 interface TopNavProps {
   months: string[];
@@ -317,22 +318,24 @@ export const TopNav: React.FC<TopNavProps> = ({
             >
               <Settings size={16} /> 관리자
             </button>
-            <button
-              onClick={handleLogout}
-              style={{
-                background: 'rgba(239, 68, 68, 0.2)',
-                border: '1px solid rgba(239, 68, 68, 0.4)',
-                color: '#f87171',
-                padding: '8px 12px',
-                borderRadius: '8px',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '4px'
-              }}
-            >
-              <LogOut size={16} />
-            </button>
+            {!telegramService.isTelegramWebApp() && (
+              <button
+                onClick={handleLogout}
+                style={{
+                  background: 'rgba(239, 68, 68, 0.2)',
+                  border: '1px solid rgba(239, 68, 68, 0.4)',
+                  color: '#f87171',
+                  padding: '8px 12px',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px'
+                }}
+              >
+                <LogOut size={16} />
+              </button>
+            )}
           </div>
         ) : (
           <button

@@ -41,6 +41,11 @@ export const BusinessModule: React.FC<BusinessModuleProps> = ({ initialTab = 'le
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<TabType>(initialTab);
 
+  // Sync tab state when initialTab prop changes
+  useEffect(() => {
+    setActiveTab(initialTab);
+  }, [initialTab]);
+
   // Storage data state
   const [store, setStore] = useState<Record<string, MonthlyRecord>>({});
 
@@ -1311,6 +1316,7 @@ export const BusinessModule: React.FC<BusinessModuleProps> = ({ initialTab = 'le
                 border: '1px solid #cbd5e1'
               }}>
                 <div className="hwp-document-font" style={{ 
+                  fontFamily: '"함초롬바탕", Batang, "Times New Roman", serif',
                   background: '#ffffff', 
                   width: '210mm', 
                   minHeight: '297mm', 
@@ -1417,12 +1423,7 @@ export const BusinessModule: React.FC<BusinessModuleProps> = ({ initialTab = 'le
                                 기 안 일 자
                               </td>
                               <td colSpan={3} style={{ borderBottom: '1.5px solid #000000', paddingLeft: '15px', fontSize: '10pt' }}>
-                                <span 
-                                  className="hwp-editable-text"
-                                  contentEditable 
-                                  suppressContentEditableWarning 
-                                  onBlur={(e) => setReportDate(e.target.innerText)}
-                                >
+                                <span style={{ background: '#ffff00', color: '#000000', padding: '1px 3px', borderRadius: '2px', fontWeight: 'bold' }}>
                                   {reportDate}
                                 </span>
                               </td>
@@ -1455,12 +1456,7 @@ export const BusinessModule: React.FC<BusinessModuleProps> = ({ initialTab = 'le
                                 기안자(부장)
                               </td>
                               <td colSpan={3} style={{ borderBottom: '1.5px solid #000000', paddingLeft: '15px', fontSize: '10pt' }}>
-                                <span 
-                                  className="hwp-editable-text"
-                                  contentEditable 
-                                  suppressContentEditableWarning 
-                                  onBlur={(e) => setDraftUser(e.target.innerText)}
-                                >
+                                <span style={{ background: '#ffff00', color: '#000000', padding: '1px 3px', borderRadius: '2px', fontWeight: 'bold' }}>
                                   {draftUser}
                                 </span>
                               </td>
@@ -1512,12 +1508,7 @@ export const BusinessModule: React.FC<BusinessModuleProps> = ({ initialTab = 'le
                           <div style={{ width: '75%', margin: '0 auto' }}>
                             <div style={{ fontSize: '11pt', marginBottom: '14px' }}>
                               <b>1. 예 산 : </b>
-                              <span 
-                                className="hwp-editable-text"
-                                contentEditable 
-                                suppressContentEditableWarning 
-                                style={{ fontWeight: 'bold' }}
-                              >
+                              <span style={{ background: '#ffff00', color: '#000000', padding: '1px 3px', borderRadius: '2px', fontWeight: 'bold' }}>
                                 {numberToKoreanText(totalAmount)} (￦{totalAmount.toLocaleString()})
                               </span>
                             </div>
@@ -1540,30 +1531,12 @@ export const BusinessModule: React.FC<BusinessModuleProps> = ({ initialTab = 'le
                               {selectedCountries.map((c, index) => (
                                 <tr key={index} style={{ height: '30px' }}>
                                   <td style={{ border: '1px solid #000000', padding: '6px 8px', textAlign: 'center', fontSize: '9.5pt' }}>
-                                    <span 
-                                      className="hwp-editable-text"
-                                      contentEditable 
-                                      suppressContentEditableWarning
-                                      onBlur={(e) => {
-                                        const updated = [...selectedCountries];
-                                        updated[index].name = e.target.innerText;
-                                        setSelectedCountries(updated);
-                                      }}
-                                    >
+                                    <span style={{ background: '#ffff00', color: '#000000', padding: '1px 3px', borderRadius: '2px', fontWeight: 'bold' }}>
                                       {c.name}
                                     </span>
                                   </td>
                                   <td style={{ border: '1px solid #000000', padding: '6px 8px', textAlign: 'right', fontWeight: 'bold', fontSize: '9.5pt' }}>
-                                    <span 
-                                      className="hwp-editable-text"
-                                      contentEditable 
-                                      suppressContentEditableWarning
-                                      onBlur={(e) => {
-                                        const updated = [...selectedCountries];
-                                        updated[index].amount = parseInt(e.target.innerText.replace(/[^0-9]/g, '')) || 0;
-                                        setSelectedCountries(updated);
-                                      }}
-                                    >
+                                    <span style={{ background: '#ffff00', color: '#000000', padding: '1px 3px', borderRadius: '2px', fontWeight: 'bold' }}>
                                       {c.amount.toLocaleString()}원
                                     </span>
                                   </td>
@@ -1582,7 +1555,9 @@ export const BusinessModule: React.FC<BusinessModuleProps> = ({ initialTab = 'le
                               <tr style={{ fontWeight: 'bold', height: '30px' }}>
                                 <td style={{ border: '1px solid #000000', padding: '6px 8px', textAlign: 'center', fontSize: '9.5pt' }}>합 계</td>
                                 <td style={{ border: '1px solid #000000', padding: '6px 8px', textAlign: 'right', fontSize: '9.5pt' }}>
-                                  {totalAmount.toLocaleString()}원
+                                  <span style={{ background: '#ffff00', color: '#000000', padding: '1px 3px', borderRadius: '2px', fontWeight: 'bold' }}>
+                                    {totalAmount.toLocaleString()}원
+                                  </span>
                                 </td>
                               </tr>
                             </tbody>
@@ -1640,12 +1615,7 @@ export const BusinessModule: React.FC<BusinessModuleProps> = ({ initialTab = 'le
                             <tr style={{ height: '35px' }}>
                               <td style={{ fontWeight: 'bold', textAlign: 'center', border: '1px solid #000000', padding: '8px', fontSize: '10pt' }}>일 시</td>
                               <td style={{ border: '1px solid #000000', padding: '8px 12px', fontSize: '10pt' }}>
-                                <span 
-                                  className="hwp-editable-text"
-                                  contentEditable 
-                                  suppressContentEditableWarning 
-                                  onBlur={(e) => setMeetingDate(e.target.innerText)}
-                                >
+                                <span style={{ background: '#ffff00', color: '#000000', padding: '1px 3px', borderRadius: '2px', fontWeight: 'bold' }}>
                                   {meetingDate}
                                 </span>
                               </td>
@@ -1678,12 +1648,7 @@ export const BusinessModule: React.FC<BusinessModuleProps> = ({ initialTab = 'le
                               <td style={{ border: '1px solid #000000', padding: '15px', fontSize: '10pt' }}>
                                 <b>재정지출</b><br/>
                                 (전도업무비 : 
-                                <span 
-                                  className="hwp-editable-text"
-                                  contentEditable 
-                                  suppressContentEditableWarning 
-                                  style={{ fontWeight: 'bold' }}
-                                >
+                                <span style={{ background: '#ffff00', color: '#000000', padding: '1px 3px', borderRadius: '2px', fontWeight: 'bold' }}>
                                   {Math.round(totalAmount / 10000)}만원
                                 </span>
                                 )
@@ -1703,32 +1668,17 @@ export const BusinessModule: React.FC<BusinessModuleProps> = ({ initialTab = 'le
                                 <b>가. 보고 및 브리핑</b><br/>
                                 1) 내용: 전도업무비 재정 지출의 건<br/>
                                 &nbsp;&nbsp;&nbsp;가) 금액 : 
-                                <span 
-                                  className="hwp-editable-text"
-                                  contentEditable 
-                                  suppressContentEditableWarning 
-                                  style={{ fontWeight: 'bold' }}
-                                >
+                                <span style={{ background: '#ffff00', color: '#000000', padding: '1px 3px', borderRadius: '2px', fontWeight: 'bold' }}>
                                   {totalAmount.toLocaleString()}원
                                 </span>
                                 <br/>
                                 &nbsp;&nbsp;&nbsp;나) 지출대상: 
-                                <span 
-                                  className="hwp-editable-text"
-                                  contentEditable 
-                                  suppressContentEditableWarning 
-                                  style={{ fontWeight: 'bold' }}
-                                >
+                                <span style={{ background: '#ffff00', color: '#000000', padding: '1px 3px', borderRadius: '2px', fontWeight: 'bold' }}>
                                   해외 {numCountries}개국({selectedCountries.map(c => c.name.replace('교회','').replace('지역','')).join(', ')})
                                 </span>
                                 <br/>
                                 &nbsp;&nbsp;&nbsp;다) 지출예정일 : 
-                                <span 
-                                  className="hwp-editable-text"
-                                  contentEditable 
-                                  suppressContentEditableWarning 
-                                  style={{ fontWeight: 'bold' }}
-                                >
+                                <span style={{ background: '#ffff00', color: '#000000', padding: '1px 3px', borderRadius: '2px', fontWeight: 'bold' }}>
                                   {expenseDate}
                                 </span>
                                 <br/>

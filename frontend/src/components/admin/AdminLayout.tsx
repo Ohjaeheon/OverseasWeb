@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { roleService } from '../../services/roleService';
 import { logService } from '../../services/logService';
 import { sessionService } from '../../services/sessionService';
+import { telegramService } from '../../services/telegramService';
 import {
   ChevronDown,
   ChevronRight,
@@ -254,25 +255,27 @@ export const AdminLayout: React.FC = () => {
           <ArrowLeft size={16} /> <span className="admin-header-btn-txt">해선부 업무 포탈로 이동</span>
         </button>
 
-        <button
-          onClick={handleLogout}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px',
-            background: '#ef4444',
-            border: 'none',
-            borderRadius: '9px',
-            padding: '7px 14px',
-            fontSize: '0.85rem',
-            fontWeight: 700,
-            color: 'white',
-            cursor: 'pointer',
-            boxShadow: '0 4px 10px rgba(239, 68, 68, 0.25)'
-          }}
-        >
-          <LogOut size={16} /> <span className="admin-header-btn-txt">로그아웃</span>
-        </button>
+        {!telegramService.isTelegramWebApp() && (
+          <button
+            onClick={handleLogout}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              background: '#ef4444',
+              border: 'none',
+              borderRadius: '9px',
+              padding: '7px 14px',
+              fontSize: '0.85rem',
+              fontWeight: 700,
+              color: 'white',
+              cursor: 'pointer',
+              boxShadow: '0 4px 10px rgba(239, 68, 68, 0.25)'
+            }}
+          >
+            <LogOut size={16} /> <span className="admin-header-btn-txt">로그아웃</span>
+          </button>
+        )}
       </header>
 
       {/* Main Layout Body */}
