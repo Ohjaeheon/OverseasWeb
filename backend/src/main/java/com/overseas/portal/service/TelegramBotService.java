@@ -2,8 +2,14 @@ package com.overseas.portal.service;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.ByteArrayResource;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.HashMap;
@@ -79,6 +85,43 @@ public class TelegramBotService {
             return response.getStatusCode().is2xxSuccessful();
         } catch (Exception e) {
             log.error("Failed to send Telegram test message to Chat ID {}: {}", chatId, e.getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * 텔레그램으로 취합 완료 엑셀/ZIP 파일 직접 전송 (동적 토큰 지원)
+     */
+    public boolean sendDocument(String chatId, byte[] fileBytes, String filename, String caption, String token) {
+        if (chatId == null || chatId.isBlank()) {
+            return false;
+        }
+
+        String targetToken = (token != null && !token.isBlank()) ? token : this.botToken;
+        String url = "https://api.telegram.org/bot" + targetToken + "/sendDocument";
+
+        try {
+            MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
+            body.add("chat_id", chatId);
+            body.add("caption", caption);
+
+            ByteArrayResource resource = new ByteArrayResource(fileBytes) {
+                @Override
+                public String getFilename() {
+                    return filename;
+                }
+            };
+            body.add("document", resource);
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.MULTIPART_FORM_DATA);
+
+            HttpEntity<MultiValueMap<String, Object>> requestEntity = new HttpEntity<>(body, headers);
+            ResponseEntity<String> response = restTemplate.postForEntity(url, requestEntity, String.class);
+            log.info("Telegram document sent to Chat ID {}: {}", chatId, response.getStatusCode());
+            return response.getStatusCode().is2xxSuccessful();
+        } catch (Exception e) {
+            log.error("Failed to send Telegram document to Chat ID {}: {}", chatId, e.getMessage());
             return false;
         }
     }

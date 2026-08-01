@@ -72,6 +72,11 @@ public class User {
     @Builder.Default
     private Boolean isOtpExempt = false;
 
+    @Column(name = "is_worship_permitted")
+    @Comment("텔레그램 주간예배 출결 취합 권한 여부")
+    @Builder.Default
+    private Boolean isWorshipPermitted = false;
+
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     @Comment("생성 일시")

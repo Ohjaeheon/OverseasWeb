@@ -23,7 +23,8 @@ export const AdminUserPage: React.FC = () => {
     telegramId: '',
     telegramChatId: '',
     isActive: true,
-    isOtpExempt: false
+    isOtpExempt: false,
+    isWorshipPermitted: false
   });
 
   const loadData = async () => {
@@ -96,7 +97,8 @@ export const AdminUserPage: React.FC = () => {
       telegramId: '',
       telegramChatId: '',
       isActive: true,
-      isOtpExempt: false
+      isOtpExempt: false,
+      isWorshipPermitted: false
     });
     setIsModalOpen(true);
   };
@@ -120,7 +122,8 @@ export const AdminUserPage: React.FC = () => {
       ...user,
       role: matchedRoleId,
       assignedCountry: user.assignedCountry || '전체',
-      isOtpExempt: user.isOtpExempt || false
+      isOtpExempt: user.isOtpExempt || false,
+      isWorshipPermitted: user.isWorshipPermitted || false
     });
     setIsModalOpen(true);
   };
@@ -147,6 +150,17 @@ export const AdminUserPage: React.FC = () => {
       loadData();
     } catch (err) {
       alert("사용자 삭제 중 오류가 발생했습니다.");
+    }
+  };
+
+  const handleToggleWorshipPermission = async (user: UserItem) => {
+    if (!user.userId) return;
+    try {
+      const updatedUser = { ...user, isWorshipPermitted: !user.isWorshipPermitted };
+      await adminService.updateUser(user.userId, updatedUser);
+      loadData();
+    } catch (err) {
+      alert("권한 설정을 변경하는 동안 오류가 발생했습니다.");
     }
   };
 
@@ -234,13 +248,14 @@ export const AdminUserPage: React.FC = () => {
               <th style={{ padding: '14px 18px', fontWeight: 700 }}>Telegram Chat ID</th>
               <th style={{ padding: '14px 18px', fontWeight: 700 }}>상태</th>
               <th style={{ padding: '14px 18px', fontWeight: 700 }}>OTP 예외</th>
+              <th style={{ padding: '14px 18px', fontWeight: 700 }}>예배 취합</th>
               <th style={{ padding: '14px 18px', fontWeight: 700, textAlign: 'right' }}>관리</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={9} style={{ padding: '30px', textAlign: 'center', color: '#6b7a99' }}>
+                <td colSpan={10} style={{ padding: '30px', textAlign: 'center', color: '#6b7a99' }}>
                   사용자 목록을 불러오는 중입니다...
                 </td>
               </tr>
@@ -303,6 +318,15 @@ export const AdminUserPage: React.FC = () => {
                         적용대상
                       </span>
                     )}
+                  </td>
+                  <td style={{ padding: '14px 18px', textAlign: 'center' }}>
+                    <input
+                      type="checkbox"
+                      checked={user.isWorshipPermitted || false}
+                      onChange={() => handleToggleWorshipPermission(user)}
+                      style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                      title="클릭하여 즉시 권한 토글"
+                    />
                   </td>
                   <td style={{ padding: '14px 18px', textAlign: 'right' }}>
                     <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end' }}>
@@ -508,6 +532,21 @@ export const AdminUserPage: React.FC = () => {
                   <div>
                     <span style={{ display: 'block', fontWeight: 700, color: '#d97706' }}>OTP 2차 인증 예외 (테스트 계정)</span>
                     <span style={{ display: 'block', fontSize: '0.75rem', color: '#94a3b8', fontWeight: 500, marginTop: '2px' }}>체크 시 로그인할 때 텔레그램 2차 OTP 인증 단계를 요구하지 않고 즉시 로그인됩니다.</span>
+                  </div>
+                </label>
+              </div>
+
+              <div>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.85rem', color: '#475569', fontWeight: 600, cursor: 'pointer', background: 'rgba(37, 99, 235, 0.04)', padding: '10px 14px', borderRadius: '8px', border: '1px solid rgba(37, 99, 235, 0.15)' }}>
+                  <input
+                    type="checkbox"
+                    checked={formData.isWorshipPermitted || false}
+                    onChange={(e) => setFormData({ ...formData, isWorshipPermitted: e.target.checked })}
+                    style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+                  />
+                  <div>
+                    <span style={{ display: 'block', fontWeight: 700, color: '#2563eb' }}>텔레그램 주간예배 취합 권한 허용</span>
+                    <span style={{ display: 'block', fontSize: '0.75rem', color: '#94a3b8', fontWeight: 500, marginTop: '2px' }}>체크 시 해당 사용자가 텔레그램 봇으로 주간예배 출결 ZIP 파일 취합 작업을 수행할 수 있습니다.</span>
                   </div>
                 </label>
               </div>

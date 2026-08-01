@@ -40,7 +40,7 @@ def load_encrypted_workbook(path, password):
         file.load_key(password=password)
         file.decrypt(decrypted)
     decrypted.seek(0)
-    return openpyxl.load_workbook(decrypted, data_only=True)
+    return openpyxl.load_workbook(decrypted, data_only=True, rich_text=True)
 
 def copy_sheet_data_openpyxl(ws_src, ws_dst):
     extracted_date = None
@@ -144,10 +144,10 @@ def process_merge():
             
             # Load template workbooks from decrypted stream (data_only=False to keep formulas)
             template_data.seek(0)
-            wb_주일 = openpyxl.load_workbook(template_data)
+            wb_주일 = openpyxl.load_workbook(template_data, rich_text=True)
             
             template_data.seek(0)
-            wb_수요 = openpyxl.load_workbook(template_data)
+            wb_수요 = openpyxl.load_workbook(template_data, rich_text=True)
             
             # 하위 폴더 내 19개 지역별 파일 목록
             regional_files = [f.name for f in os.scandir(folder.path) 

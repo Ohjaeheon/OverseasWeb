@@ -11,6 +11,7 @@ export interface UserItem {
   telegramChatId?: string;
   isActive?: boolean;
   isOtpExempt?: boolean;
+  isWorshipPermitted?: boolean;
 }
 
 export interface TelegramBotConfig {

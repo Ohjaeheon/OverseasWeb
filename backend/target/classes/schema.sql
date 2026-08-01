@@ -147,6 +147,7 @@ CREATE TABLE IF NOT EXISTS overseas.users (
     telegram_id VARCHAR(100),
     telegram_chat_id VARCHAR(100),
     is_active BOOLEAN DEFAULT TRUE,
+    is_worship_permitted BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
@@ -160,6 +161,7 @@ COMMENT ON COLUMN overseas.users.role IS '권한 (ROLE_ADMIN, ROLE_USER)';
 COMMENT ON COLUMN overseas.users.telegram_id IS '텔레그램 사용자 아이디 (@username)';
 COMMENT ON COLUMN overseas.users.telegram_chat_id IS '텔레그램 Chat ID (OTP 발송용)';
 COMMENT ON COLUMN overseas.users.is_active IS '계정 활성화 상태';
+COMMENT ON COLUMN overseas.users.is_worship_permitted IS '텔레그램 주간예배 출결 취합 권한 여부';
 
 -- 4. 텔레그램 OTP 발송/인증 이력 테이블
 CREATE TABLE IF NOT EXISTS overseas.telegram_otp_log (

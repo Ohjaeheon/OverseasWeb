@@ -33,6 +33,7 @@ com\overseas\portal\domain\TelegramBotConfig.class
 com\overseas\portal\repository\AuditLogRepository.class
 com\overseas\portal\service\AuthService$LoginResponse$LoginResponseBuilder.class
 com\overseas\portal\service\WeeklyWorshipService$2.class
+com\overseas\portal\service\TelegramBotService$1.class
 com\overseas\portal\service\WeeklyWorshipService$WorshipJobResult.class
 com\overseas\portal\repository\FaithProcessRecordRepository.class
 com\overseas\portal\domain\I18nDictionary$I18nDictionaryBuilder.class
@@ -79,6 +80,7 @@ com\overseas\portal\controller\AuthController$VerifyOtpRequest.class
 com\overseas\portal\controller\UserController$ProfileBotTestRequest.class
 com\overseas\portal\service\AuthService$2.class
 com\overseas\portal\domain\I18nDictionary.class
+com\overseas\portal\service\TelegramBotPollingService$TelegramMultipartFile.class
 com\overseas\portal\repository\TelegramOtpLogRepository.class
 com\overseas\portal\domain\User.class
 com\overseas\portal\repository\I18nDictionaryRepository.class
