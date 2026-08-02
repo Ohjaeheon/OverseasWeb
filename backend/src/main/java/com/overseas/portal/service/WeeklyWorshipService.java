@@ -27,8 +27,14 @@ import java.util.zip.ZipOutputStream;
 @RequiredArgsConstructor
 public class WeeklyWorshipService {
 
-    private final File modelingDir = new File("worship_modeling").getAbsoluteFile();
+    @org.springframework.beans.factory.annotation.Value("${app.upload-dir}")
+    private String uploadDir;
+
     private final WeeklyWorshipHistoryRepository weeklyWorshipHistoryRepository;
+
+    private Path getModelingDirPath() {
+        return Paths.get(uploadDir, "worship_modeling").toAbsolutePath().normalize();
+    }
 
     @Data
     @Builder
@@ -47,7 +53,7 @@ public class WeeklyWorshipService {
      */
     public WorshipJobResult executeMerge(MultipartFile file) throws Exception {
         String jobId = UUID.randomUUID().toString();
-        Path tempJobsDir = modelingDir.toPath().resolve("temp_jobs").toAbsolutePath().normalize();
+        Path tempJobsDir = getModelingDirPath().resolve("temp_jobs").toAbsolutePath().normalize();
         Files.createDirectories(tempJobsDir);
 
         Path jobDir = tempJobsDir.resolve("worship_" + jobId).toAbsolutePath().normalize();
@@ -203,7 +209,7 @@ public class WeeklyWorshipService {
             history = weeklyWorshipHistoryRepository.save(history);
             Long historyId = history.getHistoryId();
 
-            Path historyFilesDir = modelingDir.toPath().resolve("history_files");
+            Path historyFilesDir = getModelingDirPath().resolve("history_files");
             Files.createDirectories(historyFilesDir);
 
             // 파일 이동 및 복제
@@ -309,7 +315,7 @@ public class WeeklyWorshipService {
             throw new FileNotFoundException("해당 파일은 삭제되었거나 존재하지 않습니다.");
         }
 
-        Path filePath = modelingDir.toPath().resolve(relPath).toAbsolutePath().normalize();
+        Path filePath = getModelingDirPath().resolve(relPath).toAbsolutePath().normalize();
         if (!Files.exists(filePath)) {
             throw new FileNotFoundException("보관 디렉토리에 물리 파일이 존재하지 않습니다: " + filePath.getFileName());
         }
@@ -342,7 +348,7 @@ public class WeeklyWorshipService {
     private void deletePhysicalFile(String relPath) {
         if (relPath != null && !relPath.isEmpty()) {
             try {
-                Path filePath = modelingDir.toPath().resolve(relPath).toAbsolutePath().normalize();
+                Path filePath = getModelingDirPath().resolve(relPath).toAbsolutePath().normalize();
                 if (Files.exists(filePath)) {
                     Files.delete(filePath);
                 }
@@ -482,7 +488,7 @@ public class WeeklyWorshipService {
         long now = System.currentTimeMillis();
         long limit = now - (30 * 60 * 1000); // 30분 전
 
-        Path tempJobsDir = modelingDir.toPath().resolve("temp_jobs");
+        Path tempJobsDir = getModelingDirPath().resolve("temp_jobs");
         if (Files.exists(tempJobsDir)) {
             try (DirectoryStream<Path> stream = Files.newDirectoryStream(tempJobsDir)) {
                 for (Path entry : stream) {
