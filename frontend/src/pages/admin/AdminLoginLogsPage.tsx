@@ -11,36 +11,45 @@ export const AdminLoginLogsPage: React.FC = () => {
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [pageSize, setPageSize] = useState<number>(10);
 
-  const loadLogs = () => {
-    setLogs(logService.getLoginLogs());
+  const loadLogs = async () => {
+    const data = await logService.getLoginLogs(searchTerm, statusFilter);
+    setLogs(data);
   };
 
   useEffect(() => {
     loadLogs();
-  }, []);
+  }, [searchTerm, statusFilter]);
 
   useEffect(() => {
     setCurrentPage(1);
   }, [searchTerm, statusFilter, pageSize]);
 
-  const handleClear = () => {
+  const handleClear = async () => {
     if (!window.confirm("로그인 로그 기록을 전체 삭제하시겠습니까?")) return;
-    logService.clearLoginLogs();
+    await logService.clearLoginLogs();
     loadLogs();
   };
 
-  const filteredLogs = logs.filter((log) => {
-    const matchesSearch =
-      log.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      log.ipAddress.includes(searchTerm) ||
-      log.timestamp.includes(searchTerm);
-    const matchesStatus = statusFilter === 'ALL' || log.status === statusFilter;
-    return matchesSearch && matchesStatus;
-  });
+  const formatTimestamp = (dateStr: string): string => {
+    if (!dateStr) return '';
+    try {
+      const d = new Date(dateStr);
+      const yyyy = d.getFullYear();
+      const mm = String(d.getMonth() + 1).padStart(2, '0');
+      const dd = String(d.getDate()).padStart(2, '0');
+      const hh = String(d.getHours()).padStart(2, '0');
+      const min = String(d.getMinutes()).padStart(2, '0');
+      const ss = String(d.getSeconds()).padStart(2, '0');
+      const ms = String(d.getMilliseconds()).padStart(3, '0');
+      return `${yyyy}/${mm}/${dd} ${hh}:${min}:${ss}.${ms}`;
+    } catch (e) {
+      return dateStr;
+    }
+  };
 
-  const totalPages = Math.ceil(filteredLogs.length / pageSize) || 1;
+  const totalPages = Math.ceil(logs.length / pageSize) || 1;
   const startIndex = (currentPage - 1) * pageSize;
-  const paginatedLogs = filteredLogs.slice(startIndex, startIndex + pageSize);
+  const paginatedLogs = logs.slice(startIndex, startIndex + pageSize);
 
   return (
     <div>
@@ -89,79 +98,85 @@ export const AdminLoginLogsPage: React.FC = () => {
         gap: '16px',
         boxShadow: '0 2px 8px rgba(20, 40, 90, 0.03)'
       }}>
-        {/* Status Filter Chips */}
-        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-          {[
-            { key: 'ALL', label: '전체 로그' },
-            { key: 'SUCCESS', label: '성공 (SUCCESS)' },
-            { key: 'FAILED', label: '실패 (FAILED)' }
-          ].map((chip) => {
-            const isSelected = statusFilter === chip.key;
-            return (
-              <button
-                key={chip.key}
-                onClick={() => setStatusFilter(chip.key)}
+        <div style={{ fontSize: '0.9rem', color: '#475569', fontWeight: 700 }}>
+          총 <span style={{ color: '#2563eb' }}>{logs.length}</span>개의 로그인 기록이 조회되었습니다.
+        </div>
+
+        {/* Page Size, Status Filter Chips & Search */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
+          {/* Status Filter Chips */}
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            {[
+              { key: 'ALL', label: '전체 로그' },
+              { key: 'SUCCESS', label: '성공' },
+              { key: 'FAILED', label: '실패' }
+            ].map((chip) => {
+              const isSelected = statusFilter === chip.key;
+              return (
+                <button
+                  key={chip.key}
+                  onClick={() => setStatusFilter(chip.key)}
+                  style={{
+                    padding: '6px 14px',
+                    borderRadius: '20px',
+                    border: isSelected ? '1px solid #c7d2fe' : '1px solid #e6edf8',
+                    background: isSelected ? '#e0e7ff' : '#ffffff',
+                    color: isSelected ? '#2563eb' : '#6b7a99',
+                    fontWeight: isSelected ? 700 : 600,
+                    fontSize: '0.82rem',
+                    cursor: 'pointer'
+                  }}
+                >
+                  {chip.label}
+                </button>
+              );
+            })}
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <span style={{ fontSize: '0.85rem', color: '#6b7a99', fontWeight: 600 }}>목록 수:</span>
+              <select
+                value={pageSize}
+                onChange={(e) => setPageSize(Number(e.target.value))}
                 style={{
-                  padding: '7px 16px',
-                  borderRadius: '20px',
-                  border: isSelected ? '1px solid #c7d2fe' : '1px solid #e6edf8',
-                  background: isSelected ? '#e0e7ff' : '#ffffff',
-                  color: isSelected ? '#2563eb' : '#6b7a99',
-                  fontWeight: isSelected ? 700 : 600,
+                  padding: '8px 12px',
+                  border: '1px solid #dbe2ef',
+                  borderRadius: '8px',
                   fontSize: '0.85rem',
+                  color: '#1f2a44',
+                  fontWeight: 700,
+                  outline: 'none',
+                  background: '#ffffff',
                   cursor: 'pointer'
                 }}
               >
-                {chip.label}
-              </button>
-            );
-          })}
-        </div>
+                <option value={10}>10개씩 보기</option>
+                <option value={30}>30개씩 보기</option>
+                <option value={50}>50개씩 보기</option>
+                <option value={100}>100개씩 보기</option>
+              </select>
+            </div>
 
-        {/* Page Size & Search */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <span style={{ fontSize: '0.85rem', color: '#6b7a99', fontWeight: 600 }}>목록 수:</span>
-            <select
-              value={pageSize}
-              onChange={(e) => setPageSize(Number(e.target.value))}
-              style={{
-                padding: '8px 12px',
-                border: '1px solid #dbe2ef',
-                borderRadius: '8px',
-                fontSize: '0.85rem',
-                color: '#1f2a44',
-                fontWeight: 700,
-                outline: 'none',
-                background: '#ffffff',
-                cursor: 'pointer'
-              }}
-            >
-              <option value={10}>10개씩 보기</option>
-              <option value={30}>30개씩 보기</option>
-              <option value={50}>50개씩 보기</option>
-              <option value={100}>100개씩 보기</option>
-            </select>
-          </div>
-
-          <div style={{ position: 'relative', minWidth: '240px' }}>
-            <Search size={18} color="#94a3b8" style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)' }} />
-            <input
-              type="text"
-              placeholder="계정명, IP주소, 시각 검색..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              style={{
-                width: '100%',
-                padding: '9px 14px 9px 40px',
-                background: '#ffffff',
-                border: '1px solid #dbe2ef',
-                borderRadius: '10px',
-                color: '#1f2a44',
-                fontSize: '0.88rem',
-                outline: 'none'
-              }}
-            />
+            <div style={{ position: 'relative', minWidth: '240px' }}>
+              <Search size={18} color="#94a3b8" style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)' }} />
+              <input
+                type="text"
+                placeholder="계정명, IP주소, 시각 검색..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '9px 14px 9px 40px',
+                  background: '#ffffff',
+                  border: '1px solid #dbe2ef',
+                  borderRadius: '10px',
+                  color: '#1f2a44',
+                  fontSize: '0.88rem',
+                  outline: 'none'
+                }}
+              />
+            </div>
           </div>
         </div>
       </div>
@@ -184,7 +199,7 @@ export const AdminLoginLogsPage: React.FC = () => {
               </th>
               <th style={{ padding: '14px 18px', fontWeight: 700 }}>
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                  <ShieldCheck size={15} color="#2563eb" /> 계정명
+                  <ShieldCheck size={15} color="#2563eb" /> 계정명 (아이디)
                 </span>
               </th>
               <th style={{ padding: '14px 18px', fontWeight: 700 }}>
@@ -207,10 +222,10 @@ export const AdminLoginLogsPage: React.FC = () => {
               paginatedLogs.map((log) => (
                 <tr key={log.id} style={{ borderBottom: '1px solid #f1f5f9', transition: 'background 0.15s ease' }}>
                   <td style={{ padding: '14px 18px', fontWeight: 700, color: '#2563eb', fontFamily: 'monospace' }}>
-                    {log.timestamp}
+                    {formatTimestamp(log.createdAt)}
                   </td>
                   <td style={{ padding: '14px 18px', fontWeight: 800, color: '#1f2a44' }}>
-                    {log.username}
+                    {log.name} ({log.username})
                   </td>
                   <td style={{ padding: '14px 18px', color: '#475569', fontFamily: 'monospace', fontWeight: 600 }}>
                     {log.ipAddress}
@@ -247,8 +262,8 @@ export const AdminLoginLogsPage: React.FC = () => {
           gap: '12px'
         }}>
           <div style={{ fontSize: '0.85rem', color: '#64748b', fontWeight: 600 }}>
-            총 <b style={{ color: '#2563eb' }}>{filteredLogs.length}</b>건 중{' '}
-            {filteredLogs.length > 0 ? `${startIndex + 1} ~ ${Math.min(startIndex + pageSize, filteredLogs.length)}` : 0}건 표시
+            총 <b style={{ color: '#2563eb' }}>{logs.length}</b>건 중{' '}
+            {logs.length > 0 ? `${startIndex + 1} ~ ${Math.min(startIndex + pageSize, logs.length)}` : 0}건 표시
             (페이지 {currentPage} / {totalPages})
           </div>
 
@@ -270,28 +285,8 @@ export const AdminLoginLogsPage: React.FC = () => {
                 gap: '4px'
               }}
             >
-              <ChevronLeft size={16} /> 이전
+              <ChevronLeft size={14} /> 이전
             </button>
-
-            {Array.from({ length: totalPages }, (_, idx) => idx + 1).map((p) => (
-              <button
-                key={p}
-                onClick={() => setCurrentPage(p)}
-                style={{
-                  padding: '6px 12px',
-                  borderRadius: '8px',
-                  border: currentPage === p ? '1px solid #2563eb' : '1px solid #dbe2ef',
-                  background: currentPage === p ? '#2563eb' : '#ffffff',
-                  color: currentPage === p ? '#ffffff' : '#334155',
-                  fontWeight: 700,
-                  fontSize: '0.82rem',
-                  cursor: 'pointer'
-                }}
-              >
-                {p}
-              </button>
-            ))}
-
             <button
               disabled={currentPage === totalPages}
               onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
@@ -309,7 +304,7 @@ export const AdminLoginLogsPage: React.FC = () => {
                 gap: '4px'
               }}
             >
-              다음 <ChevronRight size={16} />
+              다음 <ChevronRight size={14} />
             </button>
           </div>
         </div>

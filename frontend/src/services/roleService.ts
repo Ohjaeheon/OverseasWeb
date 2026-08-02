@@ -66,6 +66,8 @@ export const DEFAULT_MENUS: { menuKey: string; menuName: string; category: strin
   { menuKey: 'perm', menuName: '🔑 권한별 접근 메뉴 설정', category: '⚙️ 관리자 전용 (adminsetting)', path: '/adminsetting/permissions' },
   { menuKey: 'login_logs', menuName: '📥 로그인 로그 관리', category: '⚙️ 관리자 전용 (adminsetting)', path: '/adminsetting/login-logs' },
   { menuKey: 'access_logs', menuName: '📥 접근 로그 관리', category: '⚙️ 관리자 전용 (adminsetting)', path: '/adminsetting/access-logs' },
+  { menuKey: 'file_upload_logs', menuName: '📥 파일 업로드 로그 관리', category: '⚙️ 관리자 전용 (adminsetting)', path: '/adminsetting/file-upload-logs' },
+  { menuKey: 'file_download_logs', menuName: '📥 파일 다운로드 로그 관리', category: '⚙️ 관리자 전용 (adminsetting)', path: '/adminsetting/file-download-logs' },
   { menuKey: 'i18n', menuName: '🌐 다국어 사전 관리', category: '⚙️ 관리자 전용 (adminsetting)', path: '/adminsetting/i18n' },
   { menuKey: 'sys', menuName: '⚙️ 시스템 설정', category: '⚙️ 관리자 전용 (adminsetting)', path: '/adminsetting/settings' },
   { menuKey: 'admin_bot', menuName: '🤖 봇 연결 관리', category: '⚙️ 관리자 전용 (adminsetting)', path: '/adminsetting/bot' }
@@ -289,7 +291,7 @@ export const roleService = {
 
     // Default fallbacks if permissions matrix is uninitialized
     if (cleanRoleId === 'ROLE_USER') {
-      const isRestricted = ['users', 'roles', 'perm', 'sys', 'admin_bot', 'business', 'business_ledger', 'business_ledger_report', 'business_fruit', 'business_transport', 'business_mission', 'approvals_pending', 'approvals_completed'].includes(normKey);
+      const isRestricted = ['users', 'roles', 'perm', 'sys', 'admin_bot', 'login_logs', 'access_logs', 'file_upload_logs', 'file_download_logs', 'business', 'business_ledger', 'business_ledger_report', 'business_fruit', 'business_transport', 'business_mission', 'approvals_pending', 'approvals_completed'].includes(normKey);
       return { read: !isRestricted, write: !isRestricted };
     } else if (cleanRoleId === 'ROLE_GUEST') {
       return { read: ['home', 'diag', 'inspect', 'funnel', 'map'].includes(normKey), write: false };

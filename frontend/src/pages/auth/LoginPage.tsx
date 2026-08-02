@@ -24,7 +24,7 @@ export const LoginPage: React.FC = () => {
   const [telegramInitData, setTelegramInitData] = useState<string | undefined>(undefined);
 
   useEffect(() => {
-    logService.addAccessLog('🔑 로그인 페이지', '/login', 'guest');
+    logService.addAccessLog('🔑 로그인 페이지', '/login');
 
     console.log("[Telegram WebApp Debug] isTelegramWebApp:", telegramService.isTelegramWebApp());
     const debugTg = telegramService.getWebApp();
@@ -71,7 +71,6 @@ export const LoginPage: React.FC = () => {
               } catch (e) {
                 console.warn("Failed to fetch menu permissions on tg auto login", e);
               }
-              logService.addLoginLog(response.username, 'SUCCESS', '127.0.0.1', '텔레그램 자동 로그인 성공');
               
               const redirectPath = roleService.getLoginRedirectPath(response.role);
               navigate(redirectPath);
@@ -160,8 +159,6 @@ export const LoginPage: React.FC = () => {
           console.warn("Failed to fetch menu permissions from DB on login", e);
         }
 
-        logService.addLoginLog(response.username, 'SUCCESS', '192.168.0.53', '로그인 성공');
-
         if (response.mustChangePassword) {
           alert("초기 계정 로그인에 성공하였습니다. 안전한 시스템 이용을 위해 먼저 비밀번호를 변경해주시기 바랍니다.");
           window.location.href = '/OverseasPortal/profile';
@@ -173,12 +170,10 @@ export const LoginPage: React.FC = () => {
       } else {
         const msg = response.message || '로그인에 실패했습니다.';
         setErrorMsg(msg);
-        logService.addLoginLog(username.trim(), 'FAILED', '192.168.0.53', msg);
       }
     } catch (err: any) {
       const msg = err.response?.data?.message || err.message || '아이디 또는 비밀번호가 일치하지 않습니다.';
       setErrorMsg(msg);
-      logService.addLoginLog(username.trim(), 'FAILED', '192.168.0.53', msg);
     } finally {
       setLoading(false);
     }
@@ -217,8 +212,6 @@ export const LoginPage: React.FC = () => {
         } catch (e) {
           console.warn("Failed to fetch menu permissions from DB on login", e);
         }
-
-        logService.addLoginLog(response.username, 'SUCCESS', '192.168.0.53', '2차 OTP 로그인 성공');
 
         if (response.mustChangePassword) {
           alert("초기 계정 로그인에 성공하였습니다. 안전한 시스템 이용을 위해 먼저 비밀번호를 변경해주시기 바랍니다.");

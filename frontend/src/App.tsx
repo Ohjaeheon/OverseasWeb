@@ -19,6 +19,8 @@ import { AdminSettingsPage } from './pages/admin/AdminSettingsPage';
 import { AdminMessagePage } from './pages/admin/AdminMessagePage';
 import { AdminLoginLogsPage } from './pages/admin/AdminLoginLogsPage';
 import { AdminAccessLogsPage } from './pages/admin/AdminAccessLogsPage';
+import { AdminFileUploadLogsPage } from './pages/admin/AdminFileUploadLogsPage';
+import { AdminFileDownloadLogsPage } from './pages/admin/AdminFileDownloadLogsPage';
 import { AdminPlaceholderPage } from './pages/admin/AdminPlaceholderPage';
 import { AdminBotPage } from './pages/admin/AdminBotPage';
 import { AdminWeeklyWorshipPage } from './pages/admin/AdminWeeklyWorshipPage';
@@ -104,6 +106,8 @@ export const App: React.FC = () => {
             <Route path="messages" element={<AdminMessagePage />} />
             <Route path="login-logs" element={<AdminLoginLogsPage />} />
             <Route path="access-logs" element={<AdminAccessLogsPage />} />
+            <Route path="file-upload-logs" element={<AdminFileUploadLogsPage />} />
+            <Route path="file-download-logs" element={<AdminFileDownloadLogsPage />} />
           </Route>
         </Route>
 

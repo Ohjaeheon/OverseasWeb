@@ -48,6 +48,7 @@ export const BusinessModule: React.FC<BusinessModuleProps> = ({ initialTab = 'le
   }, [initialTab]);
 
   const [store, setStore] = useState<Record<string, MonthlyRecord>>({});
+  const [selectedYear, setSelectedYear] = useState('2026');
   const [isEditMode, setIsEditMode] = useState(false);
   const [editData, setEditData] = useState<Array<{ country: string; months: Record<number, number | ''> }>>([]);
   const [allChurches, setAllChurches] = useState<Array<{ name: string }>>([]);
@@ -425,21 +426,21 @@ export const BusinessModule: React.FC<BusinessModuleProps> = ({ initialTab = 'le
     }
   };
 
-  // Load from LocalStorage and fetch dynamic churches list
-  useEffect(() => {
-    const raw = localStorage.getItem('overseas_ledger_data');
-    if (raw) {
-      try {
-        setStore(JSON.parse(raw));
-      } catch (e) {
-        localStorage.setItem('overseas_ledger_data', JSON.stringify(defaultStoredData));
-        setStore(defaultStoredData);
+  // Load ledger data from server and fetch churches list
+  const fetchLedgerData = async (targetYear: string) => {
+    try {
+      const res = await api.get(`/business/ledger?year=${targetYear}`);
+      if (res.data) {
+        setStore(res.data);
+      } else {
+        setStore({});
       }
-    } else {
-      localStorage.setItem('overseas_ledger_data', JSON.stringify(defaultStoredData));
-      setStore(defaultStoredData);
+    } catch (e) {
+      console.error("Failed to fetch ledger data:", e);
     }
+  };
 
+  useEffect(() => {
     const fetchAllChurches = async () => {
       try {
         const res = await api.get('/diagnosis/churches');
@@ -452,6 +453,19 @@ export const BusinessModule: React.FC<BusinessModuleProps> = ({ initialTab = 'le
     };
     fetchAllChurches();
   }, []);
+
+  // Fetch when target years change
+  useEffect(() => {
+    if (selectedYear) {
+      fetchLedgerData(selectedYear);
+    }
+  }, [selectedYear]);
+
+  useEffect(() => {
+    if (reportYear) {
+      fetchLedgerData(reportYear);
+    }
+  }, [reportYear]);
 
   // Update form fields when reportYear or reportMonth changes (loading from store)
   useEffect(() => {
@@ -532,26 +546,29 @@ export const BusinessModule: React.FC<BusinessModuleProps> = ({ initialTab = 'le
     return result + '원정';
   };
 
-  // Save data locally
-  const handleSaveData = () => {
-    const key = `${reportYear}_${reportMonth}`;
-    const updatedStore = {
-      ...store,
-      [key]: {
-        reportDate,
-        draftUser,
-        expenseDate,
-        meetingDate,
-        countries: selectedCountries
-      }
+  // Save data to server DB
+  const handleSaveData = async () => {
+    const payload = {
+      year: parseInt(reportYear),
+      month: parseInt(reportMonth),
+      reportDate,
+      draftUser,
+      expenseDate,
+      meetingDate,
+      countries: selectedCountries
     };
-    localStorage.setItem('overseas_ledger_data', JSON.stringify(updatedStore));
-    setStore(updatedStore);
-    alert(`${reportYear}년 ${reportMonth}월 기안서 데이터가 성공적으로 저장되었습니다!\n원장헌금 집계 탭에 즉시 반영됩니다.`);
+
+    try {
+      await api.post('/business/ledger/save', payload);
+      alert(`${reportYear}년 ${reportMonth}월 기안서 데이터가 성공적으로 저장되었습니다!\n원장헌금 집계 탭에 즉시 반영됩니다.`);
+      fetchLedgerData(reportYear);
+    } catch (e) {
+      console.error("Failed to save ledger data to DB:", e);
+      alert("데이터 저장 중 오류가 발생했습니다. 서버 상태를 확인해주세요.");
+    }
   };
 
   // Mock ledger data for 12 months matrix
-  const [selectedYear, setSelectedYear] = useState('2026');
 
   // Generate Matrix using Store
   const getMatrixData = () => {
@@ -647,8 +664,8 @@ export const BusinessModule: React.FC<BusinessModuleProps> = ({ initialTab = 'le
   };
 
   // Save changes
-  const handleSaveEdit = () => {
-    const updatedStore = { ...store };
+  const handleSaveEdit = async () => {
+    const payload: any[] = [];
 
     for (let m = 1; m <= 12; m++) {
       const monthlyCountries = editData
@@ -662,26 +679,41 @@ export const BusinessModule: React.FC<BusinessModuleProps> = ({ initialTab = 'le
         .filter(Boolean) as Array<{ name: string; amount: number }>;
 
       const key = `${selectedYear}_${m}`;
+      const existing = (store[key] || {}) as any;
 
       if (monthlyCountries.length > 0) {
-        updatedStore[key] = {
-          ...updatedStore[key],
-          countries: monthlyCountries,
-          reportDate: updatedStore[key]?.reportDate || `신 43(${selectedYear})년 ${m}월 5일`,
-          draftUser: updatedStore[key]?.draftUser || '이수한',
-          expenseDate: updatedStore[key]?.expenseDate || `${m}월 6일`,
-          meetingDate: updatedStore[key]?.meetingDate || `신 43(${selectedYear})년 ${m}월 3일(금) 10:00 ~ 11:00`
-        };
-      } else {
-        // If all countries are cleared, we can delete the key
-        delete updatedStore[key];
+        payload.push({
+          year: parseInt(selectedYear),
+          month: m,
+          reportDate: existing.reportDate || `신 43(${selectedYear})년 ${m}월 5일`,
+          draftUser: existing.draftUser || '이수한',
+          expenseDate: existing.expenseDate || `${m}월 6일`,
+          meetingDate: existing.meetingDate || `신 43(${selectedYear})년 ${m}월 3일(금) 10:00 ~ 11:00`,
+          countries: monthlyCountries
+        });
+      } else if (store[key]) {
+        // 기존에 데이터가 존재했는데 다 비워버린 월은 빈 countries 리스트를 넘겨서 삭제 대상이 되도록 처리합니다.
+        payload.push({
+          year: parseInt(selectedYear),
+          month: m,
+          reportDate: existing.reportDate || `신 43(${selectedYear})년 ${m}월 5일`,
+          draftUser: existing.draftUser || '이수한',
+          expenseDate: existing.expenseDate || `${m}월 6일`,
+          meetingDate: existing.meetingDate || `신 43(${selectedYear})년 ${m}월 3일(금) 10:00 ~ 11:00`,
+          countries: []
+        });
       }
     }
 
-    setStore(updatedStore);
-    localStorage.setItem('overseas_ledger_data', JSON.stringify(updatedStore));
-    setIsEditMode(false);
-    alert('원장헌금 실적이 성공적으로 저장되었습니다.');
+    try {
+      await api.post('/business/ledger/save-batch', payload);
+      setIsEditMode(false);
+      alert('원장헌금 실적이 성공적으로 저장되었습니다.');
+      fetchLedgerData(selectedYear);
+    } catch (e) {
+      console.error("Failed to batch save ledger data:", e);
+      alert("데이터 저장 중 오류가 발생했습니다.");
+    }
   };
 
   // Load JSZip from CDN

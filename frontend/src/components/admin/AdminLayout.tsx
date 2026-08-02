@@ -75,7 +75,9 @@ export const AdminLayout: React.FC = () => {
     { s: "sys", ico: "⚙️", label: "시스템 설정", path: "/adminsetting/settings" },
     { s: "messages", ico: "💬", label: "메세지 관리", path: "/adminsetting/messages" },
     { s: "login_log", ico: "📥", label: "로그인 로그", path: "/adminsetting/login-logs" },
-    { s: "access_log", ico: "📥", label: "접근로그", path: "/adminsetting/access-logs" }
+    { s: "access_log", ico: "📥", label: "접근로그", path: "/adminsetting/access-logs" },
+    { s: "file_upload_logs", ico: "📥", label: "파일 업로드 로그", path: "/adminsetting/file-upload-logs" },
+    { s: "file_download_logs", ico: "📥", label: "파일 다운로드 로그", path: "/adminsetting/file-download-logs" }
   ];
 
   // Filter sidebar items according to current user's role permissions (hide headers if no children accessible)

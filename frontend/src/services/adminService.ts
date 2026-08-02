@@ -137,5 +137,23 @@ export const adminService = {
   updateBots: async (bots: TelegramBotConfig[]): Promise<TelegramBotConfig[]> => {
     const res = await api.put<TelegramBotConfig[]>('/admin/bots', bots);
     return res.data;
+  },
+
+  getFileUploadLogs: async (query?: string): Promise<any[]> => {
+    const res = await api.get<any[]>('/admin/logs/file-upload', { params: { query } });
+    return res.data;
+  },
+
+  getFileDownloadLogs: async (query?: string): Promise<any[]> => {
+    const res = await api.get<any[]>('/admin/logs/file-download', { params: { query } });
+    return res.data;
+  },
+
+  clearFileUploadLogs: async (): Promise<void> => {
+    await api.delete('/admin/logs/file-upload');
+  },
+
+  clearFileDownloadLogs: async (): Promise<void> => {
+    await api.delete('/admin/logs/file-download');
   }
 };

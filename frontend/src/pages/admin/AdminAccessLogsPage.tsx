@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { logService, AccessLogItem } from '../../services/logService';
-import { Search, Trash2, Clock, ShieldCheck, FileText, ChevronLeft, ChevronRight } from 'lucide-react';
+import { FileText, Search, Trash2, Clock, ShieldCheck, Monitor, ChevronLeft, ChevronRight } from 'lucide-react';
 
 export const AdminAccessLogsPage: React.FC = () => {
   const [logs, setLogs] = useState<AccessLogItem[]>([]);
@@ -10,36 +10,45 @@ export const AdminAccessLogsPage: React.FC = () => {
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [pageSize, setPageSize] = useState<number>(10);
 
-  const loadLogs = () => {
-    setLogs(logService.getAccessLogs());
+  const loadLogs = async () => {
+    const data = await logService.getAccessLogs(searchTerm);
+    setLogs(data);
   };
 
   useEffect(() => {
     loadLogs();
-  }, []);
+  }, [searchTerm]);
 
   useEffect(() => {
     setCurrentPage(1);
   }, [searchTerm, pageSize]);
 
-  const handleClear = () => {
+  const handleClear = async () => {
     if (!window.confirm("접근 로그 기록을 전체 삭제하시겠습니까?")) return;
-    logService.clearAccessLogs();
+    await logService.clearAccessLogs();
     loadLogs();
   };
 
-  const filteredLogs = logs.filter((log) => {
-    const matchesSearch =
-      log.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      log.pageName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      log.path.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      log.timestamp.includes(searchTerm);
-    return matchesSearch;
-  });
+  const formatTimestamp = (dateStr: string): string => {
+    if (!dateStr) return '';
+    try {
+      const d = new Date(dateStr);
+      const yyyy = d.getFullYear();
+      const mm = String(d.getMonth() + 1).padStart(2, '0');
+      const dd = String(d.getDate()).padStart(2, '0');
+      const hh = String(d.getHours()).padStart(2, '0');
+      const min = String(d.getMinutes()).padStart(2, '0');
+      const ss = String(d.getSeconds()).padStart(2, '0');
+      const ms = String(d.getMilliseconds()).padStart(3, '0');
+      return `${yyyy}/${mm}/${dd} ${hh}:${min}:${ss}.${ms}`;
+    } catch (e) {
+      return dateStr;
+    }
+  };
 
-  const totalPages = Math.ceil(filteredLogs.length / pageSize) || 1;
+  const totalPages = Math.ceil(logs.length / pageSize) || 1;
   const startIndex = (currentPage - 1) * pageSize;
-  const paginatedLogs = filteredLogs.slice(startIndex, startIndex + pageSize);
+  const paginatedLogs = logs.slice(startIndex, startIndex + pageSize);
 
   return (
     <div>
@@ -47,10 +56,10 @@ export const AdminAccessLogsPage: React.FC = () => {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '16px' }}>
         <div>
           <h1 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#1f2a44', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
-            📥 접근 로그 관리 (Access Logs)
+            📥 메뉴 접근 로그 관리 (Access Logs)
           </h1>
           <p style={{ color: '#6b7a99', fontSize: '0.88rem', margin: '4px 0 0 0' }}>
-            로그인한 사용자들이 시스템 내부 각 메뉴 및 진단서 포탈 페이지에 접근한 이력 시각(밀리초 포함)을 기록 조회합니다.
+            회원들의 각 페이지(메뉴) 접근 정보, 요청 경로 및 IP 주소를 실시간으로 조회합니다.
           </p>
         </div>
 
@@ -89,7 +98,7 @@ export const AdminAccessLogsPage: React.FC = () => {
         boxShadow: '0 2px 8px rgba(20, 40, 90, 0.03)'
       }}>
         <div style={{ fontSize: '0.9rem', color: '#475569', fontWeight: 700 }}>
-          총 <span style={{ color: '#2563eb' }}>{filteredLogs.length}</span>개의 접근 기록이 조회되었습니다.
+          총 <span style={{ color: '#2563eb' }}>{logs.length}</span>개의 접근 기록이 조회되었습니다.
         </div>
 
         {/* Page Size & Search */}
@@ -122,7 +131,7 @@ export const AdminAccessLogsPage: React.FC = () => {
             <Search size={18} color="#94a3b8" style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)' }} />
             <input
               type="text"
-              placeholder="계정명, 접근 페이지명, 경로 검색..."
+              placeholder="계정명, 접근 페이지명, 경로, IP 검색..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               style={{
@@ -158,7 +167,7 @@ export const AdminAccessLogsPage: React.FC = () => {
               </th>
               <th style={{ padding: '14px 18px', fontWeight: 700 }}>
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                  <ShieldCheck size={15} color="#2563eb" /> 계정명
+                  <ShieldCheck size={15} color="#2563eb" /> 계정명 (아이디)
                 </span>
               </th>
               <th style={{ padding: '14px 18px', fontWeight: 700 }}>
@@ -166,12 +175,17 @@ export const AdminAccessLogsPage: React.FC = () => {
                   <FileText size={15} color="#2563eb" /> 접근 페이지 (Path)
                 </span>
               </th>
+              <th style={{ padding: '14px 18px', fontWeight: 700 }}>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                  <Monitor size={15} color="#2563eb" /> IP 주소
+                </span>
+              </th>
             </tr>
           </thead>
           <tbody>
             {paginatedLogs.length === 0 ? (
               <tr>
-                <td colSpan={3} style={{ padding: '30px', textAlign: 'center', color: '#6b7a99' }}>
+                <td colSpan={4} style={{ padding: '30px', textAlign: 'center', color: '#6b7a99' }}>
                   접근 로그 데이터가 없습니다.
                 </td>
               </tr>
@@ -179,16 +193,19 @@ export const AdminAccessLogsPage: React.FC = () => {
               paginatedLogs.map((log) => (
                 <tr key={log.id} style={{ borderBottom: '1px solid #f1f5f9', transition: 'background 0.15s ease' }}>
                   <td style={{ padding: '14px 18px', fontWeight: 700, color: '#2563eb', fontFamily: 'monospace' }}>
-                    {log.timestamp}
+                    {formatTimestamp(log.createdAt)}
                   </td>
                   <td style={{ padding: '14px 18px', fontWeight: 800, color: '#1f2a44' }}>
-                    {log.username}
+                    {log.name} ({log.username})
                   </td>
                   <td style={{ padding: '14px 18px', color: '#334155', fontWeight: 600 }}>
                     {log.pageName}{' '}
                     <code style={{ fontSize: '0.75rem', background: '#f1f5f9', color: '#64748b', padding: '2px 6px', borderRadius: '4px', marginLeft: '6px' }}>
                       {log.path}
                     </code>
+                  </td>
+                  <td style={{ padding: '14px 18px', color: '#475569', fontFamily: 'monospace', fontWeight: 600 }}>
+                    {log.ipAddress}
                   </td>
                 </tr>
               ))
@@ -208,8 +225,8 @@ export const AdminAccessLogsPage: React.FC = () => {
           gap: '12px'
         }}>
           <div style={{ fontSize: '0.85rem', color: '#64748b', fontWeight: 600 }}>
-            총 <b style={{ color: '#2563eb' }}>{filteredLogs.length}</b>건 중{' '}
-            {filteredLogs.length > 0 ? `${startIndex + 1} ~ ${Math.min(startIndex + pageSize, filteredLogs.length)}` : 0}건 표시
+            총 <b style={{ color: '#2563eb' }}>{logs.length}</b>건 중{' '}
+            {logs.length > 0 ? `${startIndex + 1} ~ ${Math.min(startIndex + pageSize, logs.length)}` : 0}건 표시
             (페이지 {currentPage} / {totalPages})
           </div>
 
@@ -231,7 +248,7 @@ export const AdminAccessLogsPage: React.FC = () => {
                 gap: '4px'
               }}
             >
-              <ChevronLeft size={16} /> 이전
+              <ChevronLeft size={14} /> 이전
             </button>
 
             {Array.from({ length: totalPages }, (_, idx) => idx + 1).map((p) => (
@@ -270,7 +287,7 @@ export const AdminAccessLogsPage: React.FC = () => {
                 gap: '4px'
               }}
             >
-              다음 <ChevronRight size={16} />
+              다음 <ChevronRight size={14} />
             </button>
           </div>
         </div>

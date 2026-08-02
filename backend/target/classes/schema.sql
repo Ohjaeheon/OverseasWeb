@@ -224,3 +224,105 @@ CREATE TABLE IF NOT EXISTS overseas.audit_log (
 
 COMMENT ON TABLE overseas.audit_log IS '사용자 및 관리자 활동 감사 로그';
 COMMENT ON COLUMN overseas.audit_log.action IS '수행된 작업 (LOGIN_SUCCESS, DATA_UPDATE 등)';
+
+-- 8. 파일 업로드 로그 테이블
+CREATE TABLE IF NOT EXISTS overseas.file_upload_log (
+    id BIGSERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    username VARCHAR(50) NOT NULL,
+    file_name VARCHAR(255) NOT NULL,
+    file_size BIGINT NOT NULL,
+    ip_address VARCHAR(50),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+COMMENT ON TABLE overseas.file_upload_log IS '파일 업로드 감사 로그';
+COMMENT ON COLUMN overseas.file_upload_log.name IS '계정명';
+COMMENT ON COLUMN overseas.file_upload_log.username IS '계정아이디';
+COMMENT ON COLUMN overseas.file_upload_log.file_name IS '업로드 파일명';
+COMMENT ON COLUMN overseas.file_upload_log.file_size IS '업로드 용량(Byte)';
+COMMENT ON COLUMN overseas.file_upload_log.ip_address IS 'IP주소';
+COMMENT ON COLUMN overseas.file_upload_log.created_at IS '업로드 시간';
+
+-- 9. 파일 다운로드 로그 테이블
+CREATE TABLE IF NOT EXISTS overseas.file_download_log (
+    id BIGSERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    username VARCHAR(50) NOT NULL,
+    file_name VARCHAR(255) NOT NULL,
+    ip_address VARCHAR(50),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+COMMENT ON TABLE overseas.file_download_log IS '파일 다운로드 감사 로그';
+COMMENT ON COLUMN overseas.file_download_log.name IS '계정명';
+COMMENT ON COLUMN overseas.file_download_log.username IS '계정아이디';
+COMMENT ON COLUMN overseas.file_download_log.file_name IS '다운로드 파일명';
+COMMENT ON COLUMN overseas.file_download_log.ip_address IS 'IP주소';
+COMMENT ON COLUMN overseas.file_download_log.created_at IS '다운로드 시간';
+
+-- 10. 업무 원장헌금 실적 테이블
+CREATE TABLE IF NOT EXISTS overseas.business_ledger_record (
+    id BIGSERIAL PRIMARY KEY,
+    year INT NOT NULL,
+    month INT NOT NULL,
+    church_name VARCHAR(150) NOT NULL,
+    amount BIGINT NOT NULL,
+    report_date VARCHAR(100),
+    draft_user VARCHAR(50),
+    expense_date VARCHAR(100),
+    meeting_date VARCHAR(150),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT uq_ledger_year_month_church UNIQUE (year, month, church_name)
+);
+
+COMMENT ON TABLE overseas.business_ledger_record IS '업무 원장헌금 실적 데이터';
+COMMENT ON COLUMN overseas.business_ledger_record.year IS '연도';
+COMMENT ON COLUMN overseas.business_ledger_record.month IS '월';
+COMMENT ON COLUMN overseas.business_ledger_record.church_name IS '해외교회/지역명';
+COMMENT ON COLUMN overseas.business_ledger_record.amount IS '헌금 금액';
+COMMENT ON COLUMN overseas.business_ledger_record.report_date IS '기안일자';
+COMMENT ON COLUMN overseas.business_ledger_record.draft_user IS '기안자';
+COMMENT ON COLUMN overseas.business_ledger_record.expense_date IS '지출일자';
+COMMENT ON COLUMN overseas.business_ledger_record.meeting_date IS '회의일시';
+
+-- 11. 로그인 로그 테이블
+CREATE TABLE IF NOT EXISTS overseas.login_log (
+    id BIGSERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    username VARCHAR(50) NOT NULL,
+    ip_address VARCHAR(50),
+    status VARCHAR(20) NOT NULL,
+    details TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+COMMENT ON TABLE overseas.login_log IS '로그인 감사 로그';
+COMMENT ON COLUMN overseas.login_log.name IS '계정명';
+COMMENT ON COLUMN overseas.login_log.username IS '계정아이디';
+COMMENT ON COLUMN overseas.login_log.ip_address IS 'IP주소';
+COMMENT ON COLUMN overseas.login_log.status IS '로그인 상태 (SUCCESS, FAILED)';
+COMMENT ON COLUMN overseas.login_log.details IS '비고 및 실패사유';
+
+-- 12. 접근 로그 테이블
+CREATE TABLE IF NOT EXISTS overseas.access_log (
+    id BIGSERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    username VARCHAR(50) NOT NULL,
+    page_name VARCHAR(150) NOT NULL,
+    path VARCHAR(255) NOT NULL,
+    ip_address VARCHAR(50),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+COMMENT ON TABLE overseas.access_log IS '접근 감사 로그';
+COMMENT ON COLUMN overseas.access_log.name IS '계정명';
+COMMENT ON COLUMN overseas.access_log.username IS '계정아이디';
+COMMENT ON COLUMN overseas.access_log.page_name IS '접근 페이지명';
+COMMENT ON COLUMN overseas.access_log.path IS '경로';
+COMMENT ON COLUMN overseas.access_log.ip_address IS 'IP주소';
+COMMENT ON COLUMN overseas.access_log.created_at IS '접근 시간';
+
+
+

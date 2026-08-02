@@ -27,15 +27,22 @@ import java.util.List;
 public class WeeklyWorshipController {
 
     private final WeeklyWorshipService weeklyWorshipService;
+    private final com.overseas.portal.service.FileLogService fileLogService;
 
     /**
      * 주간예배출결 취합 프로세스 실행
      */
     @PostMapping("/execute")
     public ResponseEntity<WeeklyWorshipService.WorshipJobResult> executeMerge(
-            @RequestParam("file") MultipartFile file) {
+            @RequestParam("file") MultipartFile file,
+            jakarta.servlet.http.HttpServletRequest request) {
         log.info("Received request to merge weekly worship file: {}", file.getOriginalFilename());
         try {
+            // 업로드 로그 기록
+            String username = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getName();
+            String ip = getClientIp(request);
+            fileLogService.logUpload(username, file.getOriginalFilename(), file.getSize(), ip);
+
             WeeklyWorshipService.WorshipJobResult result = weeklyWorshipService.executeMerge(file);
             if (result.isSuccess()) {
                 return ResponseEntity.ok(result);
@@ -70,7 +77,8 @@ public class WeeklyWorshipController {
     @GetMapping("/history/download")
     public ResponseEntity<Resource> downloadHistoryFile(
             @RequestParam("historyId") Long historyId,
-            @RequestParam("type") String type) {
+            @RequestParam("type") String type,
+            jakarta.servlet.http.HttpServletRequest request) {
         log.info("Received history download request for historyId: {}, Type: {}", historyId, type);
         try {
             Path filePath = weeklyWorshipService.getHistoryFile(historyId, type);
@@ -86,6 +94,11 @@ public class WeeklyWorshipController {
             } else if (fileName.startsWith("merged_")) {
                 fileName = "해외-예배출결현황_전체결과.zip";
             }
+
+            // 다운로드 로그 기록
+            String username = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getName();
+            String ip = getClientIp(request);
+            fileLogService.logDownload(username, fileName, ip);
 
             Resource resource = new UrlResource(filePath.toUri());
             String encodedFileName = URLEncoder.encode(fileName, StandardCharsets.UTF_8.toString()).replaceAll("\\+", "%20");
@@ -114,5 +127,25 @@ public class WeeklyWorshipController {
             log.error("Failed to delete history files", e);
             return ResponseEntity.internalServerError().build();
         }
+    }
+
+    private String getClientIp(jakarta.servlet.http.HttpServletRequest request) {
+        String ip = request.getHeader("X-Forwarded-For");
+        if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
+            ip = request.getHeader("Proxy-Client-IP");
+        }
+        if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
+            ip = request.getHeader("WL-Proxy-Client-IP");
+        }
+        if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
+            ip = request.getRemoteAddr();
+        }
+        if (ip != null && ip.contains(",")) {
+            ip = ip.split(",")[0].trim();
+        }
+        if ("0:0:0:0:0:0:0:1".equals(ip)) {
+            ip = "127.0.0.1";
+        }
+        return ip;
     }
 }

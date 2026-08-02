@@ -26,6 +26,9 @@ public class BusinessArchiveController {
     @Value("${app.upload-dir}")
     private String uploadDirRoot;
 
+    @org.springframework.beans.factory.annotation.Autowired
+    private com.overseas.portal.service.FileLogService fileLogService;
+
     @GetMapping("/list")
     public ResponseEntity<Map<String, Object>> listFiles(
             @RequestParam("category") String category,
@@ -97,7 +100,8 @@ public class BusinessArchiveController {
             @RequestParam("year") String year,
             @RequestParam("month") Integer month,
             @RequestParam("docType") String docType,
-            @RequestParam("file") MultipartFile file) {
+            @RequestParam("file") MultipartFile file,
+            jakarta.servlet.http.HttpServletRequest request) {
         
         try {
             String monthStr = String.format("%02d", month);
@@ -126,6 +130,15 @@ public class BusinessArchiveController {
             Path targetFilePath = targetDir.resolve(originalFileName);
             file.transferTo(targetFilePath.toFile());
             
+            // 업로드 로그 기록
+            try {
+                String username = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getName();
+                String ip = getClientIp(request);
+                fileLogService.logUpload(username, originalFileName, file.getSize(), ip);
+            } catch (Exception ex) {
+                ex.printStackTrace();
+            }
+
             Map<String, String> response = new HashMap<>();
             response.put("status", "success");
             response.put("fileName", originalFileName);
@@ -167,7 +180,8 @@ public class BusinessArchiveController {
             @RequestParam("year") String year,
             @RequestParam("month") Integer month,
             @RequestParam("docType") String docType,
-            @RequestParam("fileName") String fileName) {
+            @RequestParam("fileName") String fileName,
+            jakarta.servlet.http.HttpServletRequest request) {
         
         try {
             String monthStr = String.format("%02d", month);
@@ -186,6 +200,15 @@ public class BusinessArchiveController {
             // Encode filename to prevent broken Korean characters
             String encodedFileName = java.net.URLEncoder.encode(fileName, "UTF-8").replaceAll("\\+", "%20");
             
+            // 다운로드 로그 기록
+            try {
+                String username = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getName();
+                String ip = getClientIp(request);
+                fileLogService.logDownload(username, fileName, ip);
+            } catch (Exception ex) {
+                ex.printStackTrace();
+            }
+
             return ResponseEntity.ok()
                     .contentType(MediaType.parseMediaType(contentType))
                     .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + encodedFileName + "\"; filename*=UTF-8''" + encodedFileName)
@@ -228,5 +251,25 @@ public class BusinessArchiveController {
         fileInfo.put("type", type);
         // We do not send base64 data here! The frontend will query data dynamically when downloading/previewing.
         return fileInfo;
+    }
+
+    private String getClientIp(jakarta.servlet.http.HttpServletRequest request) {
+        String ip = request.getHeader("X-Forwarded-For");
+        if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
+            ip = request.getHeader("Proxy-Client-IP");
+        }
+        if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
+            ip = request.getHeader("WL-Proxy-Client-IP");
+        }
+        if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
+            ip = request.getRemoteAddr();
+        }
+        if (ip != null && ip.contains(",")) {
+            ip = ip.split(",")[0].trim();
+        }
+        if ("0:0:0:0:0:0:0:1".equals(ip)) {
+            ip = "127.0.0.1";
+        }
+        return ip;
     }
 }
