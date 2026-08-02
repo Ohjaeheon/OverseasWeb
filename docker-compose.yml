@@ -13,7 +13,7 @@ services:
       SPRING_PROFILES_ACTIVE: prod
       TZ: Asia/Seoul
     volumes:
-      - uploads_data:/app/uploads
+      - /home/mykd2012/projects/file:/app/uploads
       - logs_data:/app/logs
     ports:
       - "3001:3001"
@@ -29,5 +29,4 @@ services:
     restart: always
 
 volumes:
-  uploads_data:
   logs_data:

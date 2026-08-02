@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import api from '../../services/api';
 import { 
   Wallet, 
   TrendingUp, 
@@ -24,10 +25,10 @@ import {
 } from 'lucide-react';
 
 interface BusinessModuleProps {
-  initialTab?: 'ledger' | 'ledger_report' | 'fruit' | 'transport' | 'mission';
+  initialTab?: 'ledger' | 'ledger_archive' | 'ledger_report' | 'fruit' | 'fruit_archive' | 'transport' | 'transport_archive' | 'mission' | 'mission_archive';
 }
 
-type TabType = 'ledger' | 'ledger_report' | 'fruit' | 'transport' | 'mission';
+type TabType = 'ledger' | 'ledger_archive' | 'ledger_report' | 'fruit' | 'fruit_archive' | 'transport' | 'transport_archive' | 'mission' | 'mission_archive';
 
 interface MonthlyRecord {
   reportDate: string;
@@ -46,8 +47,9 @@ export const BusinessModule: React.FC<BusinessModuleProps> = ({ initialTab = 'le
     setActiveTab(initialTab);
   }, [initialTab]);
 
-  // Storage data state
   const [store, setStore] = useState<Record<string, MonthlyRecord>>({});
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [editData, setEditData] = useState<Array<{ country: string; months: Record<number, number | ''> }>>([]);
 
   // Target Year and Month to edit in Report Writer
   const [reportYear, setReportYear] = useState('2026');
@@ -69,6 +71,274 @@ export const BusinessModule: React.FC<BusinessModuleProps> = ({ initialTab = 'le
   
   // Preview active tab (proposal vs minutes)
   const [previewTab, setPreviewTab] = useState<'proposal' | 'minutes'>('proposal');
+
+  // File Archive states & handlers
+  interface ArchiveFile {
+    name: string;
+    type: string;
+    size: number;
+    data: string; // Base64
+  }
+
+  const [archiveYear, setArchiveYear] = useState<string>(() => {
+    const currentYear = new Date().getFullYear();
+    return Math.max(2026, currentYear).toString();
+  });
+
+  const [archiveFiles, setArchiveFiles] = useState<Record<string, ArchiveFile>>({});
+
+  // Sync archiveFiles state when archiveYear or activeTab changes by fetching from the backend
+  const fetchArchiveFiles = async () => {
+    if (!['ledger_archive', 'fruit_archive', 'transport_archive', 'mission_archive'].includes(activeTab)) {
+      return;
+    }
+    const category = activeTab.replace('_archive', '');
+    try {
+      const response = await api.get('/business/archive/list', {
+        params: { category, year: archiveYear }
+      });
+      
+      const data = response.data;
+      const formattedFiles: Record<string, any> = {};
+      
+      Object.keys(data).forEach(monthKey => {
+        const monthData = data[monthKey];
+        if (monthData.proposal) {
+          formattedFiles[`${monthKey}_proposal`] = monthData.proposal;
+        }
+        if (monthData.minutes) {
+          formattedFiles[`${monthKey}_minutes`] = monthData.minutes;
+        }
+        if (monthData.etc && monthData.etc.length > 0) {
+          formattedFiles[`${monthKey}_etc`] = monthData.etc;
+        }
+      });
+      
+      setArchiveFiles(formattedFiles);
+    } catch (err) {
+      console.error("Failed to fetch archive files from server:", err);
+      setArchiveFiles({});
+    }
+  };
+
+  useEffect(() => {
+    fetchArchiveFiles();
+  }, [archiveYear, activeTab]);
+
+  const [previewModalFile, setPreviewModalFile] = useState<{
+    month: number;
+    docType: 'proposal' | 'minutes' | 'etc';
+    file: ArchiveFile;
+  } | null>(null);
+
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewError, setPreviewError] = useState<string | null>(null);
+
+  // Helper to load external scripts dynamically
+  const loadScript = (id: string, src: string): Promise<void> => {
+    return new Promise((resolve, reject) => {
+      if (document.getElementById(id)) {
+        resolve();
+        return;
+      }
+      const script = document.createElement('script');
+      script.id = id;
+      script.src = src;
+      script.onload = () => resolve();
+      script.onerror = (e) => reject(e);
+      document.body.appendChild(script);
+    });
+  };
+
+  // Helper to convert base64 to ArrayBuffer
+  const base64ToArrayBuffer = (base64: string): ArrayBuffer => {
+    const binaryString = window.atob(base64.split(',')[1]);
+    const len = binaryString.length;
+    const bytes = new Uint8Array(len);
+    for (let i = 0; i < len; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
+    }
+    return bytes.buffer;
+  };
+
+  useEffect(() => {
+    if (!previewModalFile) return;
+
+    const { month, docType, file } = previewModalFile;
+    const isDocx = file.name.endsWith('.docx') || file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+    const isXlsx = file.name.endsWith('.xlsx') || file.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+
+    if (!isDocx && !isXlsx) {
+      setPreviewLoading(false);
+      setPreviewError(null);
+      return;
+    }
+
+    setPreviewLoading(true);
+    setPreviewError(null);
+
+    const loadLibraryAndRender = async () => {
+      try {
+        const container = document.getElementById('preview-doc-container');
+        if (!container) return;
+        container.innerHTML = ''; // clear previous content
+
+        const category = activeTab.replace('_archive', '');
+        const downloadUrl = `/api/v1/business/archive/download?category=${category}&year=${archiveYear}&month=${month}&docType=${docType}&fileName=${encodeURIComponent(file.name)}`;
+        
+        const token = localStorage.getItem('accessToken');
+        const headers: Record<string, string> = {};
+        if (token) {
+          headers['Authorization'] = `Bearer ${token}`;
+        }
+        
+        const response = await fetch(downloadUrl, { headers });
+        if (!response.ok) {
+          throw new Error('서버로부터 파일을 가져오는데 실패했습니다.');
+        }
+        const arrayBuffer = await response.arrayBuffer();
+
+        if (isDocx) {
+          // Load JSZip and docx-preview dynamically if they aren't loaded yet
+          await loadScript('jszip-cdn-script', 'https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js');
+          await loadScript('docx-preview-script', 'https://cdn.jsdelivr.net/npm/docx-preview@0.1.18/dist/docx-preview.min.js');
+
+          if (typeof (window as any).docx === 'undefined' || typeof (window as any).docx.renderAsync !== 'function') {
+            throw new Error('docx-preview library load failed');
+          }
+
+          await (window as any).docx.renderAsync(arrayBuffer, container, undefined, {
+            className: "docx-rendered",
+            inWrapper: false
+          });
+        } else if (isXlsx) {
+          // Load SheetJS dynamically if not loaded yet
+          await loadScript('xlsx-cdn-script', 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js');
+
+          if (typeof (window as any).XLSX === 'undefined') {
+            throw new Error('SheetJS library load failed');
+          }
+
+          const XLSX = (window as any).XLSX;
+          const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+          
+          // Get the first worksheet
+          const firstSheetName = workbook.SheetNames[0];
+          const worksheet = workbook.Sheets[firstSheetName];
+          
+          // Convert sheet to HTML
+          const html = XLSX.utils.sheet_to_html(worksheet, {
+            header: '',
+            footer: ''
+          });
+
+          // Render it styled
+          container.innerHTML = `
+            <div style="overflow: auto; width: 100%; height: 100%; background: #ffffff; padding: 15px; border-radius: 8px;">
+              <style>
+                #preview-doc-container table { border-collapse: collapse; width: 100%; font-size: 12px; }
+                #preview-doc-container th, #preview-doc-container td { border: 1px solid #cbd5e1; padding: 8px; text-align: left; }
+                #preview-doc-container tr:nth-child(even) { background-color: #f8fafc; }
+              </style>
+              ${html}
+            </div>
+          `;
+        }
+
+        setPreviewLoading(false);
+      } catch (err: any) {
+        console.error("Preview rendering error:", err);
+        setPreviewError("문서 미리보기 생성 도중 오류가 발생했습니다. 파일을 다운로드하여 확인해 주세요.");
+        setPreviewLoading(false);
+      }
+    };
+
+    // Small delay to ensure container is rendered in DOM
+    const timer = setTimeout(() => {
+      loadLibraryAndRender();
+    }, 100);
+
+    return () => clearTimeout(timer);
+  }, [previewModalFile]);
+
+  const handleFileUpload = async (month: number, docType: 'proposal' | 'minutes' | 'etc', e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 20 * 1024 * 1024) {
+      alert("용량이 너무 큽니다. 20MB 이하의 파일만 업로드할 수 있습니다.");
+      return;
+    }
+
+    const category = activeTab.replace('_archive', '');
+    const formData = new FormData();
+    formData.append('category', category);
+    formData.append('year', archiveYear);
+    formData.append('month', month.toString());
+    formData.append('docType', docType);
+    formData.append('file', file);
+
+    try {
+      await api.post('/business/archive/upload', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+      await fetchArchiveFiles();
+    } catch (err: any) {
+      console.error("Upload failed:", err);
+      alert("파일 업로드에 실패했습니다. " + (err.response?.data?.error || ""));
+    }
+  };
+
+  const handleFileDelete = async (month: number, docType: 'proposal' | 'minutes' | 'etc', e: React.MouseEvent, index?: number) => {
+    e.stopPropagation(); // Prevent trigger preview onClick
+    
+    const key = `${month}_${docType}`;
+    const fileObj = archiveFiles[key];
+    let fileName = "";
+    
+    if (docType === 'etc' && index !== undefined && Array.isArray(fileObj)) {
+      fileName = fileObj[index]?.name;
+    } else if (fileObj && !Array.isArray(fileObj)) {
+      fileName = fileObj.name;
+    }
+
+    if (!fileName) return;
+
+    if (!window.confirm(`[${fileName}] 파일을 삭제하시겠습니까?`)) return;
+
+    const category = activeTab.replace('_archive', '');
+
+    try {
+      await api.delete('/business/archive/delete', {
+        params: {
+          category,
+          year: archiveYear,
+          month,
+          docType,
+          fileName
+        }
+      });
+      await fetchArchiveFiles();
+    } catch (err: any) {
+      console.error("Delete failed:", err);
+      alert("파일 삭제에 실패했습니다. " + (err.response?.data?.error || ""));
+    }
+  };
+
+  const handleFileDownload = (month: number, docType: 'proposal' | 'minutes' | 'etc', fileName: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    const category = activeTab.replace('_archive', '');
+    const downloadUrl = `/api/v1/business/archive/download?category=${category}&year=${archiveYear}&month=${month}&docType=${docType}&fileName=${encodeURIComponent(fileName)}`;
+    
+    const link = document.createElement('a');
+    link.href = downloadUrl;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   // Available Churches for Dropdown
   const availableChurches = [
@@ -299,6 +569,119 @@ export const BusinessModule: React.FC<BusinessModuleProps> = ({ initialTab = 'le
   };
 
   const matrixRows = getMatrixData();
+
+  // Start edit mode helper
+  const handleStartEdit = () => {
+    const currentRows = getMatrixData();
+    const defaultChurches = [
+      '튀르키예교회', '파키스탄교회', '인도첸나이교회', '콩고민주공화국킨샤사교회', 
+      '인도네시아마카사르지역', '도쿄교회', '텍사스교회', '포르투갈리스본지역'
+    ];
+
+    // Combine existing countries with default ones so they all show up in the edit form
+    const editRows: Array<{ country: string; months: Record<number, number | ''> }> = [];
+    
+    // Add existing ones
+    currentRows.forEach(row => {
+      const months: Record<number, number | ''> = {};
+      for (let m = 1; m <= 12; m++) {
+        const val = row.months[m];
+        months[m] = (val !== null && val !== undefined) ? val : '';
+      }
+      editRows.push({ country: row.country, months });
+    });
+
+    // Add default ones if they don't exist yet
+    defaultChurches.forEach(church => {
+      if (!editRows.some(row => row.country === church)) {
+        const months: Record<number, number | ''> = {};
+        for (let m = 1; m <= 12; m++) {
+          months[m] = '';
+        }
+        editRows.push({ country: church, months });
+      }
+    });
+
+    setEditData(editRows);
+    setIsEditMode(true);
+  };
+
+  // Handle cell value change
+  const handleCellChange = (countryName: string, month: number, valueStr: string) => {
+    // Remove non-numeric characters
+    const cleanValue = valueStr.replace(/[^0-9]/g, '');
+    const numVal = cleanValue === '' ? '' : parseInt(cleanValue, 10);
+
+    setEditData(prev => prev.map(row => {
+      if (row.country === countryName) {
+        return {
+          ...row,
+          months: {
+            ...row.months,
+            [month]: numVal
+          }
+        };
+      }
+      return row;
+    }));
+  };
+
+  // Add custom new church to editing table
+  const handleAddChurch = () => {
+    const name = window.prompt("추가할 해외교회 또는 개척지역 이름을 입력하세요:");
+    if (!name || !name.trim()) return;
+    const cleanName = name.trim();
+
+    if (editData.some(row => row.country === cleanName)) {
+      alert("이미 목록에 존재하는 교회입니다.");
+      return;
+    }
+
+    const months: Record<number, number | ''> = {};
+    for (let m = 1; m <= 12; m++) {
+      months[m] = '';
+    }
+
+    setEditData(prev => [...prev, { country: cleanName, months }]);
+  };
+
+  // Save changes
+  const handleSaveEdit = () => {
+    const updatedStore = { ...store };
+
+    for (let m = 1; m <= 12; m++) {
+      const monthlyCountries = editData
+        .map(row => {
+          const val = row.months[m];
+          if (val !== undefined && val !== null && val !== '') {
+            return { name: row.country, amount: val };
+          }
+          return null;
+        })
+        .filter(Boolean) as Array<{ name: string; amount: number }>;
+
+      const key = `${selectedYear}_${m}`;
+
+      if (monthlyCountries.length > 0) {
+        updatedStore[key] = {
+          ...updatedStore[key],
+          countries: monthlyCountries,
+          reportDate: updatedStore[key]?.reportDate || `신 43(${selectedYear})년 ${m}월 5일`,
+          draftUser: updatedStore[key]?.draftUser || '이수한',
+          expenseDate: updatedStore[key]?.expenseDate || `${m}월 6일`,
+          meetingDate: updatedStore[key]?.meetingDate || `신 43(${selectedYear})년 ${m}월 3일(금) 10:00 ~ 11:00`
+        };
+      } else {
+        // If all countries are cleared, we can delete the key
+        delete updatedStore[key];
+      }
+    }
+
+    setStore(updatedStore);
+    localStorage.setItem('overseas_ledger_data', JSON.stringify(updatedStore));
+    setIsEditMode(false);
+    alert('원장헌금 실적이 성공적으로 저장되었습니다.');
+  };
 
   // Load JSZip from CDN
   const loadJSZip = (): Promise<any> => {
@@ -895,6 +1278,10 @@ export const BusinessModule: React.FC<BusinessModuleProps> = ({ initialTab = 'le
         }
         .hwp-document-font {
           font-family: "Malgun Gothic", "맑은 고딕", Arial, sans-serif !important;
+        }
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
         }
       `}</style>
 
@@ -1785,6 +2172,648 @@ export const BusinessModule: React.FC<BusinessModuleProps> = ({ initialTab = 'le
           </div>
         </div>
       )}
+
+      {/* 6. ARCHIVES (원장헌금, 열매헌금, 교통비, 선교비 품의서 및 회의록 보관함) */}
+      {['ledger_archive', 'fruit_archive', 'transport_archive', 'mission_archive'].includes(activeTab) && (
+        <div style={{ animation: 'fadeIn 0.2s ease-out' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '16px' }}>
+            <div>
+              <h2 style={{ fontSize: '1.75rem', fontWeight: 800, margin: 0, color: '#0f172a', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                {activeTab === 'ledger_archive' ? '📁 원장헌금 품의서 및 회의록 보관함' :
+                 activeTab === 'fruit_archive' ? '📁 열매헌금 품의서 및 회의록 보관함' :
+                 activeTab === 'transport_archive' ? '📁 교통비 품의서 및 회의록 보관함' :
+                 activeTab === 'mission_archive' ? '📁 선교비 품의서 및 회의록 보관함' :
+                 '📁 품의서 및 회의록 보관함'}
+              </h2>
+              <p style={{ color: '#64748b', fontSize: '0.9rem', marginTop: '6px' }}>
+                {activeTab === 'ledger_archive' ? '월별로 결재 완료된 원장헌금 품의서와 중진회의록 문서를 업로드하고 안전하게 보관 및 조회할 수 있습니다.' :
+                 activeTab === 'fruit_archive' ? '월별로 결재 완료된 열매헌금 품의서와 중진회의록 문서를 업로드하고 안전하게 보관 및 조회할 수 있습니다.' :
+                 activeTab === 'transport_archive' ? '월별로 결재 완료된 교통비 품의서와 중진회의록 문서를 업로드하고 안전하게 보관 및 조회할 수 있습니다.' :
+                 activeTab === 'mission_archive' ? '월별로 결재 완료된 선교비 품의서와 중진회의록 문서를 업로드하고 안전하게 보관 및 조회할 수 있습니다.' :
+                 '월별로 결재 완료된 품의서와 중진회의록 문서를 업로드하고 안전하게 보관 및 조회할 수 있습니다.'}
+              </p>
+            </div>
+            
+            {/* Year Selector */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <span style={{ fontSize: '0.9rem', fontWeight: 700, color: '#475569' }}>조회 연도:</span>
+              <select
+                value={archiveYear}
+                onChange={(e) => setArchiveYear(e.target.value)}
+                style={{
+                  padding: '8px 16px',
+                  borderRadius: '10px',
+                  border: '1px solid #cbd5e1',
+                  background: '#ffffff',
+                  fontSize: '0.9rem',
+                  fontWeight: 700,
+                  color: '#1e293b',
+                  outline: 'none',
+                  cursor: 'pointer',
+                  boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
+                }}
+              >
+                {(() => {
+                  const startYear = 2026;
+                  const currentYear = new Date().getFullYear();
+                  const endYear = Math.max(startYear, currentYear);
+                  const options = [];
+                  for (let y = startYear; y <= endYear; y++) {
+                    options.push(
+                      <option key={y} value={y.toString()}>{y}년</option>
+                    );
+                  }
+                  return options;
+                })()}
+              </select>
+            </div>
+          </div>
+
+          {/* Calendar style compact 12-month Grid (Grid of 4 columns, auto-adjusting) */}
+          <div style={{ 
+            display: 'grid', 
+            gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', 
+            gap: '16px', 
+            marginTop: '20px' 
+          }}>
+            {Array.from({ length: 12 }, (_, i) => {
+              const month = i + 1;
+              const proposalKey = `${month}_proposal`;
+              const minutesKey = `${month}_minutes`;
+              
+              const proposalFile = archiveFiles[proposalKey];
+              const minutesFile = archiveFiles[minutesKey];
+
+              return (
+                <div key={month} style={{
+                  background: '#ffffff',
+                  borderRadius: '14px',
+                  border: '1px solid #e2e8f0',
+                  boxShadow: '0 2px 8px rgba(15, 23, 42, 0.04)',
+                  overflow: 'hidden',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  transition: 'transform 0.15s ease, box-shadow 0.15s ease'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                  e.currentTarget.style.boxShadow = '0 6px 16px rgba(15, 23, 42, 0.08)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'none';
+                  e.currentTarget.style.boxShadow = '0 2px 8px rgba(15, 23, 42, 0.04)';
+                }}>
+                  
+                  {/* Calendar Box Header */}
+                  <div style={{ 
+                    background: '#f8fafc', 
+                    borderBottom: '1px solid #f1f5f9', 
+                    padding: '10px 14px', 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'space-between' 
+                  }}>
+                    <span style={{ fontSize: '0.95rem', fontWeight: 800, color: '#0f172a', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      📅 {month}월
+                    </span>
+                    <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#94a3b8' }}>
+                      {archiveYear}년
+                    </span>
+                  </div>
+
+                  {/* Calendar Box Body */}
+                  <div style={{ padding: '12px', display: 'flex', flexDirection: 'column', gap: '10px', flex: 1 }}>
+                    
+                    {/* 1. 품의서 Slot */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      <input 
+                        type="file" 
+                        id={`file-input-${month}-proposal`} 
+                        style={{ display: 'none' }} 
+                        onChange={(e) => handleFileUpload(month, 'proposal', e)}
+                      />
+                      {proposalFile ? (
+                        <div 
+                          onClick={() => setPreviewModalFile({ month, docType: 'proposal', file: proposalFile })}
+                          style={{
+                            background: '#f0fdf4', // light green accent indicating loaded file
+                            border: '1px solid #bbf7d0',
+                            borderRadius: '8px',
+                            padding: '6px 10px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            cursor: 'pointer',
+                            transition: 'background 0.15s'
+                          }}
+                          onMouseEnter={(e) => e.currentTarget.style.background = '#dcfce7'}
+                          onMouseLeave={(e) => e.currentTarget.style.background = '#f0fdf4'}
+                          title="클릭하여 미리보기"
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', overflow: 'hidden' }}>
+                            <FileCheck size={14} color="#15803d" style={{ flexShrink: 0 }} />
+                            <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#14532d', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '140px' }} title={proposalFile.name}>
+                              품의서 완료
+                            </span>
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
+                            <button 
+                              onClick={(e) => handleFileDownload(month, 'proposal', proposalFile.name, e)}
+                              style={{ background: 'none', border: 'none', color: '#16a34a', padding: '3px', cursor: 'pointer', borderRadius: '4px' }}
+                              title="다운로드"
+                            >
+                              <Download size={13} />
+                            </button>
+                            <button 
+                              onClick={(e) => handleFileDelete(month, 'proposal', e)}
+                              style={{ background: 'none', border: 'none', color: '#dc2626', padding: '3px', cursor: 'pointer', borderRadius: '4px' }}
+                              title="삭제"
+                            >
+                              <XCircle size={13} />
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <button 
+                          onClick={() => document.getElementById(`file-input-${month}-proposal`)?.click()}
+                          style={{
+                            background: '#f8fafc',
+                            border: '1px dashed #cbd5e1',
+                            borderRadius: '8px',
+                            padding: '6px 10px',
+                            fontSize: '0.78rem',
+                            color: '#64748b',
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '4px',
+                            transition: 'all 0.15s'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.borderColor = '#3b82f6';
+                            e.currentTarget.style.color = '#3b82f6';
+                            e.currentTarget.style.background = '#eff6ff';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.borderColor = '#cbd5e1';
+                            e.currentTarget.style.color = '#64748b';
+                            e.currentTarget.style.background = '#f8fafc';
+                          }}
+                        >
+                          <Plus size={14} /> 품의서 등록
+                        </button>
+                      )}
+                    </div>
+
+                    {/* 2. 회의록 Slot */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      <input 
+                        type="file" 
+                        id={`file-input-${month}-minutes`} 
+                        style={{ display: 'none' }} 
+                        onChange={(e) => handleFileUpload(month, 'minutes', e)}
+                      />
+                      {minutesFile ? (
+                        <div 
+                          onClick={() => setPreviewModalFile({ month, docType: 'minutes', file: minutesFile })}
+                          style={{
+                            background: '#f0fdf4', // light green accent indicating loaded file
+                            border: '1px solid #bbf7d0',
+                            borderRadius: '8px',
+                            padding: '6px 10px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            cursor: 'pointer',
+                            transition: 'background 0.15s'
+                          }}
+                          onMouseEnter={(e) => e.currentTarget.style.background = '#dcfce7'}
+                          onMouseLeave={(e) => e.currentTarget.style.background = '#f0fdf4'}
+                          title="클릭하여 미리보기"
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', overflow: 'hidden' }}>
+                            <FileCheck size={14} color="#15803d" style={{ flexShrink: 0 }} />
+                            <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#14532d', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '140px' }} title={minutesFile.name}>
+                              회의록 완료
+                            </span>
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
+                            <button 
+                              onClick={(e) => handleFileDownload(month, 'minutes', minutesFile.name, e)}
+                              style={{ background: 'none', border: 'none', color: '#16a34a', padding: '3px', cursor: 'pointer', borderRadius: '4px' }}
+                              title="다운로드"
+                            >
+                              <Download size={13} />
+                            </button>
+                            <button 
+                              onClick={(e) => handleFileDelete(month, 'minutes', e)}
+                              style={{ background: 'none', border: 'none', color: '#dc2626', padding: '3px', cursor: 'pointer', borderRadius: '4px' }}
+                              title="삭제"
+                            >
+                              <XCircle size={13} />
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <button 
+                          onClick={() => document.getElementById(`file-input-${month}-minutes`)?.click()}
+                          style={{
+                            background: '#f8fafc',
+                            border: '1px dashed #cbd5e1',
+                            borderRadius: '8px',
+                            padding: '6px 10px',
+                            fontSize: '0.78rem',
+                            color: '#64748b',
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '4px',
+                            transition: 'all 0.15s'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.borderColor = '#3b82f6';
+                            e.currentTarget.style.color = '#3b82f6';
+                            e.currentTarget.style.background = '#eff6ff';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.borderColor = '#cbd5e1';
+                            e.currentTarget.style.color = '#64748b';
+                            e.currentTarget.style.background = '#f8fafc';
+                          }}
+                        >
+                          <Plus size={14} /> 회의록 등록
+                        </button>
+                      )}
+                    </div>
+
+                    {/* 3. 기타 첨부파일 Section */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', borderTop: '1px solid #f1f5f9', paddingTop: '8px', marginTop: '4px' }}>
+                      <label style={{ fontSize: '0.72rem', fontWeight: 800, color: '#64748b', display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '2px' }}>
+                        📎 기타 첨부파일
+                      </label>
+                      <input 
+                        type="file" 
+                        id={`file-input-${month}-etc`} 
+                        style={{ display: 'none' }} 
+                        onChange={(e) => handleFileUpload(month, 'etc', e)}
+                      />
+                      
+                      {/* Uploaded ETC Files List */}
+                      {(() => {
+                        const etcKey = `${month}_etc`;
+                        const etcFiles = archiveFiles[etcKey];
+                        const fileList = Array.isArray(etcFiles) ? etcFiles : [];
+                        
+                        return (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                            {fileList.map((f, idx) => (
+                              <div 
+                                key={idx}
+                                onClick={() => setPreviewModalFile({ month, docType: 'etc', file: f })}
+                                style={{
+                                  background: '#f8fafc',
+                                  border: '1px solid #e2e8f0',
+                                  borderRadius: '6px',
+                                  padding: '4px 8px',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'space-between',
+                                  cursor: 'pointer',
+                                  transition: 'background 0.15s'
+                                }}
+                                onMouseEnter={(e) => e.currentTarget.style.background = '#f1f5f9'}
+                                onMouseLeave={(e) => e.currentTarget.style.background = '#f8fafc'}
+                                title="클릭하여 미리보기"
+                              >
+                                <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#334155', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '140px' }} title={f.name}>
+                                  {f.name}
+                                </span>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '3px', flexShrink: 0 }}>
+                                  <button 
+                                    onClick={(e) => handleFileDownload(month, 'etc', f.name, e)}
+                                    style={{ background: 'none', border: 'none', color: '#475569', padding: '2px', cursor: 'pointer', borderRadius: '4px' }}
+                                    title="다운로드"
+                                  >
+                                    <Download size={11} />
+                                  </button>
+                                  <button 
+                                    onClick={(e) => handleFileDelete(month, 'etc', e, idx)}
+                                    style={{ background: 'none', border: 'none', color: '#dc2626', padding: '2px', cursor: 'pointer', borderRadius: '4px' }}
+                                    title="삭제"
+                                  >
+                                    <XCircle size={11} />
+                                  </button>
+                                </div>
+                              </div>
+                            ))}
+                            
+                            {/* Plus button to add more etc files, or to upload the first one */}
+                            <button 
+                              onClick={() => document.getElementById(`file-input-${month}-etc`)?.click()}
+                              style={{
+                                background: 'transparent',
+                                border: '1px dashed #cbd5e1',
+                                borderRadius: '6px',
+                                padding: '4px 8px',
+                                fontSize: '0.72rem',
+                                color: '#64748b',
+                                fontWeight: 700,
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: '3px',
+                                transition: 'all 0.15s',
+                                marginTop: fileList.length > 0 ? '2px' : '0'
+                              }}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.borderColor = '#3b82f6';
+                                e.currentTarget.style.color = '#3b82f6';
+                                e.currentTarget.style.background = '#eff6ff';
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.borderColor = '#cbd5e1';
+                                e.currentTarget.style.color = '#64748b';
+                                e.currentTarget.style.background = 'transparent';
+                              }}
+                            >
+                              <Plus size={12} /> {fileList.length > 0 ? '파일 추가' : '파일 등록'}
+                            </button>
+                          </div>
+                        );
+                      })()}
+                    </div>
+
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* 7. PREVIEW MODAL */}
+      {previewModalFile && (() => {
+        const { month, docType, file } = previewModalFile;
+        const isImage = file.type.startsWith('image/');
+        const isPdf = file.type === 'application/pdf';
+        const isDocx = file.name.endsWith('.docx') || file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+        const isXlsx = file.name.endsWith('.xlsx') || file.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+        
+        return (
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(15, 23, 42, 0.65)',
+            backdropFilter: 'blur(6px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 9999,
+            padding: '20px',
+            animation: 'fadeIn 0.2s ease-out'
+          }}
+          onClick={() => setPreviewModalFile(null)}>
+            
+            <div style={{
+              background: '#ffffff',
+              borderRadius: '24px',
+              width: '100%',
+              maxWidth: '960px',
+              maxHeight: '90vh',
+              display: 'flex',
+              flexDirection: 'column',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+              overflow: 'hidden',
+              animation: 'slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1)'
+            }}
+            onClick={(e) => e.stopPropagation()}>
+              
+              {/* Modal Header */}
+              <div style={{
+                padding: '20px 28px',
+                borderBottom: '1px solid #e2e8f0',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                background: '#f8fafc'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', overflow: 'hidden' }}>
+                  <span style={{
+                    background: '#eff6ff',
+                    color: '#2563eb',
+                    fontWeight: 800,
+                    fontSize: '0.85rem',
+                    padding: '4px 10px',
+                    borderRadius: '8px',
+                    flexShrink: 0
+                  }}>
+                    {month}월 {docType === 'proposal' ? '품의서' : docType === 'minutes' ? '회의록' : '기타 첨부파일'}
+                  </span>
+                  <span style={{ fontSize: '1.05rem', fontWeight: 800, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={file.name}>
+                    {file.name}
+                  </span>
+                </div>
+                
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexShrink: 0 }}>
+                  <button 
+                    onClick={() => handleFileDownload(month, docType, file.name)}
+                    style={{
+                      background: '#10b981',
+                      color: '#ffffff',
+                      border: 'none',
+                      padding: '8px 16px',
+                      borderRadius: '10px',
+                      fontSize: '0.88rem',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      transition: 'all 0.15s'
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.background = '#059669'}
+                    onMouseLeave={(e) => e.currentTarget.style.background = '#10b981'}
+                  >
+                    <Download size={15} /> 다운로드
+                  </button>
+                  <button 
+                    onClick={() => setPreviewModalFile(null)}
+                    style={{
+                      background: '#f1f5f9',
+                      color: '#64748b',
+                      border: 'none',
+                      width: '32px',
+                      height: '32px',
+                      borderRadius: '50%',
+                      fontSize: '1rem',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      transition: 'all 0.15s'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = '#e2e8f0';
+                      e.currentTarget.style.color = '#334155';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = '#f1f5f9';
+                      e.currentTarget.style.color = '#64748b';
+                    }}
+                  >
+                    ✕
+                  </button>
+                </div>
+              </div>
+
+              {/* Modal Body */}
+              <div style={{
+                padding: '24px',
+                flex: 1,
+                overflowY: 'auto',
+                background: '#f1f5f9',
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center',
+                minHeight: '400px'
+              }}>
+                {isImage ? (
+                  <img 
+                    src={file.data} 
+                    alt={file.name} 
+                    style={{ 
+                      maxWidth: '100%', 
+                      maxHeight: '60vh', 
+                      objectFit: 'contain', 
+                      borderRadius: '12px', 
+                      boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)' 
+                    }} 
+                  />
+                ) : isPdf ? (
+                  <iframe 
+                    src={file.data} 
+                    title={file.name} 
+                    style={{ 
+                      width: '100%', 
+                      height: '60vh', 
+                      border: 'none', 
+                      borderRadius: '12px', 
+                      background: '#ffffff', 
+                      boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)' 
+                    }} 
+                  />
+                ) : (isDocx || isXlsx) ? (
+                  <div style={{ width: '100%', minHeight: '500px', maxHeight: '70vh', background: '#ffffff', borderRadius: '12px', overflow: 'auto', border: '1px solid #cbd5e1', padding: '15px', display: 'flex', flexDirection: 'column' }}>
+                    {previewLoading && (
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '400px', gap: '12px', flex: 1 }}>
+                        <div className="spinner" style={{ width: '40px', height: '40px', border: '4px solid #cbd5e1', borderTop: '4px solid #3b82f6', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></div>
+                        <span style={{ fontSize: '0.9rem', color: '#64748b', fontWeight: 600 }}>문서를 불러오는 중입니다...</span>
+                      </div>
+                    )}
+                    {previewError && (
+                      <div style={{ padding: '40px', textAlign: 'center', color: '#ef4444', flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <p>{previewError}</p>
+                      </div>
+                    )}
+                    <div id="preview-doc-container" style={{ display: previewLoading || previewError ? 'none' : 'block', width: '100%' }}></div>
+                  </div>
+                ) : (
+                  <div style={{ 
+                    textAlign: 'center', 
+                    background: '#ffffff', 
+                    padding: '48px 32px', 
+                    borderRadius: '20px', 
+                    boxShadow: '0 4px 20px rgba(0,0,0,0.03)', 
+                    maxWidth: '440px', 
+                    width: '100%' 
+                  }}>
+                    <FileText size={56} color="#3b82f6" style={{ marginBottom: '16px', display: 'inline-block' }} />
+                    <h4 style={{ margin: '0 0 8px 0', fontSize: '1.15rem', color: '#0f172a', wordBreak: 'break-all', fontWeight: 800 }}>
+                      {file.name}
+                    </h4>
+                    <p style={{ margin: '0 0 20px 0', color: '#64748b', fontSize: '0.85rem', fontWeight: 600 }}>
+                      파일 크기: {(file.size / 1024).toFixed(1)} KB
+                    </p>
+                    <div style={{ 
+                      background: '#f8fafc', 
+                      padding: '16px 20px', 
+                      borderRadius: '16px', 
+                      color: '#475569', 
+                      fontSize: '0.82rem', 
+                      lineHeight: '1.6', 
+                      border: '1px solid #e2e8f0', 
+                      marginBottom: '24px',
+                      textAlign: 'left'
+                    }}>
+                      💡 <b>미지원 파일 형식</b> <br/><br/>
+                      이 파일 형식은 브라우저 미리보기를 직접 지원하지 않습니다. 상단의 녹색 <b>[다운로드]</b> 버튼을 클릭하여 확인해 주세요.
+                    </div>
+                    <button
+                      onClick={() => handleFileDownload(month, docType, file.name)}
+                      style={{
+                        background: '#3b82f6',
+                        color: '#ffffff',
+                        border: 'none',
+                        padding: '12px 24px',
+                        borderRadius: '12px',
+                        fontSize: '0.9rem',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        transition: 'all 0.15s'
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.background = '#2563eb'}
+                      onMouseLeave={(e) => e.currentTarget.style.background = '#3b82f6'}
+                    >
+                      <Download size={16} /> 파일 다운로드 받기
+                    </button>
+                  </div>
+                )}
+              </div>
+              
+              {/* Modal Footer */}
+              <div style={{
+                padding: '16px 28px',
+                borderTop: '1px solid #e2e8f0',
+                display: 'flex',
+                justifyContent: 'flex-end',
+                background: '#f8fafc'
+              }}>
+                <button
+                  onClick={() => setPreviewModalFile(null)}
+                  style={{
+                    background: '#64748b',
+                    color: '#ffffff',
+                    border: 'none',
+                    padding: '8px 20px',
+                    borderRadius: '10px',
+                    fontSize: '0.88rem',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    transition: 'all 0.15s'
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.background = '#475569'}
+                  onMouseLeave={(e) => e.currentTarget.style.background = '#64748b'}
+                >
+                  닫기
+                </button>
+              </div>
+
+            </div>
+          </div>
+        );
+      })()}
 
     </div>
   );

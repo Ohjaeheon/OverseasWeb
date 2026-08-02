@@ -24,6 +24,7 @@ E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\OverseasPortalAp
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\controller\UserController.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\service\AdminService.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\service\AuthService.java
+E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\controller\BusinessArchiveController.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\repository\SystemConfigRepository.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\controller\EvangelismController.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\domain\User.java

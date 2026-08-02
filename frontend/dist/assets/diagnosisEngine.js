@@ -1918,7 +1918,11 @@ function setSection(sec, cat){
   if (sec && sec.startsWith('evangelism') && sec !== 'evangelism/check' && sec !== 'evangelism/aggregate') {
     sec = 'p1';
   }
-  if (sec && sec.startsWith('business') && sec !== 'business/ledger' && sec !== 'business/ledger/report' && sec !== 'business/fruit' && sec !== 'business/transport' && sec !== 'business/mission') {
+  if (sec && sec.startsWith('business') && 
+      sec !== 'business/ledger' && sec !== 'business/ledger/archive' && sec !== 'business/ledger/report' && 
+      sec !== 'business/fruit' && sec !== 'business/fruit/archive' && 
+      sec !== 'business/transport' && sec !== 'business/transport/archive' && 
+      sec !== 'business/mission' && sec !== 'business/mission/archive') {
     sec = 'business';
   }
   ST.section=sec;
@@ -2021,10 +2025,14 @@ var SIDEBAR=[
   {grp:"업 무"},
   {s:"business",ico:"💼",label:"재정",path:"/business",children:[
     {tab:"ledger",label:"원장헌금",path:"/business/ledger"},
+    {tab:"ledger_archive",label:"ㄴ 품의서 및 회의록",path:"/business/ledger/archive"},
     {tab:"ledger_report",label:"ㄴ 품의서 및 회의록 작성",path:"/business/ledger/report"},
     {tab:"fruit",label:"열매헌금",path:"/business/fruit"},
+    {tab:"fruit_archive",label:"ㄴ 품의서 및 회의록",path:"/business/fruit/archive"},
     {tab:"transport",label:"교통비",path:"/business/transport"},
-    {tab:"mission",label:"선교비",path:"/business/mission"}
+    {tab:"transport_archive",label:"ㄴ 품의서 및 회의록",path:"/business/transport/archive"},
+    {tab:"mission",label:"선교비",path:"/business/mission"},
+    {tab:"mission_archive",label:"ㄴ 품의서 및 회의록",path:"/business/mission/archive"}
   ]},
   {grp:"보 기"},
   {s:"map",ico:"🌍",label:"지도·지구본"},
@@ -2135,6 +2143,7 @@ function buildSidebar(){
 
   document.querySelectorAll(".mitem").forEach(m=>m.onclick=(e)=>{
     e.stopPropagation();
+    console.warn("Sidebar Menu Item Clicked:", { s: m.dataset.s, path: m.dataset.path, cat: m.dataset.cat });
     if (typeof window.closeSidebar === 'function') window.closeSidebar();
     if(!checkMenuAccess(m.dataset.s)){
       alert("해당 메뉴에 대한 접근 권한이 없습니다.");
@@ -3017,6 +3026,10 @@ function renderJipaTrend(){
 function buildUI(){
   ST.month = getSecMonth(ST.section);
 
+  if (!document.getElementById("chips")) {
+    buildSidebar();
+    return;
+  }
 
   const gubuns=["전체","교회","지역","개척지"];
   document.getElementById("chips").innerHTML=gubuns.map(g=>

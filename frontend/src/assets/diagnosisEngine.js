@@ -1568,10 +1568,14 @@ const SIDEBAR=[
   {grp:"업 무"},
   {s:"business",ico:"💼",label:"재정",path:"/business",children:[
     {tab:"ledger",label:"원장헌금",path:"/business/ledger"},
+    {tab:"ledger_archive",label:"ㄴ 품의서 및 회의록",path:"/business/ledger/archive"},
     {tab:"ledger_report",label:"ㄴ 품의서 및 회의록 작성",path:"/business/ledger/report"},
     {tab:"fruit",label:"열매헌금",path:"/business/fruit"},
+    {tab:"fruit_archive",label:"ㄴ 품의서 및 회의록",path:"/business/fruit/archive"},
     {tab:"transport",label:"교통비",path:"/business/transport"},
-    {tab:"mission",label:"선교비",path:"/business/mission"}
+    {tab:"transport_archive",label:"ㄴ 품의서 및 회의록",path:"/business/transport/archive"},
+    {tab:"mission",label:"선교비",path:"/business/mission"},
+    {tab:"mission_archive",label:"ㄴ 품의서 및 회의록",path:"/business/mission/archive"}
   ]},
   {grp:"보 기"},
   {s:"map",ico:"🌍",label:"지도·지구본"},
@@ -1672,10 +1676,14 @@ function buildSidebar(){
           (ch.cat === 'p3_check' && ST.section === 'membership/check') ||
           (ch.cat === 'p3_input' && ST.section === 'membership/input') ||
           (ch.tab === 'ledger' && ST.section === 'business/ledger') ||
+          (ch.tab === 'ledger_archive' && ST.section === 'business/ledger/archive') ||
           (ch.tab === 'ledger_report' && ST.section === 'business/ledger/report') ||
           (ch.tab === 'fruit' && ST.section === 'business/fruit') ||
+          (ch.tab === 'fruit_archive' && ST.section === 'business/fruit/archive') ||
           (ch.tab === 'transport' && ST.section === 'business/transport') ||
-          (ch.tab === 'mission' && ST.section === 'business/mission');
+          (ch.tab === 'transport_archive' && ST.section === 'business/transport/archive') ||
+          (ch.tab === 'mission' && ST.section === 'business/mission') ||
+          (ch.tab === 'mission_archive' && ST.section === 'business/mission/archive');
 
         html+=`<div class="mitem ${isChildOn?'on':''}" style="padding-left:36px;font-size:13px" data-s="${it.s}" data-cat="${ch.cat||''}" data-path="${ch.path||''}"><span class="ico" style="font-size:10px;color:var(--muted)">·</span>${ch.label}</div>`;
       });
@@ -1701,7 +1709,9 @@ function buildSidebar(){
   `;
 
   document.getElementById("side").innerHTML=html;
-  document.querySelectorAll(".mitem").forEach(m=>m.onclick=()=>{
+  document.querySelectorAll(".mitem").forEach(m=>m.onclick=(e)=>{
+    if (e) e.stopPropagation();
+    console.warn("Sidebar Menu Item Clicked:", { s: m.dataset.s, path: m.dataset.path, cat: m.dataset.cat });
     if (typeof window.closeSidebar === 'function') window.closeSidebar();
     if(m.dataset.s==="export"){ 
       openExportModal(); 
@@ -2524,6 +2534,12 @@ function renderJipaTrend(){
 // ── UI build ──
 function buildUI(){
   ST.month=DATA.months[DATA.months.length-1];
+  
+  if (!document.getElementById("chips")) {
+    buildSidebar();
+    return;
+  }
+
   document.getElementById("months").innerHTML=
     `<span id="moLabel" style="font-size:13px;color:var(--muted);font-weight:600">📅 기준월</span>
      <select id="monthSel" title="현재는 6월 기준만 제공됩니다">${DATA.months.map(m=>`<option value="${m}" ${m===ST.month?'selected':'abled'}>${m}${m===ST.month?'':' 🔒'}</option>`).join("")}</select>`;

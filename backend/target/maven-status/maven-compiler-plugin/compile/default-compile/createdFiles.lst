@@ -28,6 +28,7 @@ com\overseas\portal\service\AuthService$1.class
 com\overseas\portal\repository\MembershipEditRequestRepository.class
 com\overseas\portal\domain\TelegramOtpLog$TelegramOtpLogBuilder.class
 com\overseas\portal\domain\TelegramOtpLog.class
+com\overseas\portal\controller\BusinessArchiveController.class
 com\overseas\portal\domain\AuditLog$AuditLogBuilder.class
 com\overseas\portal\domain\TelegramBotConfig.class
 com\overseas\portal\repository\AuditLogRepository.class

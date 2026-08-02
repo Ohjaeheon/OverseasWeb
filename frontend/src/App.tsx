@@ -65,10 +65,14 @@ export const App: React.FC = () => {
         <Route path="/worship" element={<DiagnosisPage section="worship" />} />
         <Route path="/business" element={<DiagnosisPage section="business" tab="ledger" />} />
         <Route path="/business/ledger" element={<DiagnosisPage section="business/ledger" tab="ledger" />} />
+        <Route path="/business/ledger/archive" element={<DiagnosisPage section="business/ledger/archive" tab="ledger_archive" />} />
         <Route path="/business/ledger/report" element={<DiagnosisPage section="business/ledger/report" tab="ledger_report" />} />
         <Route path="/business/fruit" element={<DiagnosisPage section="business/fruit" tab="fruit" />} />
+        <Route path="/business/fruit/archive" element={<DiagnosisPage section="business/fruit/archive" tab="fruit_archive" />} />
         <Route path="/business/transport" element={<DiagnosisPage section="business/transport" tab="transport" />} />
+        <Route path="/business/transport/archive" element={<DiagnosisPage section="business/transport/archive" tab="transport_archive" />} />
         <Route path="/business/mission" element={<DiagnosisPage section="business/mission" tab="mission" />} />
+        <Route path="/business/mission/archive" element={<DiagnosisPage section="business/mission/archive" tab="mission_archive" />} />
         <Route path="/approvals/pending" element={<DiagnosisPage section="approvals/pending" />} />
         <Route path="/approvals/completed" element={<DiagnosisPage section="approvals/completed" />} />
         <Route path="/login" element={<LoginPage />} />

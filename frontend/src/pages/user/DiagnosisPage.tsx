@@ -14,7 +14,7 @@ import api from '../../services/api';
 
 interface DiagnosisPageProps {
   section?: string;
-  tab?: 'check' | 'aggregate' | 'input' | 'ledger' | 'ledger_report' | 'fruit' | 'transport' | 'mission';
+  tab?: 'check' | 'aggregate' | 'input' | 'ledger' | 'ledger_archive' | 'ledger_report' | 'fruit' | 'fruit_archive' | 'transport' | 'transport_archive' | 'mission' | 'mission_archive';
 }
 
 export const DiagnosisPage: React.FC<DiagnosisPageProps> = ({ section = 'home', tab = 'check' }) => {
@@ -200,10 +200,14 @@ export const DiagnosisPage: React.FC<DiagnosisPageProps> = ({ section = 'home', 
       'worship': 'p4',
       'business': 'business',
       'business/ledger': 'business_ledger',
+      'business/ledger/archive': 'business_ledger_archive',
       'business/ledger/report': 'business_ledger_report',
       'business/fruit': 'business_fruit',
+      'business/fruit/archive': 'business_fruit_archive',
       'business/transport': 'business_transport',
+      'business/transport/archive': 'business_transport_archive',
       'business/mission': 'business_mission',
+      'business/mission/archive': 'business_mission_archive',
       'approvals/pending': 'approvals_pending',
       'approvals/completed': 'approvals_completed'
     };
@@ -259,10 +263,14 @@ export const DiagnosisPage: React.FC<DiagnosisPageProps> = ({ section = 'home', 
       worship: '④ 예배 · 전성도',
       business: '💼 업무 종합 포탈',
       'business/ledger': '💼 원장헌금',
+      'business/ledger/archive': '💼 원장헌금 품의서 및 회의록 보관함',
       'business/ledger/report': '💼 품의서 및 회의록 작성',
       'business/fruit': '💼 열매헌금',
+      'business/fruit/archive': '💼 열매헌금 품의서 및 회의록 보관함',
       'business/transport': '💼 교통비',
-      'business/mission': '💼 선교비'
+      'business/transport/archive': '💼 교통비 품의서 및 회의록 보관함',
+      'business/mission': '💼 선교비',
+      'business/mission/archive': '💼 선교비 품의서 및 회의록 보관함'
     };
     const currentLabel = sectionLabels[section] || '🏠 사용자 진단서 포탈';
     const currentPath = section === 'home' ? '/' : `/${section}`;
@@ -537,7 +545,7 @@ export const DiagnosisPage: React.FC<DiagnosisPageProps> = ({ section = 'home', 
       };
     }
 
-    loadScript('diag-engine-script', `${getUrl('assets/diagnosisEngine.js')}?v=3`)
+    loadScript('diag-engine-script', `${getUrl('assets/diagnosisEngine.js')}?v=4`)
       .then(() => {
         initEngine();
       });
