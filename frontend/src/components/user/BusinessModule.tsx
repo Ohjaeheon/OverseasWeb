@@ -50,6 +50,9 @@ export const BusinessModule: React.FC<BusinessModuleProps> = ({ initialTab = 'le
   const [store, setStore] = useState<Record<string, MonthlyRecord>>({});
   const [isEditMode, setIsEditMode] = useState(false);
   const [editData, setEditData] = useState<Array<{ country: string; months: Record<number, number | ''> }>>([]);
+  const [allChurches, setAllChurches] = useState<Array<{ name: string }>>([]);
+  const [isAddChurchModalOpen, setIsAddChurchModalOpen] = useState(false);
+  const [selectedChurchToAdd, setSelectedChurchToAdd] = useState("");
 
   // Target Year and Month to edit in Report Writer
   const [reportYear, setReportYear] = useState('2026');
@@ -422,7 +425,7 @@ export const BusinessModule: React.FC<BusinessModuleProps> = ({ initialTab = 'le
     }
   };
 
-  // Load from LocalStorage
+  // Load from LocalStorage and fetch dynamic churches list
   useEffect(() => {
     const raw = localStorage.getItem('overseas_ledger_data');
     if (raw) {
@@ -436,6 +439,18 @@ export const BusinessModule: React.FC<BusinessModuleProps> = ({ initialTab = 'le
       localStorage.setItem('overseas_ledger_data', JSON.stringify(defaultStoredData));
       setStore(defaultStoredData);
     }
+
+    const fetchAllChurches = async () => {
+      try {
+        const res = await api.get('/diagnosis/churches');
+        if (res.data) {
+          setAllChurches(res.data);
+        }
+      } catch (e) {
+        console.error("Failed to fetch churches list:", e);
+      }
+    };
+    fetchAllChurches();
   }, []);
 
   // Update form fields when reportYear or reportMonth changes (loading from store)
@@ -626,23 +641,9 @@ export const BusinessModule: React.FC<BusinessModuleProps> = ({ initialTab = 'le
     }));
   };
 
-  // Add custom new church to editing table
+  // Open add church modal
   const handleAddChurch = () => {
-    const name = window.prompt("추가할 해외교회 또는 개척지역 이름을 입력하세요:");
-    if (!name || !name.trim()) return;
-    const cleanName = name.trim();
-
-    if (editData.some(row => row.country === cleanName)) {
-      alert("이미 목록에 존재하는 교회입니다.");
-      return;
-    }
-
-    const months: Record<number, number | ''> = {};
-    for (let m = 1; m <= 12; m++) {
-      months[m] = '';
-    }
-
-    setEditData(prev => [...prev, { country: cleanName, months }]);
+    setIsAddChurchModalOpen(true);
   };
 
   // Save changes
@@ -1299,25 +1300,114 @@ export const BusinessModule: React.FC<BusinessModuleProps> = ({ initialTab = 'le
             </div>
             
             <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-              <span style={{ fontSize: '0.88rem', fontWeight: 700, color: '#475569' }}>조회 연도</span>
-              <select 
-                value={selectedYear} 
-                onChange={(e) => setSelectedYear(e.target.value)}
-                style={{
-                  padding: '10px 16px',
-                  borderRadius: '10px',
-                  border: '1px solid #cbd5e1',
-                  background: '#ffffff',
-                  fontSize: '0.88rem',
-                  fontWeight: 700,
-                  outline: 'none',
-                  cursor: 'pointer',
-                  boxShadow: '0 2px 4px rgba(0,0,0,0.02)'
-                }}
-              >
-                <option value="2026">2026년</option>
-                <option value="2025">2025년</option>
-              </select>
+              {!isEditMode ? (
+                <>
+                  <span style={{ fontSize: '0.88rem', fontWeight: 700, color: '#475569' }}>조회 연도</span>
+                  <select 
+                    value={selectedYear} 
+                    onChange={(e) => setSelectedYear(e.target.value)}
+                    style={{
+                      padding: '10px 16px',
+                      borderRadius: '10px',
+                      border: '1px solid #cbd5e1',
+                      background: '#ffffff',
+                      fontSize: '0.88rem',
+                      fontWeight: 700,
+                      outline: 'none',
+                      cursor: 'pointer',
+                      boxShadow: '0 2px 4px rgba(0,0,0,0.02)'
+                    }}
+                  >
+                    <option value="2026">2026년</option>
+                    <option value="2025">2025년</option>
+                  </select>
+                  <button
+                    onClick={handleStartEdit}
+                    style={{
+                      background: '#2563eb',
+                      color: '#ffffff',
+                      border: 'none',
+                      padding: '10px 20px',
+                      borderRadius: '10px',
+                      fontSize: '0.88rem',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      boxShadow: '0 2px 4px rgba(37,99,235,0.2)',
+                      transition: 'background 0.15s'
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.background = '#1d4ed8'}
+                    onMouseLeave={(e) => e.currentTarget.style.background = '#2563eb'}
+                  >
+                    ✍️ 실적 수정
+                  </button>
+                </>
+              ) : (
+                <>
+                  <span style={{ fontSize: '0.9rem', fontWeight: 800, color: '#2563eb', marginRight: '10px' }}>
+                    ⚠️ 수정 모드 ({selectedYear}년)
+                  </span>
+                  <button
+                    onClick={handleAddChurch}
+                    style={{
+                      background: '#475569',
+                      color: '#ffffff',
+                      border: 'none',
+                      padding: '10px 16px',
+                      borderRadius: '10px',
+                      fontSize: '0.88rem',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      transition: 'background 0.15s'
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.background = '#334155'}
+                    onMouseLeave={(e) => e.currentTarget.style.background = '#475569'}
+                  >
+                    ➕ 교회 추가
+                  </button>
+                  <button
+                    onClick={handleSaveEdit}
+                    style={{
+                      background: '#10b981',
+                      color: '#ffffff',
+                      border: 'none',
+                      padding: '10px 20px',
+                      borderRadius: '10px',
+                      fontSize: '0.88rem',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      boxShadow: '0 2px 4px rgba(16,185,129,0.2)',
+                      transition: 'background 0.15s'
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.background = '#059669'}
+                    onMouseLeave={(e) => e.currentTarget.style.background = '#10b981'}
+                  >
+                    💾 저장
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (window.confirm("변경 내용을 폐기하고 수정 모드를 종료하시겠습니까?")) {
+                        setIsEditMode(false);
+                      }
+                    }}
+                    style={{
+                      background: '#ef4444',
+                      color: '#ffffff',
+                      border: 'none',
+                      padding: '10px 20px',
+                      borderRadius: '10px',
+                      fontSize: '0.88rem',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      boxShadow: '0 2px 4px rgba(239,68,68,0.2)',
+                      transition: 'background 0.15s'
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.background = '#dc2626'}
+                    onMouseLeave={(e) => e.currentTarget.style.background = '#ef4444'}
+                  >
+                    ❌ 취소
+                  </button>
+                </>
+              )}
             </div>
           </div>
 
@@ -1341,36 +1431,55 @@ export const BusinessModule: React.FC<BusinessModuleProps> = ({ initialTab = 'le
                   </tr>
                 </thead>
                 <tbody>
-                  {matrixRows.length === 0 ? (
-                    <tr>
-                      <td colSpan={14} style={{ padding: '48px 0', textAlign: 'center', color: '#94a3b8', fontWeight: 600 }}>
-                        선택한 연도({selectedYear}년)에 등록된 원장헌금 실적 데이터가 존재하지 않습니다.
-                      </td>
-                    </tr>
-                  ) : (
+                  {isEditMode ? (
                     <>
-                      {matrixRows.map(row => {
+                      {editData.map(row => {
                         const rowSum = Object.values(row.months).reduce((sum: number, val) => sum + (val || 0), 0);
                         return (
-                          <tr key={row.country} style={{ borderBottom: '1px solid #f1f5f9', transition: 'background 0.15s' }}>
-                            <td style={{ padding: '16px 12px', fontWeight: 700, color: '#1e293b' }}>
+                          <tr key={row.country} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                            <td style={{ padding: '12px 8px', fontWeight: 700, color: '#1e293b' }}>
                               🌎 {row.country}
                             </td>
                             {Array.from({ length: 12 }, (_, i) => {
-                              const val = row.months[i + 1];
+                              const month = i + 1;
+                              const val = row.months[month];
                               return (
-                                <td key={i + 1} style={{ 
-                                  padding: '16px 12px', 
-                                  textAlign: 'right', 
-                                  fontWeight: val !== null ? 700 : 500,
-                                  color: val !== null ? '#2563eb' : '#cbd5e1'
-                                }}>
-                                  {val !== null ? val.toLocaleString() : '-'}
+                                <td key={month} style={{ padding: '6px 4px' }}>
+                                  <input
+                                    type="text"
+                                    value={val !== '' ? val.toLocaleString() : ''}
+                                    onChange={(e) => handleCellChange(row.country, month, e.target.value)}
+                                    placeholder="-"
+                                    style={{
+                                      width: '100%',
+                                      minWidth: '80px',
+                                      padding: '6px 8px',
+                                      borderRadius: '6px',
+                                      border: '1px solid #cbd5e1',
+                                      textAlign: 'right',
+                                      fontSize: '0.82rem',
+                                      fontWeight: val !== '' ? 700 : 500,
+                                      color: '#2563eb',
+                                      outline: 'none',
+                                      background: '#f8fafc',
+                                      transition: 'all 0.15s'
+                                    }}
+                                    onFocus={(e) => {
+                                      e.target.style.borderColor = '#3b82f6';
+                                      e.target.style.background = '#ffffff';
+                                      e.target.style.boxShadow = '0 0 0 3px rgba(59,130,246,0.15)';
+                                    }}
+                                    onBlur={(e) => {
+                                      e.target.style.borderColor = '#cbd5e1';
+                                      e.target.style.background = '#f8fafc';
+                                      e.target.style.boxShadow = 'none';
+                                    }}
+                                  />
                                 </td>
                               );
                             })}
                             <td style={{ 
-                              padding: '16px 12px', 
+                              padding: '12px 8px', 
                               textAlign: 'right', 
                               fontWeight: 800, 
                               color: '#1e3a8a', 
@@ -1381,11 +1490,11 @@ export const BusinessModule: React.FC<BusinessModuleProps> = ({ initialTab = 'le
                           </tr>
                         );
                       })}
-                      {/* Monthly Totals Row */}
+                      {/* Live Totals Row in Edit Mode */}
                       {(() => {
                         const monthSums = Array.from({ length: 12 }, (_, i) => {
                           const month = i + 1;
-                          return matrixRows.reduce((sum, row) => sum + (row.months[month] || 0), 0);
+                          return editData.reduce((sum, row) => sum + (row.months[month] || 0), 0);
                         });
                         const grandTotal = monthSums.reduce((sum, val) => sum + val, 0);
                         return (
@@ -1415,6 +1524,86 @@ export const BusinessModule: React.FC<BusinessModuleProps> = ({ initialTab = 'le
                           </tr>
                         );
                       })()}
+                    </>
+                  ) : (
+                    // VIEW MODE (Original Code)
+                    <>
+                      {matrixRows.length === 0 ? (
+                        <tr>
+                          <td colSpan={14} style={{ padding: '48px 0', textAlign: 'center', color: '#94a3b8', fontWeight: 600 }}>
+                            선택한 연도({selectedYear}년)에 등록된 원장헌금 실적 데이터가 존재하지 않습니다.
+                          </td>
+                        </tr>
+                      ) : (
+                        <>
+                          {matrixRows.map(row => {
+                            const rowSum = Object.values(row.months).reduce((sum: number, val) => sum + (val || 0), 0);
+                            return (
+                              <tr key={row.country} style={{ borderBottom: '1px solid #f1f5f9', transition: 'background 0.15s' }}>
+                                <td style={{ padding: '16px 12px', fontWeight: 700, color: '#1e293b' }}>
+                                  🌎 {row.country}
+                                </td>
+                                {Array.from({ length: 12 }, (_, i) => {
+                                  const val = row.months[i + 1];
+                                  return (
+                                    <td key={i + 1} style={{ 
+                                      padding: '16px 12px', 
+                                      textAlign: 'right', 
+                                      fontWeight: val !== null ? 700 : 500,
+                                      color: val !== null ? '#2563eb' : '#cbd5e1'
+                                    }}>
+                                      {val !== null ? val.toLocaleString() : '-'}
+                                    </td>
+                                  );
+                                })}
+                                <td style={{ 
+                                  padding: '16px 12px', 
+                                  textAlign: 'right', 
+                                  fontWeight: 800, 
+                                  color: '#1e3a8a', 
+                                  background: '#f8fafc' 
+                                }}>
+                                  {rowSum.toLocaleString()}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                          {/* Monthly Totals Row */}
+                          {(() => {
+                            const monthSums = Array.from({ length: 12 }, (_, i) => {
+                              const month = i + 1;
+                              return matrixRows.reduce((sum, row) => sum + (row.months[month] || 0), 0);
+                            });
+                            const grandTotal = monthSums.reduce((sum, val) => sum + val, 0);
+                            return (
+                              <tr style={{ background: '#f8fafc', fontWeight: 800 }}>
+                                <td style={{ padding: '16px 12px', color: '#0f172a' }}>
+                                  📊 합계
+                                </td>
+                                {monthSums.map((sum, i) => (
+                                  <td key={i} style={{ 
+                                    padding: '16px 12px', 
+                                    textAlign: 'right', 
+                                    color: sum > 0 ? '#0f172a' : '#cbd5e1'
+                                  }}>
+                                    {sum > 0 ? sum.toLocaleString() : '-'}
+                                  </td>
+                                ))}
+                                <td style={{ 
+                                  padding: '16px 12px', 
+                                  textAlign: 'right', 
+                                  color: '#1e3a8a', 
+                                  background: '#e2e8f0', 
+                                  fontWeight: 900,
+                                  fontSize: '0.9rem' 
+                                }}>
+                                  {grandTotal.toLocaleString()}
+                                </td>
+                              </tr>
+                            );
+                          })()}
+                        </>
+                      )}
                     </>
                   )}
                 </tbody>
@@ -2814,6 +3003,105 @@ export const BusinessModule: React.FC<BusinessModuleProps> = ({ initialTab = 'le
           </div>
         );
       })()}
+
+      {/* 8. ADD CHURCH MODAL */}
+      {isAddChurchModalOpen && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(15, 23, 42, 0.4)',
+          backdropFilter: 'blur(4px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 10000
+        }}
+        onClick={() => setIsAddChurchModalOpen(false)}>
+          <div style={{
+            background: '#ffffff',
+            padding: '24px',
+            borderRadius: '16px',
+            width: '100%',
+            maxWidth: '400px',
+            boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)'
+          }}
+          onClick={e => e.stopPropagation()}>
+            <h3 style={{ margin: '0 0 12px 0', fontSize: '1.2rem', fontWeight: 800, color: '#0f172a' }}>
+              해외교회 추가
+            </h3>
+            <p style={{ margin: '0 0 16px 0', color: '#64748b', fontSize: '0.85rem', fontWeight: 600 }}>
+              등록된 해외교회 및 개척지 목록에서 추가할 대상을 선택해 주세요.
+            </p>
+            <select
+              value={selectedChurchToAdd}
+              onChange={e => setSelectedChurchToAdd(e.target.value)}
+              style={{
+                width: '100%',
+                padding: '10px',
+                borderRadius: '8px',
+                border: '1px solid #cbd5e1',
+                outline: 'none',
+                fontSize: '0.9rem',
+                fontWeight: 700,
+                marginBottom: '20px'
+              }}
+            >
+              <option value="">-- 해외교회 선택 --</option>
+              {allChurches
+                .filter(c => !editData.some(row => row.country === c.name))
+                .map(c => (
+                  <option key={c.name} value={c.name}>{c.name}</option>
+                ))
+              }
+            </select>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+              <button
+                onClick={() => setIsAddChurchModalOpen(false)}
+                style={{
+                  background: '#f1f5f9',
+                  color: '#475569',
+                  border: 'none',
+                  padding: '8px 16px',
+                  borderRadius: '8px',
+                  fontWeight: 700,
+                  cursor: 'pointer'
+                }}
+              >
+                취소
+              </button>
+              <button
+                onClick={() => {
+                  if (!selectedChurchToAdd) {
+                    alert("교회를 선택해 주세요.");
+                    return;
+                  }
+                  const months: Record<number, number | ''> = {};
+                  for (let m = 1; m <= 12; m++) {
+                    months[m] = '';
+                  }
+                  setEditData(prev => [...prev, { country: selectedChurchToAdd, months }]);
+                  setIsAddChurchModalOpen(false);
+                  setSelectedChurchToAdd("");
+                }}
+                style={{
+                  background: '#2563eb',
+                  color: '#ffffff',
+                  border: 'none',
+                  padding: '8px 16px',
+                  borderRadius: '8px',
+                  fontWeight: 700,
+                  cursor: 'pointer'
+                }}
+              >
+                추가
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );
