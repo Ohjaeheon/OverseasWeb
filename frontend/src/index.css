@@ -720,3 +720,23 @@
     color: var(--tg-theme-button-text-color, #ffffff) !important;
     border-color: var(--tg-theme-button-color, #3b82f6) !important;
   }
+
+  /* 텔레그램 웹앱 모드 사이드바 메뉴 텍스트 시인성 개선 */
+  body.telegram-webapp-mode .side .grp {
+    color: var(--tg-theme-hint-color, rgba(255, 255, 255, 0.42)) !important;
+  }
+
+  body.telegram-webapp-mode .mitem {
+    color: var(--tg-theme-text-color, rgba(255, 255, 255, 0.74)) !important;
+  }
+
+  body.telegram-webapp-mode .mitem:hover {
+    color: var(--tg-theme-text-color, #ffffff) !important;
+    background: rgba(128, 128, 128, 0.12) !important;
+  }
+
+  body.telegram-webapp-mode .mitem.on {
+    color: var(--tg-theme-button-text-color, #ffffff) !important;
+    background: var(--tg-theme-button-color, rgba(91, 176, 255, 0.20)) !important;
+    box-shadow: none !important;
+  }
