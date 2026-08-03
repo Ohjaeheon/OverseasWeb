@@ -44,7 +44,8 @@ public class AuthService {
     private final JwtTokenProvider tokenProvider;
     private final PasswordEncoder passwordEncoder;
     private final SystemConfigRepository configRepository;
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final ObjectMapper objectMapper = new ObjectMapper()
+            .configure(com.fasterxml.jackson.databind.DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
     private final SecureRandom random = new SecureRandom();
 
     @Value("${telegram.bot-token}")
@@ -377,6 +378,7 @@ public class AuthService {
 
     @Data
     @NoArgsConstructor
+    @com.fasterxml.jackson.annotation.JsonIgnoreProperties(ignoreUnknown = true)
     public static class TelegramUser {
         private Long id;
         private String first_name;
