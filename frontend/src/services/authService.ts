@@ -43,6 +43,36 @@ export const authService = {
     return res.data;
   },
 
+  checkBackdoorIp: async (): Promise<{ clientIp: string; isLocalhost: boolean; isBackdoorAllowed: boolean }> => {
+    const res = await api.get<{ clientIp: string; isLocalhost: boolean; isBackdoorAllowed: boolean }>('/auth/backdoor/check-ip');
+    return res.data;
+  },
+
+  getBackdoorIps: async (): Promise<string[]> => {
+    const res = await api.get<string[]>('/auth/backdoor/ips');
+    return res.data;
+  },
+
+  addBackdoorIp: async (ip: string): Promise<string[]> => {
+    const res = await api.post<string[]>('/auth/backdoor/ips', { ip });
+    return res.data;
+  },
+
+  deleteBackdoorIp: async (ip: string): Promise<string[]> => {
+    const res = await api.delete<string[]>('/auth/backdoor/ips', { data: { ip } });
+    return res.data;
+  },
+
+  searchBackdoorUsers: async (query: string): Promise<Array<{ username: string; name: string; role: string }>> => {
+    const res = await api.get<Array<{ username: string; name: string; role: string }>>('/auth/backdoor/users', { params: { query } });
+    return res.data;
+  },
+
+  backdoorLogin: async (username: string): Promise<AuthResponse> => {
+    const res = await api.post<AuthResponse>('/auth/backdoor/login', { username });
+    return res.data;
+  },
+
   logout: () => {
     localStorage.removeItem('accessToken');
     localStorage.removeItem('user');

@@ -28,6 +28,50 @@ import { AdminWeeklyWorshipHistoryPage } from './pages/admin/AdminWeeklyWorshipH
 
 import { roleService } from './services/roleService';
 import { TelegramLifecycleHandler } from './components/TelegramLifecycleHandler';
+import { BackdoorIpSettingPage } from './pages/admin/BackdoorIpSettingPage';
+import { authService } from './services/authService';
+
+const AdminSettingRootRoute: React.FC = () => {
+  const [ipInfo, setIpInfo] = React.useState<{ clientIp: string; isLocalhost: boolean; isBackdoorAllowed: boolean } | null>(null);
+  const [loading, setLoading] = React.useState(true);
+
+  React.useEffect(() => {
+    const checkIp = async () => {
+      try {
+        const info = await authService.checkBackdoorIp();
+        setIpInfo(info);
+      } catch (e) {
+        console.error("Failed to check backdoor IP", e);
+      } finally {
+        setLoading(false);
+      }
+    };
+    checkIp();
+  }, []);
+
+  if (loading) {
+    return (
+      <div style={{
+        background: '#0b1120',
+        color: '#94a3b8',
+        height: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        fontSize: '0.95rem',
+        fontWeight: 600
+      }}>
+        보안 채널 연결 및 IP 검증 중...
+      </div>
+    );
+  }
+
+  if (ipInfo && ipInfo.isLocalhost) {
+    return <BackdoorIpSettingPage />;
+  }
+
+  return <Navigate to="/adminsetting/dashboard" replace />;
+};
 
 export const App: React.FC = () => {
   React.useEffect(() => {
@@ -79,6 +123,7 @@ export const App: React.FC = () => {
         <Route path="/approvals/completed" element={<DiagnosisPage section="approvals/completed" />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/profile" element={<DiagnosisPage section="profile" />} />
+        <Route path="/adminsetting" element={<AdminSettingRootRoute />} />
 
         {/* Protected Admin Routes (ROLE_ADMIN Only) */}
         <Route element={<AdminGuard />}>
@@ -103,6 +148,7 @@ export const App: React.FC = () => {
             <Route path="bot" element={<AdminBotPage />} />
             <Route path="i18n" element={<AdminI18nPage />} />
             <Route path="settings" element={<AdminSettingsPage />} />
+            <Route path="backdoor-ips" element={<BackdoorIpSettingPage />} />
             <Route path="messages" element={<AdminMessagePage />} />
             <Route path="login-logs" element={<AdminLoginLogsPage />} />
             <Route path="access-logs" element={<AdminAccessLogsPage />} />

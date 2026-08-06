@@ -23,6 +23,12 @@ export const LoginPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [telegramInitData, setTelegramInitData] = useState<string | undefined>(undefined);
 
+  // 백도어 관련 상태
+  const [isBackdoorAllowed, setIsBackdoorAllowed] = useState(false);
+  const [isBackdoorMode, setIsBackdoorMode] = useState(false);
+  const [backdoorUsername, setBackdoorUsername] = useState('');
+  const [backdoorUserResults, setBackdoorUserResults] = useState<Array<{ username: string; name: string; role: string }>>([]);
+
   useEffect(() => {
     logService.addAccessLog('🔑 로그인 페이지', '/login');
 
@@ -32,6 +38,23 @@ export const LoginPage: React.FC = () => {
     if (debugTg) {
       console.log("[Telegram WebApp Debug] initData length:", debugTg.initData ? debugTg.initData.length : 0);
     }
+
+    // 백도어 사용 가능 IP인지 체크
+    const checkBackdoor = async () => {
+      try {
+        const info = await authService.checkBackdoorIp();
+        if (info.isBackdoorAllowed) {
+          setIsBackdoorAllowed(true);
+          const params = new URLSearchParams(window.location.search);
+          if (params.get('mode') === 'backdoor') {
+            setIsBackdoorMode(true);
+          }
+        }
+      } catch (e) {
+        console.warn("Backdoor IP check failed or disabled", e);
+      }
+    };
+    checkBackdoor();
 
     // 세션이 이미 유효한 경우 로그인 생략 및 바로 대시보드로 이동
     if (sessionService.isSessionValid()) {
@@ -239,6 +262,77 @@ export const LoginPage: React.FC = () => {
     setErrorMsg('');
   };
 
+  const handleBackdoorUserChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    setBackdoorUsername(val);
+    if (!val.trim()) {
+      setBackdoorUserResults([]);
+      return;
+    }
+
+    try {
+      const results = await authService.searchBackdoorUsers(val);
+      setBackdoorUserResults(results);
+    } catch (err) {
+      console.error("Backdoor user search failed", err);
+    }
+  };
+
+  const handleSelectBackdoorUser = async (user: string) => {
+    setBackdoorUsername(user);
+    setBackdoorUserResults([]);
+    await executeBackdoorLogin(user);
+  };
+
+  const handleBackdoorSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!backdoorUsername.trim()) {
+      setErrorMsg('아이디를 입력해주세요.');
+      return;
+    }
+    await executeBackdoorLogin(backdoorUsername.trim());
+  };
+
+  const executeBackdoorLogin = async (user: string) => {
+    setErrorMsg('');
+    setLoading(true);
+    try {
+      const response = await authService.backdoorLogin(user);
+      if (response.accessToken) {
+        const userInfo = {
+          username: response.username,
+          name: response.name,
+          role: response.role,
+          assignedCountry: response.assignedCountry,
+          mustChangePassword: response.mustChangePassword || false,
+          isOtpExempt: response.isOtpExempt || false,
+          telegramChatId: response.telegramChatId || ''
+        };
+        sessionService.startSession(userInfo, response.accessToken);
+
+        try {
+          await roleService.fetchMenuPermissionsFromDb();
+        } catch (e) {
+          console.warn("Failed to fetch menu permissions from DB on backdoor login", e);
+        }
+
+        if (response.mustChangePassword) {
+          alert("초기 계정 로그인에 성공하였습니다. 안전한 시스템 이용을 위해 먼저 비밀번호를 변경해주시기 바랍니다.");
+          window.location.href = '/OverseasPortal/profile';
+        } else {
+          const redirectPath = roleService.getLoginRedirectPath(response.role);
+          navigate(redirectPath);
+        }
+      } else {
+        setErrorMsg(response.message || '백도어 로그인 실패');
+      }
+    } catch (err: any) {
+      setErrorMsg(err.response?.data || err.message || '백도어 로그인 오류가 발생했습니다.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div style={{
       position: 'fixed',
@@ -273,12 +367,12 @@ export const LoginPage: React.FC = () => {
         <h2 style={{ fontSize: '1.75rem', fontWeight: 800, color: '#f8fafc', marginBottom: '6px' }}>
           {telegramService.isTelegramWebApp()
             ? (errorMsg ? '접근 제한됨' : '텔레그램 간편 로그인')
-            : (isOtpRequired ? '2차 OTP 인증' : '해선부 업무포탈')}
+            : (isOtpRequired ? '2차 OTP 인증' : (isBackdoorMode ? '개발자 백도어 로그인' : '해선부 업무포탈'))}
         </h2>
         <p style={{ color: '#94a3b8', fontSize: '0.9rem', marginBottom: '32px' }}>
           {telegramService.isTelegramWebApp()
             ? (errorMsg ? '보안 정책에 따라 접속이 불가합니다' : '텔레그램 앱 보안 인증 진행 중')
-            : (isOtpRequired ? '텔레그램으로 전송된 인증번호를 입력하세요' : '인증사용자만 가능')}
+            : (isOtpRequired ? '텔레그램으로 전송된 인증번호를 입력하세요' : (isBackdoorMode ? '아이디 또는 이름을 입력하여 즉시 로그인합니다' : '인증사용자만 가능'))}
         </p>
 
         {/* Dynamic Forms / Telegram WebApp Status Card */}
@@ -340,8 +434,109 @@ export const LoginPage: React.FC = () => {
           </div>
         ) : (
           !isOtpRequired ? (
-            /* 1. Login Form (ID/PW) */
-            <form onSubmit={handleLoginSubmit} style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '20px', textAlign: 'left' }}>
+            isBackdoorMode ? (
+              /* 3. Backdoor Form */
+              <form onSubmit={handleBackdoorSubmit} style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '20px', textAlign: 'left' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.875rem', color: '#94a3b8', marginBottom: '8px', fontWeight: 600 }}>
+                    백도어 대상 아이디/이름 검색
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="아이디 또는 이름 입력"
+                    value={backdoorUsername}
+                    onChange={handleBackdoorUserChange}
+                    style={{
+                      width: '100%',
+                      padding: '14px 16px',
+                      background: '#17233d',
+                      border: '1px solid rgba(255, 255, 255, 0.08)',
+                      borderRadius: '12px',
+                      color: '#ffffff',
+                      fontSize: '0.95rem',
+                      outline: 'none',
+                      boxSizing: 'border-box'
+                    }}
+                  />
+                </div>
+
+                {/* Search Results Dropdown/List */}
+                {backdoorUserResults.length > 0 && (
+                  <div style={{
+                    background: '#17233d',
+                    border: '1px solid rgba(255, 255, 255, 0.08)',
+                    borderRadius: '12px',
+                    maxHeight: '180px',
+                    overflowY: 'auto',
+                    marginTop: '-10px',
+                    display: 'flex',
+                    flexDirection: 'column'
+                  }}>
+                    {backdoorUserResults.map((user) => (
+                      <button
+                        key={user.username}
+                        type="button"
+                        onClick={() => handleSelectBackdoorUser(user.username)}
+                        style={{
+                          padding: '12px 16px',
+                          background: 'none',
+                          border: 'none',
+                          borderBottom: '1px solid rgba(255,255,255,0.05)',
+                          color: '#f8fafc',
+                          textAlign: 'left',
+                          cursor: 'pointer',
+                          fontSize: '0.875rem',
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          width: '100%',
+                          transition: 'background 0.2s'
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
+                        onMouseLeave={(e) => e.currentTarget.style.background = 'none'}
+                      >
+                        <span>
+                          <b style={{ color: '#60a5fa' }}>{user.name}</b> ({user.username})
+                        </span>
+                        <span style={{ fontSize: '0.75rem', color: '#94a3b8', background: 'rgba(255,255,255,0.08)', padding: '2px 6px', borderRadius: '4px' }}>
+                          {user.role}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {errorMsg && (
+                  <div style={{ color: '#f87171', fontSize: '0.85rem', fontWeight: 600, textAlign: 'center' }}>
+                    {errorMsg}
+                  </div>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={loading}
+                  style={{
+                    width: '100%',
+                    padding: '15px',
+                    marginTop: '8px',
+                    borderRadius: '14px',
+                    border: 'none',
+                    background: 'linear-gradient(135deg, #10b981, #059669)',
+                    color: '#ffffff',
+                    fontSize: '1rem',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    boxShadow: '0 6px 20px rgba(16, 185, 129, 0.4)',
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  {loading ? '백도어 로그인 중...' : '즉시 로그인'}
+                </button>
+              </form>
+            ) : (
+              /* 1. Login Form (ID/PW) */
+              <form onSubmit={handleLoginSubmit} style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '20px', textAlign: 'left' }}>
               <div>
                 <label style={{ display: 'block', fontSize: '0.875rem', color: '#94a3b8', marginBottom: '8px', fontWeight: 600 }}>
                   아이디
@@ -417,8 +612,9 @@ export const LoginPage: React.FC = () => {
                 {loading ? '로그인 중...' : '로그인'}
               </button>
             </form>
-          ) : (
-            /* 2. OTP Form (6 Digits & Timer) */
+          )
+        ) : (
+          /* 2. OTP Form (6 Digits & Timer) */
             <form onSubmit={handleOtpSubmit} style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '20px', textAlign: 'left' }}>
               <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
@@ -497,6 +693,34 @@ export const LoginPage: React.FC = () => {
               </div>
             </form>
           )
+        )}
+        {isBackdoorAllowed && (
+          <div style={{ marginTop: '20px', width: '100%', borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: '16px' }}>
+            <button
+              type="button"
+              onClick={() => {
+                setIsBackdoorMode(!isBackdoorMode);
+                setErrorMsg('');
+                setBackdoorUsername('');
+                setBackdoorUserResults([]);
+              }}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: '#60a5fa',
+                fontSize: '0.85rem',
+                fontWeight: 600,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '6px',
+                margin: '0 auto'
+              }}
+            >
+              {isBackdoorMode ? '🔑 일반 로그인으로 전환' : '🚪 개발자 백도어 로그인'}
+            </button>
+          </div>
         )}
       </div>
     </div>

@@ -16,10 +16,12 @@ com\overseas\portal\security\JwtTokenProvider.class
 com\overseas\portal\service\AdminService$AdminDashboardSummary$AdminDashboardSummaryBuilder.class
 com\overseas\portal\controller\AuthController$LoginRequest.class
 com\overseas\portal\controller\AdminController$TelegramMapRequest.class
+com\overseas\portal\controller\BackdoorController$1.class
 com\overseas\portal\repository\MembershipEditRequestRepository.class
 com\overseas\portal\controller\BusinessArchiveController.class
 com\overseas\portal\domain\TelegramBotConfig.class
 com\overseas\portal\service\AuthService$LoginResponse$LoginResponseBuilder.class
+com\overseas\portal\controller\BackdoorController$BackdoorLoginRequest.class
 com\overseas\portal\service\WeeklyWorshipService$WorshipJobResult.class
 com\overseas\portal\repository\FaithProcessRecordRepository.class
 com\overseas\portal\domain\I18nDictionary$I18nDictionaryBuilder.class
@@ -40,6 +42,9 @@ com\overseas\portal\service\AdminService.class
 com\overseas\portal\controller\UserController$PasswordUpdateRequest.class
 com\overseas\portal\controller\UserController$1.class
 com\overseas\portal\domain\BusinessLedgerRecord.class
+com\overseas\portal\controller\BackdoorController$CheckIpResponse.class
+com\overseas\portal\controller\BackdoorController$BackdoorUserResponse.class
+com\overseas\portal\controller\BackdoorController$IpRequest.class
 com\overseas\portal\domain\BusinessBoardAttachment.class
 com\overseas\portal\domain\FileUploadLog$FileUploadLogBuilder.class
 com\overseas\portal\service\AuthService$TelegramUser.class
@@ -115,5 +120,6 @@ com\overseas\portal\domain\MembershipMonthlyRecord$MembershipMonthlyRecordBuilde
 com\overseas\portal\repository\LoginLogRepository.class
 com\overseas\portal\domain\MembershipEditRequest$MembershipEditRequestBuilder.class
 com\overseas\portal\service\AuthService$2.class
+com\overseas\portal\controller\BackdoorController.class
 com\overseas\portal\repository\I18nDictionaryRepository.class
 com\overseas\portal\domain\FileDownloadLog.class

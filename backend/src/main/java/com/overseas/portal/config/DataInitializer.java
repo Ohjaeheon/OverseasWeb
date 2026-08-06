@@ -107,6 +107,14 @@ public class DataInitializer implements CommandLineRunner {
                     .build());
         }
 
+        if (systemConfigRepository.findByConfigKey("backdoor_allowed_ips").isEmpty()) {
+            systemConfigRepository.save(SystemConfig.builder()
+                    .configKey("backdoor_allowed_ips")
+                    .configValue("[\"127.0.0.1\",\"0:0:0:0:0:0:0:1\",\"::1\"]")
+                    .description("백도어 허용 IP 리스트 (JSON Array)")
+                    .build());
+        }
+
         // 3. Seed All 21 Churches and 42 Faith Records from data.js into PostgreSQL DB if count < 21
         if (churchRepository.count() < 21) {
             log.info("Seeding all 21 churches and 42 faith process records from data.js into PostgreSQL overseas database...");

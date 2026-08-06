@@ -48,6 +48,7 @@ E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\service\Telegram
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\security\JwtTokenProvider.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\domain\AccessLog.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\domain\TelegramBotConfig.java
+E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\controller\BackdoorController.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\domain\MembershipMonthlyRecord.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\repository\I18nDictionaryRepository.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\repository\EvangelismWeeklyRecordRepository.java

@@ -11,6 +11,7 @@ import { BusinessModule } from '../../components/user/BusinessModule';
 import { MyProfilePage } from './MyProfilePage';
 import { roleService } from '../../services/roleService';
 import api from '../../services/api';
+import { authService } from '../../services/authService';
 
 interface DiagnosisPageProps {
   section?: string;
@@ -291,6 +292,11 @@ export const DiagnosisPage: React.FC<DiagnosisPageProps> = ({ section = 'home', 
       navigate('/adminsetting/dashboard');
     };
 
+    (window as any).handleGoToBackdoorLogin = () => {
+      sessionService.clearSession();
+      navigate('/login?mode=backdoor', { replace: true });
+    };
+
     (window as any).toggleSidebar = () => {
       const side = document.getElementById('side');
       const overlay = document.getElementById('sidebarOverlay');
@@ -329,6 +335,19 @@ export const DiagnosisPage: React.FC<DiagnosisPageProps> = ({ section = 'home', 
         }
       } catch (e) {}
     }, 200);
+
+    const checkLocalhostForButton = async () => {
+      try {
+        const info = await authService.checkBackdoorIp();
+        if (info.isLocalhost) {
+          const backdoorBtn = document.getElementById('btnBackdoorSetting');
+          if (backdoorBtn) backdoorBtn.style.display = 'inline-flex';
+        }
+      } catch (e) {
+        console.warn("Failed to check localhost for backdoor button", e);
+      }
+    };
+    checkLocalhostForButton();
 
     // 0-2. Dynamic CSS Loader
     const loadCss = (id: string, href: string) => {
@@ -665,6 +684,7 @@ export const DiagnosisPage: React.FC<DiagnosisPageProps> = ({ section = 'home', 
   <button class="repbtn" id="btnCover" onclick="showIntro()">🏠 <span class="btn-txt-label">인트로</span></button>
   <button class="repbtn" id="btnProfile" onclick="reactNavigate('/profile')" title="회원 정보 및 텔레그램 연동을 관리합니다">👤 <span class="btn-txt-label">회원관리</span></button>
   <button class="repbtn" id="btnAdminSystem" onclick="handleGoToAdminSystem()" style="display:none;background:#2563eb;color:white;border:none;font-weight:700" title="관리자 시스템으로 이동">⚙️ <span class="btn-txt-label">관리자 시스템</span></button>
+  <button class="repbtn" id="btnBackdoorSetting" onclick="handleGoToBackdoorLogin()" style="display:none;background:#7c3aed;color:white;border:none;font-weight:700" title="백도어 로그인 화면으로 이동">🚪 <span class="btn-txt-label">백도어 설정</span></button>
   <button class="repbtn" id="btnLogout" onclick="handleUserLogout()" style="background:#ef4444;color:white;border:none;font-weight:700" title="로그아웃">🔒 <span class="btn-txt-label">로그아웃</span></button>
 </div>
 

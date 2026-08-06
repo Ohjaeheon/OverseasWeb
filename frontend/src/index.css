@@ -158,7 +158,7 @@
     /* Hide some topbar elements on mobile to prevent clutter */
     .topbar .months, 
     .topbar select.langSel.tb-langsel, 
-    .topbar button.repbtn:not(#btnLogout):not(#btnAdminSystem) {
+    .topbar button.repbtn:not(#btnLogout):not(#btnAdminSystem):not(#btnBackdoorSetting) {
       display: none !important;
     }
     .topbar .searchwrap {

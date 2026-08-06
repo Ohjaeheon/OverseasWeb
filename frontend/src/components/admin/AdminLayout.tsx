@@ -5,6 +5,7 @@ import { roleService } from '../../services/roleService';
 import { logService } from '../../services/logService';
 import { sessionService } from '../../services/sessionService';
 import { telegramService } from '../../services/telegramService';
+import { authService } from '../../services/authService';
 import {
   ChevronDown,
   ChevronRight,
@@ -31,11 +32,24 @@ export const AdminLayout: React.FC = () => {
   const { t } = useTranslation();
   const [openSubMenu, setOpenSubMenu] = useState<boolean>(true);
   const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(false);
+  const [isBackdoorAllowed, setIsBackdoorAllowed] = useState<boolean>(false);
 
   // Close sidebar drawer on route navigation change (for mobile usability)
   useEffect(() => {
     setIsSidebarOpen(false);
   }, [location.pathname]);
+
+  useEffect(() => {
+    const checkIp = async () => {
+      try {
+        const info = await authService.checkBackdoorIp();
+        setIsBackdoorAllowed(info.isBackdoorAllowed);
+      } catch (e) {
+        console.warn("Failed to check backdoor IP in AdminLayout", e);
+      }
+    };
+    checkIp();
+  }, []);
 
   // Get current logged-in user's role
   const userStr = localStorage.getItem('user');
@@ -80,18 +94,37 @@ export const AdminLayout: React.FC = () => {
     { s: "file_download_logs", ico: "📥", label: "파일 다운로드 로그", path: "/adminsetting/file-download-logs" }
   ];
 
+  const isAdmin = currentUserRole === 'ROLE_ADMIN' || currentUserRole === 'ADMIN' || currentUserRole === '관리자' || currentUserRole === 'ROLE_관리자';
+
+  const rawSidebarWithBackdoor = [...RAW_SIDEBAR];
+  if (isBackdoorAllowed && isAdmin) {
+    const sysIdx = rawSidebarWithBackdoor.findIndex(item => item.path === "/adminsetting/settings");
+    if (sysIdx !== -1) {
+      rawSidebarWithBackdoor.splice(sysIdx + 1, 0, {
+        s: "backdoor_ips",
+        ico: "🚪",
+        label: "백도어 IP 관리",
+        path: "/adminsetting/backdoor-ips"
+      });
+    }
+  }
+
   // Filter sidebar items according to current user's role permissions (hide headers if no children accessible)
-  const SIDEBAR = RAW_SIDEBAR.filter((item, idx) => {
+  const SIDEBAR = rawSidebarWithBackdoor.filter((item, idx) => {
     if (item.grp) {
-      for (let i = idx + 1; i < RAW_SIDEBAR.length; i++) {
-        const child = RAW_SIDEBAR[i];
+      for (let i = idx + 1; i < rawSidebarWithBackdoor.length; i++) {
+        const child = rawSidebarWithBackdoor[i];
         if (child.grp) break;
+        if (child.s === "backdoor_ips") {
+          return true;
+        }
         if (child.s && roleService.canRoleAccessMenu(currentUserRole, child.s).read) {
           return true;
         }
       }
       return false;
     }
+    if (item.s === "backdoor_ips") return true;
     if (!item.s) return true;
     const access = roleService.canRoleAccessMenu(currentUserRole, item.s);
     return access.read;
