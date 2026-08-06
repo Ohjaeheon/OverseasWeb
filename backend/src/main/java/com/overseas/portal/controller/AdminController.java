@@ -10,10 +10,13 @@ import com.overseas.portal.repository.SystemConfigRepository;
 import com.overseas.portal.service.AdminService;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Optional;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/v1/admin")
@@ -111,7 +114,10 @@ public class AdminController {
     // System Settings Management
     @GetMapping("/configs")
     public ResponseEntity<List<SystemConfig>> getAllConfigs() {
-        return ResponseEntity.ok(adminService.getAllConfigs());
+        List<SystemConfig> list = adminService.getAllConfigs().stream()
+                .filter(c -> !"backdoor_allowed_ips".equals(c.getConfigKey()))
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(list);
     }
 
     @Data
@@ -122,12 +128,19 @@ public class AdminController {
     }
 
     @PutMapping("/configs")
-    public ResponseEntity<SystemConfig> updateConfig(@RequestBody ConfigUpdateRequest request) {
+    public ResponseEntity<?> updateConfig(@RequestBody ConfigUpdateRequest request) {
+        if ("backdoor_allowed_ips".equals(request.getConfigKey())) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("백도어 IP 설정은 일반 메시지 관리에서 수정할 수 없습니다.");
+        }
         return ResponseEntity.ok(adminService.updateConfig(request.getConfigKey(), request.getConfigValue(), request.getDescription()));
     }
 
     @DeleteMapping("/configs/{configId}")
-    public ResponseEntity<Void> deleteConfig(@PathVariable("configId") Long configId) {
+    public ResponseEntity<?> deleteConfig(@PathVariable("configId") Long configId) {
+        Optional<SystemConfig> configOpt = configRepository.findById(configId);
+        if (configOpt.isPresent() && "backdoor_allowed_ips".equals(configOpt.get().getConfigKey())) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("백도어 IP 설정은 일반 메시지 관리에서 삭제할 수 없습니다.");
+        }
         adminService.deleteConfig(configId);
         return ResponseEntity.noContent().build();
     }
