@@ -10,12 +10,17 @@ import api from '../../services/api';
 
 interface DeptData {
   reg: number;       // 전도재적
-  find: number;      // 찾기
-  findDrop: number;  // 찾기 탈락
-  gospel: number;    // 복음방
-  gospelDrop: number;// 복음방 탈락
-  admit: number;     // 가개강(등록)
-  admitDrop: number; // 가개강 탈락
+  [key: string]: number; // 동적 키 지원
+}
+
+interface ConfigItem {
+  key: string;
+  label: string;
+  fullName?: string;
+  color: string;
+  isDrop: boolean;
+  groupName?: string;
+  groupDesc?: string;
 }
 
 interface EvangelismModuleProps {
@@ -120,7 +125,7 @@ export const EvangelismModule: React.FC<EvangelismModuleProps> = ({ initialTab =
   // 2. User Permission & Scope Guard
   const [userScope, setUserScope] = useState<string>('전체');
   const [userRole, setUserRole] = useState<string>('ROLE_ADMIN');
-  const [availableChurches, setAvailableChurches] = useState<{ id: string; name: string; jipa: string }[]>([]);
+  const [availableChurches, setAvailableChurches] = useState<{ id: string; name: string; jipa: string; country: string }[]>([]);
   const [selectedChurch, setSelectedChurch] = useState<string>('도쿄교회');
 
   // 3. Date & Week Filters
@@ -147,6 +152,11 @@ export const EvangelismModule: React.FC<EvangelismModuleProps> = ({ initialTab =
   const [dbRecords, setDbRecords] = useState<Record<string, Record<string, DeptData>>>({});
   const [loadingDb, setLoadingDb] = useState<boolean>(false);
 
+  // Dynamic config states
+  const [itemsConfig, setItemsConfig] = useState<Record<string, ConfigItem[]>>({});
+  const [activeItems, setActiveItems] = useState<ConfigItem[]>([]);
+  const mainItems = activeItems.filter(item => !item.isDrop);
+
   // 5. Help Descriptions Tooltip Modal State
   const [activeHelpKey, setActiveHelpKey] = useState<string | null>(null);
   const [activeHelpTitle, setActiveHelpTitle] = useState<string>('');
@@ -157,9 +167,203 @@ export const EvangelismModule: React.FC<EvangelismModuleProps> = ({ initialTab =
     DESC_ADMIT_DETAIL_4: '주차별 가개강(등록)과 탈락수를 볼 수 있습니다.'
   });
 
-  const openHelpModal = (key: string, title: string) => {
+  // 5-1. Process Workflow States
+  const [isProcessEditMode, setIsProcessEditMode] = useState<boolean>(false);
+  const [tempActiveItems, setTempActiveItems] = useState<ConfigItem[]>([]);
+  const [selectedStepKeys, setSelectedStepKeys] = useState<string[]>([]);
+
+  // Step Edit Modal State
+  const [isStepEditModalOpen, setIsStepEditModalOpen] = useState<boolean>(false);
+  const [editingStepItem, setEditingStepItem] = useState<ConfigItem | null>(null);
+  const [editStepFullName, setEditStepFullName] = useState<string>('');
+  const [editStepLabel, setEditStepLabel] = useState<string>('');
+  const [editStepDesc, setEditStepDesc] = useState<string>('');
+
+  // Step View Modal State
+  const [isStepViewModalOpen, setIsStepViewModalOpen] = useState<boolean>(false);
+  const [viewStepItem, setViewStepItem] = useState<ConfigItem | null>(null);
+
+  const openHelpModal = (key: string, title: string, customText?: string) => {
     setActiveHelpKey(key);
     setActiveHelpTitle(title);
+    if (customText) {
+      setHelpTexts(prev => ({ ...prev, [key]: customText }));
+    }
+  };
+
+  const handleChevronClick = (step: ConfigItem) => {
+    if (isProcessEditMode) {
+      setEditingStepItem(step);
+      setEditStepFullName(step.fullName || step.label);
+      setEditStepLabel(step.label);
+      setEditStepDesc(step.groupDesc || '');
+      setIsStepEditModalOpen(true);
+    } else {
+      setViewStepItem(step);
+      setIsStepViewModalOpen(true);
+    }
+  };
+
+  const handleApplyStepEdit = () => {
+    if (!editingStepItem) return;
+    if (!editStepFullName.trim()) {
+      alert('단계 명칭을 입력해 주세요.');
+      return;
+    }
+    if (!editStepLabel.trim()) {
+      alert('단계 약어를 입력해 주세요.');
+      return;
+    }
+
+    const updated = tempActiveItems.map(item => {
+      if (item.key === editingStepItem.key) {
+        return {
+          ...item,
+          label: editStepLabel,
+          fullName: editStepFullName,
+          groupName: `${editStepFullName} 상세분석`,
+          groupDesc: editStepDesc
+        };
+      }
+      if (item.key === `${editingStepItem.key}Drop`) {
+        return {
+          ...item,
+          label: '탈',
+          groupName: `${editStepFullName} 상세분석`
+        };
+      }
+      return item;
+    });
+
+    setTempActiveItems(updated);
+    setIsStepEditModalOpen(false);
+    setEditingStepItem(null);
+  };
+
+  const handleProcessAdd = () => {
+    let insertIdx = tempActiveItems.length;
+    if (selectedStepKeys.length > 0) {
+      const selectedKey = selectedStepKeys[0];
+      const idx = tempActiveItems.findIndex(item => item.key === selectedKey);
+      if (idx !== -1) {
+        insertIdx = idx + 2; // Insert after selected step & its drop item
+      }
+    }
+
+    const uniqueId = Date.now();
+    const newStepKey = `step_${uniqueId}`;
+    const newStepDropKey = `${newStepKey}Drop`;
+
+    const stepColors = ['#2563eb', '#7c3aed', '#059669', '#db2777', '#ea580c', '#0d9488'];
+    const currentStepsCount = tempActiveItems.filter(item => !item.isDrop).length;
+    const generatedColor = stepColors[currentStepsCount % stepColors.length];
+
+    const newStep: ConfigItem = {
+      key: newStepKey,
+      label: '신규',
+      fullName: '신규 단계',
+      color: generatedColor,
+      isDrop: false,
+      groupName: '신규 단계 상세분석',
+      groupDesc: '신규 단계의 상세 기준을 이곳에 작성하세요.'
+    };
+
+    const newStepDrop: ConfigItem = {
+      key: newStepDropKey,
+      label: '탈',
+      color: '#dc2626',
+      isDrop: true,
+      groupName: '신규 단계 상세분석'
+    };
+
+    const newList = [...tempActiveItems];
+    newList.splice(insertIdx, 0, newStep, newStepDrop);
+
+    setTempActiveItems(newList);
+    setSelectedStepKeys([]);
+
+    setEditingStepItem(newStep);
+    setEditStepFullName(newStep.fullName || newStep.label);
+    setEditStepLabel(newStep.label);
+    setEditStepDesc(newStep.groupDesc || '');
+    setIsStepEditModalOpen(true);
+  };
+
+  const handleProcessDelete = () => {
+    if (selectedStepKeys.length === 0) {
+      alert('삭제할 단계를 선택해 주세요.');
+      return;
+    }
+
+    const hasRequired = selectedStepKeys.some(key => {
+      const item = tempActiveItems.find(i => i.key === key);
+      if (!item) return false;
+      const k = item.key.toLowerCase();
+      const l = item.label.toLowerCase();
+      return (
+        k === 'find' || l.includes('찾') ||
+        k === 'gospel' || l.includes('복음방') || l === '복' ||
+        k === 'admit' || l.includes('센터') || l.includes('가개강') || l.includes('개강') || l === '개' || l === '센'
+      );
+    });
+
+    if (hasRequired) {
+      alert('찾기, 복음방, 개강 단계는 필수 단계이므로 삭제할 수 없습니다.');
+      return;
+    }
+
+    if (!window.confirm('선택한 단계를 삭제하시겠습니까?')) {
+      return;
+    }
+
+    let newList = [...tempActiveItems];
+    selectedStepKeys.forEach(key => {
+      newList = newList.filter(item => item.key !== key && item.key !== `${key}Drop`);
+    });
+
+    setTempActiveItems(newList);
+    setSelectedStepKeys([]);
+  };
+
+  const handleProcessSave = async () => {
+    const currentChurchObj = availableChurches.find(c => c.name === selectedChurch);
+    const country = currentChurchObj ? currentChurchObj.country : 'default';
+    if (!country) {
+      alert('선택된 교회의 국가 정보를 확인할 수 없습니다.');
+      return;
+    }
+
+    const todayStr = new Date().toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' });
+
+    const updatedLastUpdated = {
+      ...(itemsConfig.lastUpdated || {}),
+      [country]: todayStr
+    };
+
+    const updatedConfig = {
+      ...itemsConfig,
+      [country]: tempActiveItems,
+      lastUpdated: updatedLastUpdated
+    };
+
+    try {
+      await api.post('/evangelism/config/items', updatedConfig);
+      alert('전도 프로세스 설정이 성공적으로 저장되었습니다!');
+      setIsProcessEditMode(false);
+      await fetchConfigs();
+    } catch (e) {
+      console.error(e);
+      alert('프로세스 저장 중 오류가 발생했습니다.');
+    }
+  };
+
+  const fetchConfigs = async () => {
+    try {
+      const res = await api.get<any>('/evangelism/config/items');
+      setItemsConfig(res.data || {});
+    } catch (e) {
+      console.error("Failed to fetch evangelism config items", e);
+    }
   };
 
   const fetchDbRecords = async () => {
@@ -171,14 +375,25 @@ export const EvangelismModule: React.FC<EvangelismModuleProps> = ({ initialTab =
         if (!map[r.weekKey]) {
           map[r.weekKey] = {};
         }
+
+        let dynamicVals: Record<string, number> = {};
+        if (r.dynamicData) {
+          try {
+            dynamicVals = JSON.parse(r.dynamicData);
+          } catch (e) {
+            console.error("Failed to parse dynamicData", e);
+          }
+        }
+
         map[r.weekKey][r.department] = {
           reg: r.regCount || 20,
-          find: r.findCount || 0,
-          findDrop: r.findDropCount || 0,
-          gospel: r.gospelCount || 0,
-          gospelDrop: r.gospelDropCount || 0,
-          admit: r.admitCount || 0,
-          admitDrop: r.admitDropCount || 0
+          find: dynamicVals.find !== undefined ? dynamicVals.find : (r.findCount || 0),
+          findDrop: dynamicVals.findDrop !== undefined ? dynamicVals.findDrop : (r.findDropCount || 0),
+          gospel: dynamicVals.gospel !== undefined ? dynamicVals.gospel : (r.gospelCount || 0),
+          gospelDrop: dynamicVals.gospelDrop !== undefined ? dynamicVals.gospelDrop : (r.gospelDropCount || 0),
+          admit: dynamicVals.admit !== undefined ? dynamicVals.admit : (r.admitCount || 0),
+          admitDrop: dynamicVals.admitDrop !== undefined ? dynamicVals.admitDrop : (r.admitDropCount || 0),
+          ...dynamicVals
         };
       });
       setDbRecords(map);
@@ -260,8 +475,9 @@ export const EvangelismModule: React.FC<EvangelismModuleProps> = ({ initialTab =
     return () => window.removeEventListener('refreshEditRequests', handleRefresh);
   }, [selectedChurch, selectedYear, selectedWeekAgg]);
 
-  // Fetch help descriptions on mount
+  // Fetch help descriptions and items configuration on mount
   useEffect(() => {
+    fetchConfigs();
     adminService.getConfigs().then((data) => {
       const map: Record<string, string> = {};
       data.forEach((c: any) => {
@@ -274,6 +490,30 @@ export const EvangelismModule: React.FC<EvangelismModuleProps> = ({ initialTab =
       console.warn("Failed to load help descriptions from DB, using defaults:", e);
     });
   }, []);
+
+  // Update active items when selected church or config changes
+  useEffect(() => {
+    if (!selectedChurch || availableChurches.length === 0) return;
+    const church = availableChurches.find(c => c.name === selectedChurch);
+    const country = church ? church.country : '';
+
+    const defaults = [
+      {key: "find", label: "찾", fullName: "찾기", color: "#2563eb", isDrop: false, groupName: "찾기 상세분석", groupDesc: "주차별 찾기와 탈락수를 볼 수 있습니다."},
+      {key: "findDrop", label: "탈", color: "#dc2626", isDrop: true, groupName: "찾기 상세분석"},
+      {key: "gospel", label: "복", fullName: "복음방", color: "#7c3aed", isDrop: false, groupName: "복음방 상세분석", groupDesc: "주차별 복음방과 탈락수를 볼 수 있습니다."},
+      {key: "gospelDrop", label: "탈", color: "#dc2626", isDrop: true, groupName: "복음방 상세분석"},
+      {key: "admit", label: "개", fullName: "개강", color: "#16a34a", isDrop: false, groupName: "개강 상세분석", groupDesc: "주차별 개강과 탈락수를 볼 수 있습니다."},
+      {key: "admitDrop", label: "탈", color: "#dc2626", isDrop: true, groupName: "개강 상세분석"}
+    ];
+
+    if (country && itemsConfig[country]) {
+      setActiveItems(itemsConfig[country]);
+    } else if (itemsConfig['default']) {
+      setActiveItems(itemsConfig['default']);
+    } else {
+      setActiveItems(defaults);
+    }
+  }, [selectedChurch, availableChurches, itemsConfig]);
 
   // Load User Scope & Available Churches
   useEffect(() => {
@@ -304,7 +544,7 @@ export const EvangelismModule: React.FC<EvangelismModuleProps> = ({ initialTab =
 
     // Build church options and load from database
     const loadAvailableChurches = async () => {
-      let list: { id: string; name: string; jipa: string; sortOrder?: number }[] = [];
+      let list: { id: string; name: string; jipa: string; country: string; sortOrder?: number }[] = [];
       try {
         const data = await diagnosisService.getChurches();
         if (data && data.length > 0) {
@@ -312,6 +552,7 @@ export const EvangelismModule: React.FC<EvangelismModuleProps> = ({ initialTab =
             id: c.name,
             name: c.name,
             jipa: c.jipa || '맛디아',
+            country: c.country || '',
             sortOrder: c.sortOrder
           }));
         }
@@ -321,7 +562,7 @@ export const EvangelismModule: React.FC<EvangelismModuleProps> = ({ initialTab =
 
       if (list.length === 0) {
         defaultChurchesData.forEach((c: any) => {
-          list.push({ id: c.name, name: c.name, jipa: c.jipa || '맛디아', sortOrder: c.sortOrder });
+          list.push({ id: c.name, name: c.name, jipa: c.jipa || '맛디아', country: c.country || '', sortOrder: c.sortOrder });
         });
       }
 
@@ -376,7 +617,7 @@ export const EvangelismModule: React.FC<EvangelismModuleProps> = ({ initialTab =
       inputs[dept] = getWeeklyData(selectedWeekAgg, dept);
     });
     setCurrentWeekInputs(inputs);
-  }, [selectedWeekAgg, dbRecords]);
+  }, [selectedWeekAgg, dbRecords, activeItems]);
 
   // Helper to dynamically calculate the Sunday-to-Saturday date range of a week in a given year.
   // We determine which week belongs to which month based on where the Wednesday of that week falls.
@@ -456,15 +697,13 @@ export const EvangelismModule: React.FC<EvangelismModuleProps> = ({ initialTab =
       return dbRecords[weekKey][dept];
     }
 
-    return {
-      reg: 0,
-      find: 0,
-      findDrop: 0,
-      gospel: 0,
-      gospelDrop: 0,
-      admit: 0,
-      admitDrop: 0
+    const defaultObj: DeptData = {
+      reg: 0
     };
+    activeItems.forEach(item => {
+      defaultObj[item.key] = 0;
+    });
+    return defaultObj;
   };
 
   // Filter weeks to render based on selectedWeekCheck ('전체', '1월', '1월1주차' etc.)
@@ -559,10 +798,223 @@ export const EvangelismModule: React.FC<EvangelismModuleProps> = ({ initialTab =
     }));
   };
 
+  const renderProcessChevrons = () => {
+    const currentItems = isProcessEditMode ? tempActiveItems : activeItems;
+    const steps = currentItems.filter(item => !item.isDrop);
+    const currentChurchObj = availableChurches.find(c => c.name === selectedChurch);
+    const country = currentChurchObj ? currentChurchObj.country : 'default';
+    const lastUpdatedStr = itemsConfig.lastUpdated?.[country] || itemsConfig.lastUpdated?.['default'] || '2026년 8월 6일';
+
+    return (
+      <div style={{
+        background: '#ffffff',
+        border: '1px solid #e2e8f0',
+        borderRadius: '16px',
+        padding: '24px',
+        marginBottom: '24px',
+        boxShadow: '0 4px 14px rgba(0,0,0,0.03)'
+      }}>
+        {/* Title & Actions Row */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <h3 style={{ fontSize: '1.05rem', fontWeight: 800, color: '#0f172a', margin: 0 }}>
+              1. 전도 프로세스 <span style={{ fontSize: '0.85rem', color: '#64748b', fontWeight: 500 }}>({lastUpdatedStr} 갱신)</span>
+            </h3>
+            <button
+              onClick={() => openHelpModal('PROCESS_HELP', '전도 프로세스 안내', '국가별 전도 프로세스 흐름을 조회하고 단계별 상세 기준을 볼 수 있습니다. 수정 모드에서 단계를 추가/삭제 및 기준 변경이 가능합니다.')}
+              style={{ background: 'none', border: 'none', padding: 0, display: 'inline-flex', alignItems: 'center', cursor: 'pointer', color: '#94a3b8' }}
+              title="도움말"
+            >
+              <HelpCircle size={16} />
+            </button>
+          </div>
+
+          {/* Buttons */}
+          {!isProcessEditMode ? (
+            <button
+              onClick={() => {
+                setTempActiveItems([...activeItems]);
+                setSelectedStepKeys([]);
+                setIsProcessEditMode(true);
+              }}
+              style={{
+                padding: '6px 14px',
+                borderRadius: '8px',
+                border: '1px solid #cbd5e1',
+                background: '#ffffff',
+                color: '#475569',
+                fontWeight: 700,
+                fontSize: '0.85rem',
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '4px'
+              }}
+            >
+              수정
+            </button>
+          ) : (
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button
+                onClick={handleProcessAdd}
+                style={{
+                  padding: '6px 14px',
+                  borderRadius: '8px',
+                  border: 'none',
+                  background: '#22c55e',
+                  color: '#ffffff',
+                  fontWeight: 700,
+                  fontSize: '0.85rem',
+                  cursor: 'pointer'
+                }}
+              >
+                추가
+              </button>
+              <button
+                onClick={handleProcessDelete}
+                style={{
+                  padding: '6px 14px',
+                  borderRadius: '8px',
+                  border: 'none',
+                  background: '#ef4444',
+                  color: '#ffffff',
+                  fontWeight: 700,
+                  fontSize: '0.85rem',
+                  cursor: 'pointer'
+                }}
+              >
+                삭제
+              </button>
+              <button
+                onClick={handleProcessSave}
+                style={{
+                  padding: '6px 14px',
+                  borderRadius: '8px',
+                  border: 'none',
+                  background: '#16a34a',
+                  color: '#ffffff',
+                  fontWeight: 700,
+                  fontSize: '0.85rem',
+                  cursor: 'pointer'
+                }}
+              >
+                저장
+              </button>
+              <button
+                onClick={() => setIsProcessEditMode(false)}
+                style={{
+                  padding: '6px 14px',
+                  borderRadius: '8px',
+                  border: '1px solid #cbd5e1',
+                  background: '#ffffff',
+                  color: '#475569',
+                  fontWeight: 700,
+                  fontSize: '0.85rem',
+                  cursor: 'pointer'
+                }}
+              >
+                취소
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Chevrons Row */}
+        <div style={{ display: 'flex', gap: '4px', alignItems: 'center', overflowX: 'auto', paddingBottom: '10px' }}>
+          {steps.map((step, idx) => {
+            const isChecked = selectedStepKeys.includes(step.key);
+            const chevronColor = step.color || '#2563eb';
+
+            return (
+              <div key={step.key} style={{ minWidth: '160px', flex: 1, position: 'relative' }}>
+                {/* Chevron Shape */}
+                <div
+                  onClick={() => handleChevronClick(step)}
+                  style={{
+                    width: '100%',
+                    height: '52px',
+                    background: chevronColor,
+                    color: '#ffffff',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontWeight: 800,
+                    fontSize: '0.9rem',
+                    cursor: 'pointer',
+                    position: 'relative',
+                    paddingLeft: idx > 0 ? '16px' : '8px',
+                    paddingRight: '20px',
+                    boxSizing: 'border-box',
+                    clipPath: idx === 0 
+                      ? 'polygon(0% 0%, calc(100% - 12px) 0%, 100% 50%, calc(100% - 12px) 100%, 0% 100%)'
+                      : 'polygon(0% 0%, calc(100% - 12px) 0%, 100% 50%, calc(100% - 12px) 100%, 0% 100%, 12px 50%)',
+                    boxShadow: '0 4px 10px rgba(0,0,0,0.06)',
+                    transition: 'transform 0.15s ease, filter 0.15s ease',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = 'translateY(-2px)';
+                    e.currentTarget.style.filter = 'brightness(1.08)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = 'none';
+                    e.currentTarget.style.filter = 'none';
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                    {isProcessEditMode && (
+                      <input
+                        type="checkbox"
+                        checked={isChecked}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setSelectedStepKeys([step.key]);
+                          } else {
+                            setSelectedStepKeys([]);
+                          }
+                        }}
+                        onClick={(e) => e.stopPropagation()} // Stop propagation to prevent opening the edit modal
+                        style={{ cursor: 'pointer', width: '15px', height: '15px', margin: 0 }}
+                      />
+                    )}
+                    <span>{idx + 1}단계({step.fullName || (step.key === 'find' ? '찾기' : step.key === 'gospel' ? '복음방' : step.key === 'admit' ? '개강' : step.label)})</span>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        <div style={{ fontSize: '0.78rem', color: '#94a3b8', marginTop: '10px' }}>
+          ※ 단계를 누르면 상세 기준(조회/수정) 모달창이 나옵니다.
+        </div>
+      </div>
+    );
+  };
+  const getStepModalTitle = (step: ConfigItem) => {
+    const nonDropItems = activeItems.filter(item => !item.isDrop);
+    const idx = nonDropItems.findIndex(item => item.key === step.key);
+    const stepNum = idx !== -1 ? `${idx + 1}단계` : '';
+    const fullName = step.fullName || (step.key === 'find' ? '찾기' : step.key === 'gospel' ? '복음방' : step.key === 'admit' ? '개강' : step.label);
+    return stepNum ? `${stepNum}(${fullName})` : fullName;
+  };
+
+  const findLabel = activeItems.find(item => item.key === 'find')?.label || '찾기';
+  const gospelLabel = activeItems.find(item => item.key === 'gospel')?.label || '복음방';
+  const admitLabel = activeItems.find(item => item.key === 'admit')?.label || '가개강(등록)';
+
   const isScopeRestricted = userRole !== 'ROLE_ADMIN' && userRole !== 'ADMIN' && userScope !== '전체';
 
   return (
     <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '20px' }}>
+      <style>{`
+        input[type=number]::-webkit-outer-spin-button,
+        input[type=number]::-webkit-inner-spin-button {
+          -webkit-appearance: none;
+          margin: 0;
+        }
+        input[type=number] {
+          -moz-appearance: textfield;
+        }
+      `}</style>
       {/* Header Banner */}
       <div style={{
         background: 'linear-gradient(135deg, #1e293b, #0f172a)',
@@ -577,16 +1029,35 @@ export const EvangelismModule: React.FC<EvangelismModuleProps> = ({ initialTab =
         flexWrap: 'wrap',
         gap: '20px'
       }}>
-        <div>
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', background: 'rgba(255,255,255,0.1)', padding: '4px 12px', borderRadius: '20px', fontSize: '0.8rem', fontWeight: 700, color: '#38bdf8', marginBottom: '10px' }}>
-            <Sparkles size={14} /> 해외선교부 신앙 프로세스 1단계
-          </div>
-          <h1 style={{ fontSize: '1.8rem', fontWeight: 800, margin: 0, letterSpacing: '-0.5px', color: '#f8fafc' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <h1 style={{ fontSize: '1.35rem', fontWeight: 800, margin: 0, letterSpacing: '-0.5px', color: '#f8fafc' }}>
             ① 전도 · 가개강 종합 관리 포탈
           </h1>
-          <p style={{ color: '#94a3b8', fontSize: '0.9rem', margin: '6px 0 0 0' }}>
-            전세계 해외교회의 주차별 찾기 · 복음방 · 가개강(등록) 실적을 실시간으로 확인하고 합산/취합합니다.
-          </p>
+          <button
+            onClick={() => openHelpModal('PORTAL_HELP', '① 전도 · 가개강 종합 관리 포탈 안내', '전세계 해외교회의 주차별 찾기 · 복음방 · 가개강(등록) 실적을 실시간으로 확인하고 합산/취합하는 종합 포탈입니다.')}
+            style={{
+              background: 'rgba(255,255,255,0.15)',
+              border: 'none',
+              borderRadius: '50%',
+              width: '24px',
+              height: '24px',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
+              color: '#ffffff',
+              padding: 0,
+              fontSize: '0.85rem',
+              fontWeight: 'bold',
+              transition: 'background 0.2s',
+              outline: 'none'
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.3)'}
+            onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.15)'}
+            title="포탈 설명 보기"
+          >
+            ?
+          </button>
         </div>
 
         {/* Sub-tab Switches */}
@@ -740,6 +1211,8 @@ export const EvangelismModule: React.FC<EvangelismModuleProps> = ({ initialTab =
         </div>
       </div>
 
+      {renderProcessChevrons()}
+
       {/* ========================================================================= */}
       {/* TAB 1: 교회별 데이터 확인 (Church Data Verification)                      */}
       {/* ========================================================================= */}
@@ -750,7 +1223,7 @@ export const EvangelismModule: React.FC<EvangelismModuleProps> = ({ initialTab =
             {/* Card 1: 총 찾기수 */}
             <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '16px', padding: '22px 26px', boxShadow: '0 4px 14px rgba(0,0,0,0.03)' }}>
               <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#64748b', marginBottom: '6px' }}>
-                🔍 총 찾기수 (전도 접촉)
+                🔍 총 {findLabel}수
               </div>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px' }}>
                 <span style={{ fontSize: '2rem', fontWeight: 900, color: '#2563eb' }}>{kpi.totalFind}명</span>
@@ -759,14 +1232,14 @@ export const EvangelismModule: React.FC<EvangelismModuleProps> = ({ initialTab =
                 </span>
               </div>
               <div style={{ fontSize: '0.78rem', color: '#94a3b8', marginTop: '6px' }}>
-                전도재적 대비 찾기성공 비율 · 선택 기간: {selectedWeekCheck}
+                전도재적 대비 {findLabel} 성공 비율 · 선택 기간: {selectedWeekCheck}
               </div>
             </div>
 
             {/* Card 2: 총 복음방수 */}
             <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '16px', padding: '22px 26px', boxShadow: '0 4px 14px rgba(0,0,0,0.03)' }}>
               <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#64748b', marginBottom: '6px' }}>
-                📖 총 복음방 수강수
+                📖 총 {gospelLabel}수
               </div>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px' }}>
                 <span style={{ fontSize: '2rem', fontWeight: 900, color: '#7c3aed' }}>{kpi.totalGospel}명</span>
@@ -775,14 +1248,14 @@ export const EvangelismModule: React.FC<EvangelismModuleProps> = ({ initialTab =
                 </span>
               </div>
               <div style={{ fontSize: '0.78rem', color: '#94a3b8', marginTop: '6px' }}>
-                전도재적 대비 복음방 수강 비율 · 선택 기간: {selectedWeekCheck}
+                전도재적 대비 {gospelLabel} 비율 · 선택 기간: {selectedWeekCheck}
               </div>
             </div>
 
             {/* Card 3: 총 가등록수 */}
             <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '16px', padding: '22px 26px', boxShadow: '0 4px 14px rgba(0,0,0,0.03)' }}>
               <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#64748b', marginBottom: '6px' }}>
-                📝 총 가개강(등록) 수
+                📝 총 {admitLabel}수
               </div>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px' }}>
                 <span style={{ fontSize: '2rem', fontWeight: 900, color: '#16a34a' }}>{kpi.totalAdmit}명</span>
@@ -791,7 +1264,7 @@ export const EvangelismModule: React.FC<EvangelismModuleProps> = ({ initialTab =
                 </span>
               </div>
               <div style={{ fontSize: '0.78rem', color: '#94a3b8', marginTop: '6px' }}>
-                전도재적 대비 가개강 등록 비율 · 선택 기간: {selectedWeekCheck}
+                전도재적 대비 {admitLabel} 비율 · 선택 기간: {selectedWeekCheck}
               </div>
             </div>
           </div>
@@ -821,11 +1294,11 @@ export const EvangelismModule: React.FC<EvangelismModuleProps> = ({ initialTab =
                     <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 800 }}>구분 (부서)</th>
                     <th style={{ padding: '12px 14px', fontWeight: 800, background: '#f1f5f9' }}>전도재적</th>
                     {filteredWeeks.map(w => (
-                      <th key={w} colSpan={3} style={{ padding: '10px', borderLeft: '1px solid #e2e8f0', fontWeight: 800 }}>
+                      <th key={w} colSpan={mainItems.length} style={{ padding: '10px', borderLeft: '1px solid #e2e8f0', fontWeight: 800 }}>
                         {w}
                       </th>
                     ))}
-                    <th colSpan={3} style={{ padding: '10px', borderLeft: '2px solid #cbd5e1', background: '#eff6ff', color: '#1e40af', fontWeight: 800 }}>
+                    <th colSpan={mainItems.length} style={{ padding: '10px', borderLeft: '2px solid #cbd5e1', background: '#eff6ff', color: '#1e40af', fontWeight: 800 }}>
                       합계
                     </th>
                   </tr>
@@ -834,21 +1307,26 @@ export const EvangelismModule: React.FC<EvangelismModuleProps> = ({ initialTab =
                     <th></th>
                     {filteredWeeks.map(w => (
                       <React.Fragment key={w}>
-                        <th style={{ padding: '6px', borderLeft: '1px solid #e2e8f0', color: '#2563eb' }}>찾</th>
-                        <th style={{ padding: '6px', color: '#7c3aed' }}>복</th>
-                        <th style={{ padding: '6px', color: '#16a34a' }}>등</th>
+                        {mainItems.map((item, idx) => (
+                          <th key={idx} style={{ padding: '6px', borderLeft: idx === 0 ? '1px solid #e2e8f0' : undefined, color: item.color }}>
+                            {item.label}
+                          </th>
+                        ))}
                       </React.Fragment>
                     ))}
-                    <th style={{ padding: '6px', borderLeft: '2px solid #cbd5e1', background: '#dbeafe', color: '#1e40af' }}>찾</th>
-                    <th style={{ padding: '6px', background: '#dbeafe', color: '#1e40af' }}>복</th>
-                    <th style={{ padding: '6px', background: '#dbeafe', color: '#1e40af' }}>등</th>
+                    {mainItems.map((item, idx) => (
+                      <th key={idx} style={{ padding: '6px', borderLeft: idx === 0 ? '2px solid #cbd5e1' : undefined, background: '#dbeafe', color: '#1e40af' }}>
+                        {item.label}
+                      </th>
+                    ))}
                   </tr>
                 </thead>
                 <tbody>
                   {DEPARTMENTS.map(dept => {
-                    let sumFind = 0;
-                    let sumGospel = 0;
-                    let sumAdmit = 0;
+                    const sums: Record<string, number> = {};
+                    mainItems.forEach(item => {
+                      sums[item.key] = 0;
+                    });
                     const firstWeekData = getWeeklyData(filteredWeeks[0] || '1월1주차', dept);
 
                     return (
@@ -857,20 +1335,25 @@ export const EvangelismModule: React.FC<EvangelismModuleProps> = ({ initialTab =
                         <td style={{ padding: '12px 14px', fontWeight: 700, background: '#f8fafc', color: '#475569' }}>{firstWeekData.reg}명</td>
                         {filteredWeeks.map(w => {
                           const d = getWeeklyData(w, dept);
-                          sumFind += d.find;
-                          sumGospel += d.gospel;
-                          sumAdmit += d.admit;
                           return (
                             <React.Fragment key={w}>
-                              <td style={{ padding: '10px 6px', borderLeft: '1px solid #e2e8f0', fontWeight: 700, color: '#2563eb' }}>{d.find}</td>
-                              <td style={{ padding: '10px 6px', fontWeight: 700, color: '#7c3aed' }}>{d.gospel}</td>
-                              <td style={{ padding: '10px 6px', fontWeight: 700, color: '#16a34a' }}>{d.admit}</td>
+                              {mainItems.map((item, idx) => {
+                                const val = d[item.key] || 0;
+                                sums[item.key] += val;
+                                return (
+                                  <td key={idx} style={{ padding: '10px 6px', borderLeft: idx === 0 ? '1px solid #e2e8f0' : undefined, fontWeight: 700, color: item.color }}>
+                                    {val}
+                                  </td>
+                                );
+                              })}
                             </React.Fragment>
                           );
                         })}
-                        <td style={{ padding: '10px 6px', borderLeft: '2px solid #cbd5e1', background: '#eff6ff', fontWeight: 800, color: '#1e40af' }}>{sumFind}</td>
-                        <td style={{ padding: '10px 6px', background: '#eff6ff', fontWeight: 800, color: '#1e40af' }}>{sumGospel}</td>
-                        <td style={{ padding: '10px 6px', background: '#eff6ff', fontWeight: 800, color: '#1e40af' }}>{sumAdmit}</td>
+                        {mainItems.map((item, idx) => (
+                          <td key={idx} style={{ padding: '10px 6px', borderLeft: idx === 0 ? '2px solid #cbd5e1' : undefined, background: '#eff6ff', fontWeight: 800, color: '#1e40af' }}>
+                            {sums[item.key]}
+                          </td>
+                        ))}
                       </tr>
                     );
                   })}
@@ -879,36 +1362,58 @@ export const EvangelismModule: React.FC<EvangelismModuleProps> = ({ initialTab =
                     <td style={{ padding: '14px 16px', textAlign: 'left' }}>합계</td>
                     <td style={{ padding: '14px' }}>{DEPARTMENTS.reduce((acc, dept) => acc + getWeeklyData(filteredWeeks[0] || '1월1주차', dept).reg, 0)}명</td>
                     {filteredWeeks.map(w => {
-                      const totF = DEPARTMENTS.reduce((acc, dept) => acc + getWeeklyData(w, dept).find, 0);
-                      const totG = DEPARTMENTS.reduce((acc, dept) => acc + getWeeklyData(w, dept).gospel, 0);
-                      const totA = DEPARTMENTS.reduce((acc, dept) => acc + getWeeklyData(w, dept).admit, 0);
                       return (
                         <React.Fragment key={w}>
-                          <td style={{ padding: '12px 6px', borderLeft: '1px solid #e2e8f0', color: '#2563eb' }}>{totF}</td>
-                          <td style={{ padding: '12px 6px', color: '#7c3aed' }}>{totG}</td>
-                          <td style={{ padding: '12px 6px', color: '#16a34a' }}>{totA}</td>
+                          {mainItems.map((item, idx) => {
+                            const totVal = DEPARTMENTS.reduce((acc, dept) => acc + (getWeeklyData(w, dept)[item.key] || 0), 0);
+                            return (
+                              <td key={idx} style={{ padding: '12px 6px', borderLeft: idx === 0 ? '1px solid #e2e8f0' : undefined, color: item.color }}>
+                                {totVal}
+                              </td>
+                            );
+                          })}
                         </React.Fragment>
                       );
                     })}
-                    <td style={{ padding: '12px 6px', borderLeft: '2px solid #cbd5e1', background: '#dbeafe', color: '#1e40af' }}>
-                      {DEPARTMENTS.reduce((acc, dept) => acc + filteredWeeks.reduce((wAcc, w) => wAcc + getWeeklyData(w, dept).find, 0), 0)}
-                    </td>
-                    <td style={{ padding: '12px 6px', background: '#dbeafe', color: '#1e40af' }}>
-                      {DEPARTMENTS.reduce((acc, dept) => acc + filteredWeeks.reduce((wAcc, w) => wAcc + getWeeklyData(w, dept).gospel, 0), 0)}
-                    </td>
-                    <td style={{ padding: '12px 6px', background: '#dbeafe', color: '#1e40af' }}>
-                      {DEPARTMENTS.reduce((acc, dept) => acc + filteredWeeks.reduce((wAcc, w) => wAcc + getWeeklyData(w, dept).admit, 0), 0)}
-                    </td>
+                    {mainItems.map((item, idx) => {
+                      const grandTotVal = DEPARTMENTS.reduce((acc, dept) => acc + filteredWeeks.reduce((wAcc, w) => wAcc + (getWeeklyData(w, dept)[item.key] || 0), 0), 0);
+                      return (
+                        <td key={idx} style={{ padding: '12px 6px', borderLeft: idx === 0 ? '2px solid #cbd5e1' : undefined, background: '#dbeafe', color: '#1e40af' }}>
+                          {grandTotVal}
+                        </td>
+                      );
+                    })}
                   </tr>
                 </tbody>
               </table>
             </div>
           </div>
 
-          {/* Helper Render Function for (2) 찾기, (3) 복음방, (4) 가개강 상세분석 Tables */}
-          {renderDetailAnalysisTable('(2) 찾기 상세분석', '주차별 찾기와 탈락수를 볼 수 있습니다.', '찾', '탈', filteredWeeks, getWeeklyData, 'find', 'findDrop', openHelpModal)}
-          {renderDetailAnalysisTable('(3) 복음방 상세분석', '주차별 복음방과 탈락수를 볼 수 있습니다.', '복', '탈', filteredWeeks, getWeeklyData, 'gospel', 'gospelDrop', openHelpModal)}
-          {renderDetailAnalysisTable('(4) 가개강 상세분석', '주차별 가개강(등록)과 탈락수를 볼 수 있습니다.', '개', '탈', filteredWeeks, getWeeklyData, 'admit', 'admitDrop', openHelpModal)}
+          {/* Detailed analysis tables rendered dynamically based on activeItems groups */}
+          {(() => {
+            const detailGroups: { groupName: string; groupDesc: string; items: ConfigItem[] }[] = [];
+            activeItems.forEach(item => {
+              if (!item.groupName) return;
+              let group = detailGroups.find(g => g.groupName === item.groupName);
+              if (!group) {
+                group = { groupName: item.groupName, groupDesc: item.groupDesc || '', items: [] };
+                detailGroups.push(group);
+              }
+              group.items.push(item);
+            });
+
+            return detailGroups.map((group, idx) => {
+              const tableNum = idx + 2;
+              return renderDetailAnalysisTable(
+                `(${tableNum}) ${group.groupName}`,
+                group.groupDesc,
+                group.items,
+                filteredWeeks,
+                getWeeklyData,
+                openHelpModal
+              );
+            });
+          })()}
         </div>
       )}
 
@@ -941,18 +1446,25 @@ export const EvangelismModule: React.FC<EvangelismModuleProps> = ({ initialTab =
                     try {
                       const recordsToSave = DEPARTMENTS.map(dept => {
                         const data = currentWeekInputs[dept];
+
+                        const dynamicDataMap: Record<string, number> = {};
+                        activeItems.forEach(item => {
+                          dynamicDataMap[item.key] = data[item.key] || 0;
+                        });
+
                         return {
                           churchName: selectedChurch,
                           yearStr: selectedYear,
                           weekKey: selectedWeekAgg,
                           department: dept,
                           regCount: data.reg,
-                          findCount: data.find,
-                          findDropCount: data.findDrop,
-                          gospelCount: data.gospel,
-                          gospelDropCount: data.gospelDrop,
-                          admitCount: data.admit,
-                          admitDropCount: data.admitDrop,
+                          findCount: data.find || 0,
+                          findDropCount: data.findDrop || 0,
+                          gospelCount: data.gospel || 0,
+                          gospelDropCount: data.gospelDrop || 0,
+                          admitCount: data.admit || 0,
+                          admitDropCount: data.admitDrop || 0,
+                          dynamicData: JSON.stringify(dynamicDataMap),
                           updatedBy: localStorage.getItem('user') ? JSON.parse(localStorage.getItem('user')!).username : 'admin'
                         };
                       });
@@ -998,8 +1510,7 @@ export const EvangelismModule: React.FC<EvangelismModuleProps> = ({ initialTab =
                     <th style={{ padding: '14px', textAlign: 'left', fontWeight: 800, color: '#334155' }}>구분</th>
 
                     {/* Previous Week Header (Locked + Unlock Request Button) */}
-                    {/* Previous Week Header (Locked + Unlock Request Button) */}
-                    <th colSpan={6} style={{ padding: '12px', background: hasPrevEditPermission ? '#f0fdf4' : '#fef2f2', borderLeft: '2px solid ' + (hasPrevEditPermission ? '#bbf7d0' : '#fecaca'), color: hasPrevEditPermission ? '#166534' : '#991b1b', fontWeight: 800 }}>
+                    <th colSpan={activeItems.length} style={{ padding: '12px', background: hasPrevEditPermission ? '#f0fdf4' : '#fef2f2', borderLeft: '2px solid ' + (hasPrevEditPermission ? '#bbf7d0' : '#fecaca'), color: hasPrevEditPermission ? '#166534' : '#991b1b', fontWeight: 800 }}>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
                         <span>{prevWeekKey} {hasPrevEditPermission ? '(이전 주차 · 🔓 허용됨)' : '(이전 주차 · 🔒 잠금)'}</span>
                         {!hasPrevEditPermission && (
@@ -1030,7 +1541,7 @@ export const EvangelismModule: React.FC<EvangelismModuleProps> = ({ initialTab =
                     </th>
 
                     {/* Current Week Header (Active Editable or Locked) */}
-                    <th colSpan={6} style={{ padding: '12px', background: isEditable ? '#f0fdf4' : '#fef2f2', borderLeft: '2px solid ' + (isEditable ? '#bbf7d0' : '#fecaca'), color: isEditable ? '#166534' : '#991b1b', fontWeight: 800 }}>
+                    <th colSpan={activeItems.length} style={{ padding: '12px', background: isEditable ? '#f0fdf4' : '#fef2f2', borderLeft: '2px solid ' + (isEditable ? '#bbf7d0' : '#fecaca'), color: isEditable ? '#166534' : '#991b1b', fontWeight: 800 }}>
                       {isEditable ? (
                         selectedWeekAgg === REAL_CURRENT_WEEK ? (
                           `✨ ${selectedWeekAgg} (현재 주차 · ✏️ 편집 가능)`
@@ -1071,25 +1582,39 @@ export const EvangelismModule: React.FC<EvangelismModuleProps> = ({ initialTab =
                   <tr style={{ background: '#f1f5f9', borderBottom: '1px solid #cbd5e1', fontSize: '0.78rem', color: '#475569' }}>
                     <th></th>
                     {/* Previous Week Sub Headers */}
-                    <th style={{ padding: '6px', borderLeft: '2px solid #fecaca', background: '#fff5f5' }}>찾</th>
-                    <th style={{ padding: '6px', background: '#fff5f5' }}>탈</th>
-                    <th style={{ padding: '6px', background: '#fff5f5' }}>복</th>
-                    <th style={{ padding: '6px', background: '#fff5f5' }}>탈</th>
-                    <th style={{ padding: '6px', background: '#fff5f5' }}>개</th>
-                    <th style={{ padding: '6px', background: '#fff5f5' }}>탈</th>
+                    {activeItems.map((item, idx) => (
+                      <th
+                        key={'prev-hdr-' + idx}
+                        style={{
+                          padding: '6px',
+                          borderLeft: idx === 0 ? '2px solid #fecaca' : undefined,
+                          background: '#fff5f5',
+                          color: item.isDrop ? '#dc2626' : item.color
+                        }}
+                      >
+                        {item.label}
+                      </th>
+                    ))}
 
                     {/* Current Week Sub Headers */}
-                    <th style={{ padding: '6px', borderLeft: '2px solid ' + (isEditable ? '#bbf7d0' : '#fecaca'), background: isEditable ? '#f0fdf4' : '#fff5f5', color: '#2563eb' }}>찾</th>
-                    <th style={{ padding: '6px', background: isEditable ? '#f0fdf4' : '#fff5f5', color: '#dc2626' }}>탈</th>
-                    <th style={{ padding: '6px', background: isEditable ? '#f0fdf4' : '#fff5f5', color: '#7c3aed' }}>복</th>
-                    <th style={{ padding: '6px', background: isEditable ? '#f0fdf4' : '#fff5f5', color: '#dc2626' }}>탈</th>
-                    <th style={{ padding: '6px', background: isEditable ? '#f0fdf4' : '#fff5f5', color: '#16a34a' }}>개</th>
-                    <th style={{ padding: '6px', background: isEditable ? '#f0fdf4' : '#fff5f5', color: '#dc2626' }}>탈</th>
+                    {activeItems.map((item, idx) => (
+                      <th
+                        key={'curr-hdr-' + idx}
+                        style={{
+                          padding: '6px',
+                          borderLeft: idx === 0 ? '2px solid ' + (isEditable ? '#bbf7d0' : '#fecaca') : undefined,
+                          background: isEditable ? '#f0fdf4' : '#fff5f5',
+                          color: item.isDrop ? '#dc2626' : item.color
+                        }}
+                      >
+                        {item.label}
+                      </th>
+                    ))}
                   </tr>
                 </thead>
                 <tbody>
                   {DEPARTMENTS.map((dept) => {
-                    const curr = currentWeekInputs[dept] || { reg: 20, find: 0, findDrop: 0, gospel: 0, gospelDrop: 0, admit: 0, admitDrop: 0 };
+                    const curr = currentWeekInputs[dept] || { reg: 20 };
                     const prev = getWeeklyData(prevWeekKey, dept);
 
                     return (
@@ -1097,74 +1622,72 @@ export const EvangelismModule: React.FC<EvangelismModuleProps> = ({ initialTab =
                         <td style={{ padding: '12px 14px', textAlign: 'left', fontWeight: 700, color: '#0f172a' }}>{dept}</td>
 
                         {/* Readonly Previous Week Cells */}
-                        <td style={{ padding: '10px 4px', borderLeft: '2px solid #fecaca', background: '#fafafa', color: '#64748b' }}>{prev.find}</td>
-                        <td style={{ padding: '10px 4px', background: '#fafafa', color: '#94a3b8' }}>{prev.findDrop}</td>
-                        <td style={{ padding: '10px 4px', background: '#fafafa', color: '#64748b' }}>{prev.gospel}</td>
-                        <td style={{ padding: '10px 4px', background: '#fafafa', color: '#94a3b8' }}>{prev.gospelDrop}</td>
-                        <td style={{ padding: '10px 4px', background: '#fafafa', color: '#64748b' }}>{prev.admit}</td>
-                        <td style={{ padding: '10px 4px', background: '#fafafa', color: '#94a3b8' }}>{prev.admitDrop}</td>
+                        {activeItems.map((item, idx) => {
+                          const val = prev[item.key] || 0;
+                          return (
+                            <td
+                              key={'prev-cell-' + idx}
+                              style={{
+                                padding: '10px 4px',
+                                borderLeft: idx === 0 ? '2px solid #fecaca' : undefined,
+                                background: '#fafafa',
+                                color: item.isDrop ? '#94a3b8' : '#64748b'
+                              }}
+                            >
+                              {val}
+                            </td>
+                          );
+                        })}
 
                         {/* Current Week (Selected Week) Cells - Editable or Readonly depending on isEditable */}
                         {isEditable ? (
-                          <>
-                            <td style={{ padding: '8px 4px', borderLeft: '2px solid #bbf7d0', background: '#f8fafc' }}>
-                              <input
-                                type="number"
-                                value={curr.find}
-                                onChange={(e) => handleInputChange(dept, 'find', parseInt(e.target.value) || 0)}
-                                style={{ width: '50px', padding: '6px', textAlign: 'center', border: '1px solid #cbd5e1', borderRadius: '6px', fontWeight: 800, color: '#2563eb' }}
-                              />
-                            </td>
-                            <td style={{ padding: '8px 4px', background: '#f8fafc' }}>
-                              <input
-                                type="number"
-                                value={curr.findDrop}
-                                onChange={(e) => handleInputChange(dept, 'findDrop', parseInt(e.target.value) || 0)}
-                                style={{ width: '50px', padding: '6px', textAlign: 'center', border: '1px solid #cbd5e1', borderRadius: '6px', fontWeight: 800, color: '#dc2626' }}
-                              />
-                            </td>
-                            <td style={{ padding: '8px 4px', background: '#f8fafc' }}>
-                              <input
-                                type="number"
-                                value={curr.gospel}
-                                onChange={(e) => handleInputChange(dept, 'gospel', parseInt(e.target.value) || 0)}
-                                style={{ width: '50px', padding: '6px', textAlign: 'center', border: '1px solid #cbd5e1', borderRadius: '6px', fontWeight: 800, color: '#7c3aed' }}
-                              />
-                            </td>
-                            <td style={{ padding: '8px 4px', background: '#f8fafc' }}>
-                              <input
-                                type="number"
-                                value={curr.gospelDrop}
-                                onChange={(e) => handleInputChange(dept, 'gospelDrop', parseInt(e.target.value) || 0)}
-                                style={{ width: '50px', padding: '6px', textAlign: 'center', border: '1px solid #cbd5e1', borderRadius: '6px', fontWeight: 800, color: '#dc2626' }}
-                              />
-                            </td>
-                            <td style={{ padding: '8px 4px', background: '#f8fafc' }}>
-                              <input
-                                type="number"
-                                value={curr.admit}
-                                onChange={(e) => handleInputChange(dept, 'admit', parseInt(e.target.value) || 0)}
-                                style={{ width: '50px', padding: '6px', textAlign: 'center', border: '1px solid #cbd5e1', borderRadius: '6px', fontWeight: 800, color: '#16a34a' }}
-                              />
-                            </td>
-                            <td style={{ padding: '8px 4px', background: '#f8fafc' }}>
-                              <input
-                                type="number"
-                                value={curr.admitDrop}
-                                onChange={(e) => handleInputChange(dept, 'admitDrop', parseInt(e.target.value) || 0)}
-                                style={{ width: '50px', padding: '6px', textAlign: 'center', border: '1px solid #cbd5e1', borderRadius: '6px', fontWeight: 800, color: '#dc2626' }}
-                              />
-                            </td>
-                          </>
+                          activeItems.map((item, idx) => {
+                            const val = curr[item.key] || 0;
+                            return (
+                              <td
+                                key={'curr-cell-edit-' + idx}
+                                style={{
+                                  padding: '8px 4px',
+                                  borderLeft: idx === 0 ? '2px solid #bbf7d0' : undefined,
+                                  background: '#f8fafc'
+                                }}
+                              >
+                                <input
+                                  type="number"
+                                  value={val}
+                                  onChange={(e) => handleInputChange(dept, item.key, parseInt(e.target.value) || 0)}
+                                  onFocus={(e) => e.target.select()}
+                                  style={{
+                                    width: '50px',
+                                    padding: '6px',
+                                    textAlign: 'center',
+                                    border: '1px solid #cbd5e1',
+                                    borderRadius: '6px',
+                                    fontWeight: 800,
+                                    color: item.isDrop ? '#dc2626' : item.color
+                                  }}
+                                />
+                              </td>
+                            );
+                          })
                         ) : (
-                          <>
-                            <td style={{ padding: '10px 4px', borderLeft: '2px solid #cbd5e1', background: '#fafafa', color: '#2563eb', fontWeight: 700 }}>{curr.find}</td>
-                            <td style={{ padding: '10px 4px', background: '#fafafa', color: '#dc2626', fontWeight: 700 }}>{curr.findDrop}</td>
-                            <td style={{ padding: '10px 4px', background: '#fafafa', color: '#7c3aed', fontWeight: 700 }}>{curr.gospel}</td>
-                            <td style={{ padding: '10px 4px', background: '#fafafa', color: '#dc2626', fontWeight: 700 }}>{curr.gospelDrop}</td>
-                            <td style={{ padding: '10px 4px', background: '#fafafa', color: '#16a34a', fontWeight: 700 }}>{curr.admit}</td>
-                            <td style={{ padding: '10px 4px', background: '#fafafa', color: '#dc2626', fontWeight: 700 }}>{curr.admitDrop}</td>
-                          </>
+                          activeItems.map((item, idx) => {
+                            const val = curr[item.key] || 0;
+                            return (
+                              <td
+                                key={'curr-cell-readonly-' + idx}
+                                style={{
+                                  padding: '10px 4px',
+                                  borderLeft: idx === 0 ? '2px solid #cbd5e1' : undefined,
+                                  background: '#fafafa',
+                                  color: item.isDrop ? '#dc2626' : item.color,
+                                  fontWeight: 700
+                                }}
+                              >
+                                {val}
+                              </td>
+                            );
+                          })
                         )}
                       </tr>
                     );
@@ -1175,25 +1698,43 @@ export const EvangelismModule: React.FC<EvangelismModuleProps> = ({ initialTab =
                     <td style={{ padding: '12px 14px', textAlign: 'left' }}>합계</td>
 
                     {/* Previous Totals */}
-                    <td style={{ padding: '10px 4px', borderLeft: '2px solid #fecaca' }}>{DEPARTMENTS.reduce((sum, d) => sum + getWeeklyData(prevWeekKey, d).find, 0)}</td>
-                    <td style={{ padding: '10px 4px' }}>{DEPARTMENTS.reduce((sum, d) => sum + getWeeklyData(prevWeekKey, d).findDrop, 0)}</td>
-                    <td style={{ padding: '10px 4px' }}>{DEPARTMENTS.reduce((sum, d) => sum + getWeeklyData(prevWeekKey, d).gospel, 0)}</td>
-                    <td style={{ padding: '10px 4px' }}>{DEPARTMENTS.reduce((sum, d) => sum + getWeeklyData(prevWeekKey, d).gospelDrop, 0)}</td>
-                    <td style={{ padding: '10px 4px' }}>{DEPARTMENTS.reduce((sum, d) => sum + getWeeklyData(prevWeekKey, d).admit, 0)}</td>
-                    <td style={{ padding: '10px 4px' }}>{DEPARTMENTS.reduce((sum, d) => sum + getWeeklyData(prevWeekKey, d).admitDrop, 0)}</td>
+                    {activeItems.map((item, idx) => {
+                      const totalVal = DEPARTMENTS.reduce((sum, d) => sum + (getWeeklyData(prevWeekKey, d)[item.key] || 0), 0);
+                      return (
+                        <td
+                          key={'prev-tot-' + idx}
+                          style={{
+                            padding: '10px 4px',
+                            borderLeft: idx === 0 ? '2px solid #fecaca' : undefined
+                          }}
+                        >
+                          {totalVal}
+                        </td>
+                      );
+                    })}
 
                     {/* Selected Week Totals */}
-                    <td style={{ padding: '10px 4px', borderLeft: '2px solid ' + (isEditable ? '#bbf7d0' : '#fecaca'), color: '#2563eb' }}>{DEPARTMENTS.reduce((sum, d) => sum + (currentWeekInputs[d]?.find || 0), 0)}</td>
-                    <td style={{ padding: '10px 4px', color: '#dc2626' }}>{DEPARTMENTS.reduce((sum, d) => sum + (currentWeekInputs[d]?.findDrop || 0), 0)}</td>
-                    <td style={{ padding: '10px 4px', color: '#7c3aed' }}>{DEPARTMENTS.reduce((sum, d) => sum + (currentWeekInputs[d]?.gospel || 0), 0)}</td>
-                    <td style={{ padding: '10px 4px', color: '#dc2626' }}>{DEPARTMENTS.reduce((sum, d) => sum + (currentWeekInputs[d]?.gospelDrop || 0), 0)}</td>
-                    <td style={{ padding: '10px 4px', color: '#16a34a' }}>{DEPARTMENTS.reduce((sum, d) => sum + (currentWeekInputs[d]?.admit || 0), 0)}</td>
-                    <td style={{ padding: '10px 4px', color: '#dc2626' }}>{DEPARTMENTS.reduce((sum, d) => sum + (currentWeekInputs[d]?.admitDrop || 0), 0)}</td>
+                    {activeItems.map((item, idx) => {
+                      const totalVal = DEPARTMENTS.reduce((sum, d) => sum + (currentWeekInputs[d]?.[item.key] || 0), 0);
+                      return (
+                        <td
+                          key={'curr-tot-' + idx}
+                          style={{
+                            padding: '10px 4px',
+                            borderLeft: idx === 0 ? '2px solid ' + (isEditable ? '#bbf7d0' : '#fecaca') : undefined,
+                            color: item.isDrop ? '#dc2626' : item.color
+                          }}
+                        >
+                          {totalVal}
+                        </td>
+                      );
+                    })}
                   </tr>
                 </tbody>
               </table>
             </div>
 
+            {/* Table Container - Mobile stacked view */}
             {/* Table Container - Mobile stacked view */}
             <div className="mobile-table-view">
               {/* Table 1: Previous Week (전주 실적) */}
@@ -1232,12 +1773,11 @@ export const EvangelismModule: React.FC<EvangelismModuleProps> = ({ initialTab =
                     <thead>
                       <tr style={{ background: '#f1f5f9', borderBottom: '2px solid #cbd5e1' }}>
                         <th style={{ padding: '8px', textAlign: 'left', fontWeight: 800 }}>구분</th>
-                        <th style={{ padding: '6px', color: '#2563eb' }}>찾</th>
-                        <th style={{ padding: '6px', color: '#dc2626' }}>탈</th>
-                        <th style={{ padding: '6px', color: '#7c3aed' }}>복</th>
-                        <th style={{ padding: '6px', color: '#dc2626' }}>탈</th>
-                        <th style={{ padding: '6px', color: '#16a34a' }}>개</th>
-                        <th style={{ padding: '6px', color: '#dc2626' }}>탈</th>
+                        {activeItems.map((item, idx) => (
+                          <th key={idx} style={{ padding: '6px', color: item.isDrop ? '#dc2626' : item.color }}>
+                            {item.label}
+                          </th>
+                        ))}
                       </tr>
                     </thead>
                     <tbody>
@@ -1246,23 +1786,24 @@ export const EvangelismModule: React.FC<EvangelismModuleProps> = ({ initialTab =
                         return (
                           <tr key={dept} style={{ borderBottom: '1px solid #cbd5e1' }}>
                             <td style={{ padding: '8px', textAlign: 'left', fontWeight: 700 }}>{dept}</td>
-                            <td style={{ padding: '6px 4px', color: '#64748b' }}>{prev.find}</td>
-                            <td style={{ padding: '6px 4px', color: '#94a3b8' }}>{prev.findDrop}</td>
-                            <td style={{ padding: '6px 4px', color: '#64748b' }}>{prev.gospel}</td>
-                            <td style={{ padding: '6px 4px', color: '#94a3b8' }}>{prev.gospelDrop}</td>
-                            <td style={{ padding: '6px 4px', color: '#64748b' }}>{prev.admit}</td>
-                            <td style={{ padding: '6px 4px', color: '#94a3b8' }}>{prev.admitDrop}</td>
+                            {activeItems.map((item, idx) => (
+                              <td key={idx} style={{ padding: '6px 4px', color: item.isDrop ? '#94a3b8' : '#64748b' }}>
+                                {prev[item.key] || 0}
+                              </td>
+                            ))}
                           </tr>
                         );
                       })}
                       <tr style={{ background: '#f1f5f9', fontWeight: 900 }}>
                         <td style={{ padding: '8px', textAlign: 'left' }}>합계</td>
-                        <td style={{ padding: '6px 4px' }}>{DEPARTMENTS.reduce((sum, d) => sum + getWeeklyData(prevWeekKey, d).find, 0)}</td>
-                        <td style={{ padding: '6px 4px' }}>{DEPARTMENTS.reduce((sum, d) => sum + getWeeklyData(prevWeekKey, d).findDrop, 0)}</td>
-                        <td style={{ padding: '6px 4px' }}>{DEPARTMENTS.reduce((sum, d) => sum + getWeeklyData(prevWeekKey, d).gospel, 0)}</td>
-                        <td style={{ padding: '6px 4px' }}>{DEPARTMENTS.reduce((sum, d) => sum + getWeeklyData(prevWeekKey, d).gospelDrop, 0)}</td>
-                        <td style={{ padding: '6px 4px' }}>{DEPARTMENTS.reduce((sum, d) => sum + getWeeklyData(prevWeekKey, d).admit, 0)}</td>
-                        <td style={{ padding: '6px 4px' }}>{DEPARTMENTS.reduce((sum, d) => sum + getWeeklyData(prevWeekKey, d).admitDrop, 0)}</td>
+                        {activeItems.map((item, idx) => {
+                          const totalVal = DEPARTMENTS.reduce((sum, d) => sum + (getWeeklyData(prevWeekKey, d)[item.key] || 0), 0);
+                          return (
+                            <td key={idx} style={{ padding: '6px 4px' }}>
+                              {totalVal}
+                            </td>
+                          );
+                        })}
                       </tr>
                     </tbody>
                   </table>
@@ -1305,92 +1846,57 @@ export const EvangelismModule: React.FC<EvangelismModuleProps> = ({ initialTab =
                     <thead>
                       <tr style={{ background: '#f1f5f9', borderBottom: '2px solid #cbd5e1' }}>
                         <th style={{ padding: '8px', textAlign: 'left', fontWeight: 800 }}>구분</th>
-                        <th style={{ padding: '6px', color: '#2563eb' }}>찾</th>
-                        <th style={{ padding: '6px', color: '#dc2626' }}>탈</th>
-                        <th style={{ padding: '6px', color: '#7c3aed' }}>복</th>
-                        <th style={{ padding: '6px', color: '#dc2626' }}>탈</th>
-                        <th style={{ padding: '6px', color: '#16a34a' }}>개</th>
-                        <th style={{ padding: '6px', color: '#dc2626' }}>탈</th>
+                        {activeItems.map((item, idx) => (
+                          <th key={idx} style={{ padding: '6px', color: item.isDrop ? '#dc2626' : item.color }}>
+                            {item.label}
+                          </th>
+                        ))}
                       </tr>
                     </thead>
                     <tbody>
                       {DEPARTMENTS.map((dept) => {
-                        const curr = currentWeekInputs[dept] || { reg: 20, find: 0, findDrop: 0, gospel: 0, gospelDrop: 0, admit: 0, admitDrop: 0 };
+                        const curr = currentWeekInputs[dept] || { reg: 20 };
                         return (
                           <tr key={dept} style={{ borderBottom: '1px solid #cbd5e1' }}>
                             <td style={{ padding: '8px', textAlign: 'left', fontWeight: 700 }}>{dept}</td>
                             {isEditable ? (
-                              <>
-                                <td style={{ padding: '4px 2px' }}>
-                                  <input
-                                    type="number"
-                                    value={curr.find}
-                                    onChange={(e) => handleInputChange(dept, 'find', parseInt(e.target.value) || 0)}
-                                    style={{ width: '40px', padding: '4px', textAlign: 'center', border: '1px solid #cbd5e1', borderRadius: '6px', fontWeight: 800, color: '#2563eb' }}
-                                  />
-                                </td>
-                                <td style={{ padding: '4px 2px' }}>
-                                  <input
-                                    type="number"
-                                    value={curr.findDrop}
-                                    onChange={(e) => handleInputChange(dept, 'findDrop', parseInt(e.target.value) || 0)}
-                                    style={{ width: '40px', padding: '4px', textAlign: 'center', border: '1px solid #cbd5e1', borderRadius: '6px', fontWeight: 800, color: '#dc2626' }}
-                                  />
-                                </td>
-                                <td style={{ padding: '4px 2px' }}>
-                                  <input
-                                    type="number"
-                                    value={curr.gospel}
-                                    onChange={(e) => handleInputChange(dept, 'gospel', parseInt(e.target.value) || 0)}
-                                    style={{ width: '40px', padding: '4px', textAlign: 'center', border: '1px solid #cbd5e1', borderRadius: '6px', fontWeight: 800, color: '#7c3aed' }}
-                                  />
-                                </td>
-                                <td style={{ padding: '4px 2px' }}>
-                                  <input
-                                    type="number"
-                                    value={curr.gospelDrop}
-                                    onChange={(e) => handleInputChange(dept, 'gospelDrop', parseInt(e.target.value) || 0)}
-                                    style={{ width: '40px', padding: '4px', textAlign: 'center', border: '1px solid #cbd5e1', borderRadius: '6px', fontWeight: 800, color: '#dc2626' }}
-                                  />
-                                </td>
-                                <td style={{ padding: '4px 2px' }}>
-                                  <input
-                                    type="number"
-                                    value={curr.admit}
-                                    onChange={(e) => handleInputChange(dept, 'admit', parseInt(e.target.value) || 0)}
-                                    style={{ width: '40px', padding: '4px', textAlign: 'center', border: '1px solid #cbd5e1', borderRadius: '6px', fontWeight: 800, color: '#16a34a' }}
-                                  />
-                                </td>
-                                <td style={{ padding: '4px 2px' }}>
-                                  <input
-                                    type="number"
-                                    value={curr.admitDrop}
-                                    onChange={(e) => handleInputChange(dept, 'admitDrop', parseInt(e.target.value) || 0)}
-                                    style={{ width: '40px', padding: '4px', textAlign: 'center', border: '1px solid #cbd5e1', borderRadius: '6px', fontWeight: 800, color: '#dc2626' }}
-                                  />
-                                </td>
-                              </>
+                              activeItems.map((item, idx) => {
+                                const val = curr[item.key] || 0;
+                                return (
+                                  <td key={idx} style={{ padding: '4px 2px' }}>
+                                    <input
+                                      type="number"
+                                      value={val}
+                                      onChange={(e) => handleInputChange(dept, item.key, parseInt(e.target.value) || 0)}
+                                      onFocus={(e) => e.target.select()}
+                                      style={{ width: '40px', padding: '4px', textAlign: 'center', border: '1px solid #cbd5e1', borderRadius: '6px', fontWeight: 800, color: item.isDrop ? '#dc2626' : item.color }}
+                                    />
+                                  </td>
+                                );
+                              })
                             ) : (
-                              <>
-                                <td style={{ padding: '6px 4px', color: '#2563eb', fontWeight: 700 }}>{curr.find}</td>
-                                <td style={{ padding: '6px 4px', color: '#dc2626', fontWeight: 700 }}>{curr.findDrop}</td>
-                                <td style={{ padding: '6px 4px', color: '#7c3aed', fontWeight: 700 }}>{curr.gospel}</td>
-                                <td style={{ padding: '6px 4px', color: '#dc2626', fontWeight: 700 }}>{curr.gospelDrop}</td>
-                                <td style={{ padding: '6px 4px', color: '#16a34a', fontWeight: 700 }}>{curr.admit}</td>
-                                <td style={{ padding: '6px 4px', color: '#dc2626', fontWeight: 700 }}>{curr.admitDrop}</td>
-                              </>
+                              activeItems.map((item, idx) => {
+                                const val = curr[item.key] || 0;
+                                return (
+                                  <td key={idx} style={{ padding: '6px 4px', color: item.isDrop ? '#dc2626' : item.color, fontWeight: 700 }}>
+                                    {val}
+                                  </td>
+                                );
+                              })
                             )}
                           </tr>
                         );
                       })}
                       <tr style={{ background: '#f1f5f9', fontWeight: 900 }}>
                         <td style={{ padding: '8px', textAlign: 'left' }}>합계</td>
-                        <td style={{ padding: '6px 4px', color: '#2563eb' }}>{DEPARTMENTS.reduce((sum, d) => sum + (currentWeekInputs[d]?.find || 0), 0)}</td>
-                        <td style={{ padding: '6px 4px', color: '#dc2626' }}>{DEPARTMENTS.reduce((sum, d) => sum + (currentWeekInputs[d]?.findDrop || 0), 0)}</td>
-                        <td style={{ padding: '6px 4px', color: '#7c3aed' }}>{DEPARTMENTS.reduce((sum, d) => sum + (currentWeekInputs[d]?.gospel || 0), 0)}</td>
-                        <td style={{ padding: '6px 4px', color: '#dc2626' }}>{DEPARTMENTS.reduce((sum, d) => sum + (currentWeekInputs[d]?.gospelDrop || 0), 0)}</td>
-                        <td style={{ padding: '6px 4px', color: '#16a34a' }}>{DEPARTMENTS.reduce((sum, d) => sum + (currentWeekInputs[d]?.admit || 0), 0)}</td>
-                        <td style={{ padding: '6px 4px', color: '#dc2626' }}>{DEPARTMENTS.reduce((sum, d) => sum + (currentWeekInputs[d]?.admitDrop || 0), 0)}</td>
+                        {activeItems.map((item, idx) => {
+                          const totalVal = DEPARTMENTS.reduce((sum, d) => sum + (currentWeekInputs[d]?.[item.key] || 0), 0);
+                          return (
+                            <td key={idx} style={{ padding: '6px 4px', color: item.isDrop ? '#dc2626' : item.color }}>
+                              {totalVal}
+                            </td>
+                          );
+                        })}
                       </tr>
                     </tbody>
                   </table>
@@ -1602,6 +2108,206 @@ export const EvangelismModule: React.FC<EvangelismModuleProps> = ({ initialTab =
           </div>
         </div>
       )}
+      {/* Step Edit Modal */}
+      {isStepEditModalOpen && editingStepItem && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(15, 23, 42, 0.65)',
+          backdropFilter: 'blur(4px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 99999,
+          padding: '20px'
+        }}>
+          <div style={{
+            background: '#ffffff',
+            borderRadius: '20px',
+            width: '100%',
+            maxWidth: '480px',
+            padding: '28px',
+            boxShadow: '0 20px 50px rgba(0,0,0,0.3)',
+            border: '1px solid #cbd5e1'
+          }}>
+            <h3 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#0f172a', margin: '0 0 16px 0' }}>
+              ⚙️ {getStepModalTitle(editingStepItem)} 기준 및 정보 수정
+            </h3>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '24px' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 800, color: '#334155', marginBottom: '6px' }}>
+                  단계 명칭 (풀네임)
+                </label>
+                <input
+                  type="text"
+                  value={editStepFullName}
+                  onChange={(e) => setEditStepFullName(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '10px 14px',
+                    borderRadius: '10px',
+                    border: '1px solid #cbd5e1',
+                    fontSize: '0.9rem',
+                    outline: 'none',
+                    boxSizing: 'border-box',
+                    background: (editingStepItem.key === 'find' || editingStepItem.key === 'gospel' || editingStepItem.key === 'admit') ? '#f1f5f9' : '#ffffff'
+                  }}
+                  disabled={editingStepItem.key === 'find' || editingStepItem.key === 'gospel' || editingStepItem.key === 'admit'}
+                />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 800, color: '#334155', marginBottom: '6px' }}>
+                  단계 약어 (테이블 표시용)
+                </label>
+                <input
+                  type="text"
+                  value={editStepLabel}
+                  onChange={(e) => setEditStepLabel(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '10px 14px',
+                    borderRadius: '10px',
+                    border: '1px solid #cbd5e1',
+                    fontSize: '0.9rem',
+                    outline: 'none',
+                    boxSizing: 'border-box',
+                    background: (editingStepItem.key === 'find' || editingStepItem.key === 'gospel' || editingStepItem.key === 'admit') ? '#f1f5f9' : '#ffffff'
+                  }}
+                  disabled={editingStepItem.key === 'find' || editingStepItem.key === 'gospel' || editingStepItem.key === 'admit'}
+                />
+                {(editingStepItem.key === 'find' || editingStepItem.key === 'gospel' || editingStepItem.key === 'admit') && (
+                  <span style={{ fontSize: '0.75rem', color: '#dc2626', marginTop: '4px', display: 'block', fontWeight: 700 }}>
+                    ※ 필수 단계(찾기, 복음방, 개강)의 명칭 및 약어는 시스템 연동을 위해 변경할 수 없습니다.
+                  </span>
+                )}
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 800, color: '#334155', marginBottom: '6px' }}>
+                  상세 기준 및 설명
+                </label>
+                <textarea
+                  rows={4}
+                  value={editStepDesc}
+                  onChange={(e) => setEditStepDesc(e.target.value)}
+                  placeholder="예: 1단계 찾기 완료 기준에 대해 한 줄씩 적어주세요."
+                  style={{
+                    width: '100%',
+                    padding: '10px 14px',
+                    borderRadius: '10px',
+                    border: '1px solid #cbd5e1',
+                    fontSize: '0.88rem',
+                    outline: 'none',
+                    resize: 'none',
+                    boxSizing: 'border-box'
+                  }}
+                />
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+              <button
+                onClick={() => {
+                  setIsStepEditModalOpen(false);
+                  setEditingStepItem(null);
+                }}
+                style={{
+                  padding: '8px 18px',
+                  borderRadius: '10px',
+                  border: '1px solid #cbd5e1',
+                  background: '#ffffff',
+                  color: '#475569',
+                  fontWeight: 700,
+                  fontSize: '0.85rem',
+                  cursor: 'pointer'
+                }}
+              >
+                취소
+              </button>
+              <button
+                onClick={handleApplyStepEdit}
+                style={{
+                  padding: '8px 20px',
+                  borderRadius: '10px',
+                  border: 'none',
+                  background: '#2563eb',
+                  color: '#ffffff',
+                  fontWeight: 800,
+                  fontSize: '0.85rem',
+                  cursor: 'pointer',
+                  boxShadow: '0 4px 10px rgba(37, 99, 235, 0.2)'
+                }}
+              >
+                적용
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Step View Modal */}
+      {isStepViewModalOpen && viewStepItem && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(15, 23, 42, 0.5)',
+          backdropFilter: 'blur(3px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 99999,
+          padding: '20px'
+        }} onClick={() => {
+          setIsStepViewModalOpen(false);
+          setViewStepItem(null);
+        }}>
+          <div style={{
+            background: '#ffffff',
+            borderRadius: '20px',
+            width: '100%',
+            maxWidth: '440px',
+            padding: '24px',
+            boxShadow: '0 20px 40px rgba(0,0,0,0.2)',
+            border: '1px solid #e2e8f0'
+          }} onClick={(e) => e.stopPropagation()}>
+            <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#1f2a44', marginTop: 0, marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              ℹ️ {getStepModalTitle(viewStepItem)} 기준
+            </h3>
+            <p style={{ fontSize: '0.9rem', color: '#475569', lineHeight: 1.6, margin: '0 0 20px 0', whiteSpace: 'pre-wrap' }}>
+              {viewStepItem.groupDesc || '상세 기준이 아직 등록되지 않았습니다.'}
+            </p>
+            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <button
+                onClick={() => {
+                  setIsStepViewModalOpen(false);
+                  setViewStepItem(null);
+                }}
+                style={{
+                  background: '#2563eb',
+                  color: '#ffffff',
+                  border: 'none',
+                  borderRadius: '10px',
+                  padding: '8px 18px',
+                  fontWeight: 700,
+                  fontSize: '0.85rem',
+                  cursor: 'pointer',
+                  boxShadow: '0 2px 6px rgba(37,99,235,0.2)'
+                }}
+              >
+                닫기
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
@@ -1610,26 +2316,20 @@ export const EvangelismModule: React.FC<EvangelismModuleProps> = ({ initialTab =
 function renderDetailAnalysisTable(
   title: string,
   desc: string,
-  valLabel: string,
-  dropLabel: string,
+  items: ConfigItem[],
   weeks: string[],
   getDataFn: (w: string, dept: string) => DeptData,
-  valKey: 'find' | 'gospel' | 'admit',
-  dropKey: 'findDrop' | 'gospelDrop' | 'admitDrop',
-  onHelpClick?: (key: string, title: string) => void
+  onHelpClick?: (key: string, title: string, customText?: string) => void
 ) {
-  let helpKey = '';
-  if (title.includes('(2)')) helpKey = 'DESC_FIND_DETAIL_2';
-  else if (title.includes('(3)')) helpKey = 'DESC_GOSPEL_DETAIL_3';
-  else if (title.includes('(4)')) helpKey = 'DESC_ADMIT_DETAIL_4';
+  const hasHelp = !!desc && !!onHelpClick;
 
   return (
     <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '16px', padding: '24px', marginBottom: '28px', boxShadow: '0 4px 14px rgba(0,0,0,0.03)' }}>
-      <h2 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#0f172a', margin: '0 0 4px 0', display: 'flex', alignItems: 'center', gap: '6px' }}>
+      <h2 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#0f172a', margin: '0 0 16px 0', display: 'flex', alignItems: 'center', gap: '6px' }}>
         <span>{title}</span>
-        {helpKey && onHelpClick && (
+        {hasHelp && (
           <button 
-            onClick={() => onHelpClick(helpKey, `${title} 안내`)}
+            onClick={() => onHelpClick(title, `${title} 안내`, desc)}
             style={{ background: 'none', border: 'none', padding: 0, display: 'inline-flex', alignItems: 'center', cursor: 'pointer', color: '#94a3b8', transition: 'color 0.15s' }}
             onMouseEnter={(e) => e.currentTarget.style.color = '#2563eb'}
             onMouseLeave={(e) => e.currentTarget.style.color = '#94a3b8'}
@@ -1639,9 +2339,6 @@ function renderDetailAnalysisTable(
           </button>
         )}
       </h2>
-      <p style={{ color: '#64748b', fontSize: '0.82rem', margin: '0 0 16px 0' }}>
-        {desc}
-      </p>
 
       <div style={{ overflowX: 'auto' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem', textAlign: 'center' }}>
@@ -1650,11 +2347,11 @@ function renderDetailAnalysisTable(
               <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 800 }}>구분 (부서)</th>
               <th style={{ padding: '12px 14px', fontWeight: 800, background: '#f1f5f9' }}>전도재적</th>
               {weeks.map(w => (
-                <th key={w} colSpan={2} style={{ padding: '10px', borderLeft: '1px solid #e2e8f0', fontWeight: 800 }}>
+                <th key={w} colSpan={items.length} style={{ padding: '10px', borderLeft: '1px solid #e2e8f0', fontWeight: 800 }}>
                   {w}
                 </th>
               ))}
-              <th colSpan={2} style={{ padding: '10px', borderLeft: '2px solid #cbd5e1', background: '#eff6ff', color: '#1e40af', fontWeight: 800 }}>
+              <th colSpan={items.length} style={{ padding: '10px', borderLeft: '2px solid #cbd5e1', background: '#eff6ff', color: '#1e40af', fontWeight: 800 }}>
                 합계
               </th>
             </tr>
@@ -1663,18 +2360,26 @@ function renderDetailAnalysisTable(
               <th></th>
               {weeks.map(w => (
                 <React.Fragment key={w}>
-                  <th style={{ padding: '6px', borderLeft: '1px solid #e2e8f0', color: '#2563eb' }}>{valLabel}</th>
-                  <th style={{ padding: '6px', color: '#dc2626' }}>{dropLabel}</th>
+                  {items.map((item, idx) => (
+                    <th key={idx} style={{ padding: '6px', borderLeft: idx === 0 ? '1px solid #e2e8f0' : undefined, color: item.color }}>
+                      {item.label}
+                    </th>
+                  ))}
                 </React.Fragment>
               ))}
-              <th style={{ padding: '6px', borderLeft: '2px solid #cbd5e1', background: '#dbeafe', color: '#1e40af' }}>{valLabel}</th>
-              <th style={{ padding: '6px', background: '#dbeafe', color: '#dc2626' }}>{dropLabel}</th>
+              {items.map((item, idx) => (
+                <th key={idx} style={{ padding: '6px', borderLeft: idx === 0 ? '2px solid #cbd5e1' : undefined, background: '#dbeafe', color: item.isDrop ? '#dc2626' : '#1e40af' }}>
+                  {item.label}
+                </th>
+              ))}
             </tr>
           </thead>
           <tbody>
             {DEPARTMENTS.map(dept => {
-              let sumVal = 0;
-              let sumDrop = 0;
+              const sums: Record<string, number> = {};
+              items.forEach(item => {
+                sums[item.key] = 0;
+              });
               const firstWeekData = getDataFn(weeks[0] || '1월1주차', dept);
 
               return (
@@ -1683,20 +2388,25 @@ function renderDetailAnalysisTable(
                   <td style={{ padding: '12px 14px', fontWeight: 700, background: '#f8fafc', color: '#475569' }}>{firstWeekData.reg}명</td>
                   {weeks.map(w => {
                     const d = getDataFn(w, dept);
-                    const v = d[valKey];
-                    const dr = d[dropKey];
-                    sumVal += v;
-                    sumDrop += dr;
-
                     return (
                       <React.Fragment key={w}>
-                        <td style={{ padding: '10px 6px', borderLeft: '1px solid #e2e8f0', fontWeight: 700, color: '#2563eb' }}>{v}</td>
-                        <td style={{ padding: '10px 6px', fontWeight: 700, color: '#dc2626' }}>{dr}</td>
+                        {items.map((item, idx) => {
+                          const val = d[item.key] || 0;
+                          sums[item.key] += val;
+                          return (
+                            <td key={idx} style={{ padding: '10px 6px', borderLeft: idx === 0 ? '1px solid #e2e8f0' : undefined, fontWeight: 700, color: item.color }}>
+                              {val}
+                            </td>
+                          );
+                        })}
                       </React.Fragment>
                     );
                   })}
-                  <td style={{ padding: '10px 6px', borderLeft: '2px solid #cbd5e1', background: '#eff6ff', fontWeight: 800, color: '#1e40af' }}>{sumVal}</td>
-                  <td style={{ padding: '10px 6px', background: '#eff6ff', fontWeight: 800, color: '#dc2626' }}>{sumDrop}</td>
+                  {items.map((item, idx) => (
+                    <td key={idx} style={{ padding: '10px 6px', borderLeft: idx === 0 ? '2px solid #cbd5e1' : undefined, background: '#eff6ff', fontWeight: 800, color: item.isDrop ? '#dc2626' : '#1e40af' }}>
+                      {sums[item.key]}
+                    </td>
+                  ))}
                 </tr>
               );
             })}
@@ -1705,21 +2415,27 @@ function renderDetailAnalysisTable(
               <td style={{ padding: '14px 16px', textAlign: 'left' }}>합계</td>
               <td style={{ padding: '14px' }}>{DEPARTMENTS.reduce((acc, dept) => acc + getDataFn(weeks[0] || '1월1주차', dept).reg, 0)}명</td>
               {weeks.map(w => {
-                const totV = DEPARTMENTS.reduce((acc, dept) => acc + getDataFn(w, dept)[valKey], 0);
-                const totDr = DEPARTMENTS.reduce((acc, dept) => acc + getDataFn(w, dept)[dropKey], 0);
                 return (
                   <React.Fragment key={w}>
-                    <td style={{ padding: '12px 6px', borderLeft: '1px solid #e2e8f0', color: '#2563eb' }}>{totV}</td>
-                    <td style={{ padding: '12px 6px', color: '#dc2626' }}>{totDr}</td>
+                    {items.map((item, idx) => {
+                      const totVal = DEPARTMENTS.reduce((acc, dept) => acc + (getDataFn(w, dept)[item.key] || 0), 0);
+                      return (
+                        <td key={idx} style={{ padding: '12px 6px', borderLeft: idx === 0 ? '1px solid #e2e8f0' : undefined, color: item.color }}>
+                          {totVal}
+                        </td>
+                      );
+                    })}
                   </React.Fragment>
                 );
               })}
-              <td style={{ padding: '12px 6px', borderLeft: '2px solid #cbd5e1', background: '#dbeafe', color: '#1e40af' }}>
-                {DEPARTMENTS.reduce((acc, dept) => acc + weeks.reduce((wAcc, w) => wAcc + getDataFn(w, dept)[valKey], 0), 0)}
-              </td>
-              <td style={{ padding: '12px 6px', background: '#dbeafe', color: '#dc2626' }}>
-                {DEPARTMENTS.reduce((acc, dept) => acc + weeks.reduce((wAcc, w) => wAcc + getDataFn(w, dept)[dropKey], 0), 0)}
-              </td>
+              {items.map((item, idx) => {
+                const grandTotVal = DEPARTMENTS.reduce((acc, dept) => acc + weeks.reduce((wAcc, w) => wAcc + (getDataFn(w, dept)[item.key] || 0), 0), 0);
+                return (
+                  <td key={idx} style={{ padding: '12px 6px', borderLeft: idx === 0 ? '2px solid #cbd5e1' : undefined, background: '#dbeafe', color: item.isDrop ? '#dc2626' : '#1e40af' }}>
+                    {grandTotVal}
+                  </td>
+                );
+              })}
             </tr>
           </tbody>
         </table>

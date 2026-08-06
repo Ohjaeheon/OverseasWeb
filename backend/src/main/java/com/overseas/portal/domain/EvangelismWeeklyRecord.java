@@ -71,6 +71,10 @@ public class EvangelismWeeklyRecord {
     @Comment("가개강 탈락 수")
     private Integer admitDropCount;
 
+    @Column(name = "dynamic_data", columnDefinition = "text")
+    @Comment("동적 항목 실적 데이터 (JSON 포맷)")
+    private String dynamicData;
+
     @Column(name = "updated_by", length = 50)
     @Comment("최종 수정자 아이디/이름")
     private String updatedBy;

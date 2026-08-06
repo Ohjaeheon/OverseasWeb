@@ -69,6 +69,14 @@ public class DataInitializer implements CommandLineRunner {
                     .build());
         }
 
+        if (systemConfigRepository.findByConfigKey("evangelism_items_by_country").isEmpty()) {
+            systemConfigRepository.save(SystemConfig.builder()
+                    .configKey("evangelism_items_by_country")
+                    .configValue("{\"default\":[{\"key\":\"find\",\"label\":\"찾\",\"fullName\":\"찾기\",\"color\":\"#2563eb\",\"isDrop\":false,\"groupName\":\"찾기 상세분석\",\"groupDesc\":\"주차별 찾기와 탈락수를 볼 수 있습니다.\"},{\"key\":\"findDrop\",\"label\":\"탈\",\"color\":\"#dc2626\",\"isDrop\":true,\"groupName\":\"찾기 상세분석\"},{\"key\":\"gospel\",\"label\":\"복\",\"fullName\":\"복음방\",\"color\":\"#7c3aed\",\"isDrop\":false,\"groupName\":\"복음방 상세분석\",\"groupDesc\":\"주차별 복음방과 탈락수를 볼 수 있습니다.\"},{\"key\":\"gospelDrop\",\"label\":\"탈\",\"color\":\"#dc2626\",\"isDrop\":true,\"groupName\":\"복음방 상세분석\"},{\"key\":\"admit\",\"label\":\"개\",\"fullName\":\"개강\",\"color\":\"#16a34a\",\"isDrop\":false,\"groupName\":\"개강 상세분석\",\"groupDesc\":\"주차별 개강과 탈락수를 볼 수 있습니다.\"},{\"key\":\"admitDrop\",\"label\":\"탈\",\"color\":\"#dc2626\",\"isDrop\":true,\"groupName\":\"개강 상세분석\"}]}")
+                    .description("국가별 전도 실적 가변 항목 설정 (JSON)")
+                    .build());
+        }
+
         // 2-1. Initial Help Description Configs
         if (systemConfigRepository.findByConfigKey("DESC_EVANGELISM_STATUS_1").isEmpty()) {
             systemConfigRepository.save(SystemConfig.builder()

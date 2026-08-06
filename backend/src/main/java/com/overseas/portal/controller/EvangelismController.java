@@ -2,8 +2,10 @@ package com.overseas.portal.controller;
 
 import com.overseas.portal.domain.EvangelismWeeklyRecord;
 import com.overseas.portal.domain.EvangelismEditRequest;
+import com.overseas.portal.domain.SystemConfig;
 import com.overseas.portal.repository.EvangelismWeeklyRecordRepository;
 import com.overseas.portal.repository.EvangelismEditRequestRepository;
+import com.overseas.portal.repository.SystemConfigRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -24,6 +26,7 @@ public class EvangelismController {
 
     private final EvangelismWeeklyRecordRepository evangelismWeeklyRecordRepository;
     private final EvangelismEditRequestRepository evangelismEditRequestRepository;
+    private final SystemConfigRepository systemConfigRepository;
     private final ObjectMapper objectMapper;
 
     private ResponseEntity<Map<String, Object>> encryptResponse(Object data) {
@@ -54,6 +57,42 @@ public class EvangelismController {
         return encryptResponse(evangelismWeeklyRecordRepository.findAll());
     }
 
+    @GetMapping("/config/items")
+    public ResponseEntity<Map<String, Object>> getItemsConfig() {
+        try {
+            String configVal = systemConfigRepository.findByConfigKey("evangelism_items_by_country")
+                    .map(config -> config.getConfigValue())
+                    .orElse("{\"default\":[{\"key\":\"find\",\"label\":\"찾\",\"color\":\"#2563eb\",\"isDrop\":false,\"groupName\":\"찾기 상세분석\",\"groupDesc\":\"주차별 찾기와 탈락수를 볼 수 있습니다.\"},{\"key\":\"findDrop\",\"label\":\"탈\",\"color\":\"#dc2626\",\"isDrop\":true,\"groupName\":\"찾기 상세분석\"},{\"key\":\"gospel\",\"label\":\"복\",\"color\":\"#7c3aed\",\"isDrop\":false,\"groupName\":\"복음방 상세분석\",\"groupDesc\":\"주차별 복음방과 탈락수를 볼 수 있습니다.\"},{\"key\":\"gospelDrop\",\"label\":\"탈\",\"color\":\"#dc2626\",\"isDrop\":true,\"groupName\":\"복음방 상세분석\"},{\"key\":\"admit\",\"label\":\"개\",\"color\":\"#16a34a\",\"isDrop\":false,\"groupName\":\"가개강 상세분석\",\"groupDesc\":\"주차별 가개강(등록)과 탈락수를 볼 수 있습니다.\"},{\"key\":\"admitDrop\",\"label\":\"탈\",\"color\":\"#dc2626\",\"isDrop\":true,\"groupName\":\"가개강 상세분석\"}]}");
+            
+            Object parsed = objectMapper.readValue(configVal, Object.class);
+            return encryptResponse(parsed);
+        } catch (Exception e) {
+            Map<String, Object> err = new HashMap<>();
+            err.put("error", e.getMessage());
+            return ResponseEntity.status(500).body(err);
+        }
+    }
+
+    @PostMapping("/config/items")
+    public ResponseEntity<Map<String, Object>> saveItemsConfig(@RequestBody Map<String, Object> newConfig) {
+        log.info("Saving new evangelism items configuration...");
+        try {
+            String json = objectMapper.writeValueAsString(newConfig);
+            SystemConfig config = systemConfigRepository.findByConfigKey("evangelism_items_by_country")
+                    .orElseGet(() -> SystemConfig.builder()
+                            .configKey("evangelism_items_by_country")
+                            .description("국가별 전도 실적 가변 항목 설정 (JSON)")
+                            .build());
+            config.setConfigValue(json);
+            systemConfigRepository.save(config);
+            return encryptResponse(newConfig);
+        } catch (Exception e) {
+            Map<String, Object> err = new HashMap<>();
+            err.put("error", e.getMessage());
+            return ResponseEntity.status(500).body(err);
+        }
+    }
+
     @PostMapping("/records")
     public ResponseEntity<List<EvangelismWeeklyRecord>> saveRecords(@RequestBody List<EvangelismWeeklyRecord> records) {
         log.info("Batch saving/updating {} evangelism weekly records into PostgreSQL DB...", records.size());
@@ -73,6 +112,7 @@ public class EvangelismController {
             target.setGospelDropCount(r.getGospelDropCount());
             target.setAdmitCount(r.getAdmitCount());
             target.setAdmitDropCount(r.getAdmitDropCount());
+            target.setDynamicData(r.getDynamicData());
             target.setUpdatedBy(r.getUpdatedBy() != null ? r.getUpdatedBy() : "system");
 
             evangelismWeeklyRecordRepository.save(target);
