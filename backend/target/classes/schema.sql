@@ -324,5 +324,35 @@ COMMENT ON COLUMN overseas.access_log.path IS '경로';
 COMMENT ON COLUMN overseas.access_log.ip_address IS 'IP주소';
 COMMENT ON COLUMN overseas.access_log.created_at IS '접근 시간';
 
+-- 13. 업무포탈 게시판 테이블
+CREATE TABLE IF NOT EXISTS overseas.business_board_posts (
+    post_id BIGSERIAL PRIMARY KEY,
+    category VARCHAR(100) NOT NULL,
+    title VARCHAR(255) NOT NULL,
+    content TEXT,
+    file_name VARCHAR(255),
+    file_path VARCHAR(500),
+    file_size BIGINT,
+    author VARCHAR(100) NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    view_count INT DEFAULT 0,
+    is_locked BOOLEAN DEFAULT FALSE,
+    notice_type VARCHAR(50) DEFAULT 'GENERAL'
+);
+
+COMMENT ON TABLE overseas.business_board_posts IS '업무포탈 통합 게시판 테이블';
+COMMENT ON COLUMN overseas.business_board_posts.post_id IS '게시글 고유 ID';
+COMMENT ON COLUMN overseas.business_board_posts.category IS '카테고리 구분';
+COMMENT ON COLUMN overseas.business_board_posts.title IS '게시글 제목';
+COMMENT ON COLUMN overseas.business_board_posts.content IS '메모 및 본문 내용';
+COMMENT ON COLUMN overseas.business_board_posts.file_name IS '첨부파일 원본 명칭';
+COMMENT ON COLUMN overseas.business_board_posts.file_path IS '서버 저장 첨부파일 경로';
+COMMENT ON COLUMN overseas.business_board_posts.file_size IS '첨부파일 용량 (Byte)';
+COMMENT ON COLUMN overseas.business_board_posts.author IS '작성자 아이디 (username)';
+COMMENT ON COLUMN overseas.business_board_posts.created_at IS '작성 일시';
+COMMENT ON COLUMN overseas.business_board_posts.view_count IS '조회수';
+COMMENT ON COLUMN overseas.business_board_posts.is_locked IS '수정 잠금 여부';
+COMMENT ON COLUMN overseas.business_board_posts.notice_type IS '공지사항 유형 (MUST_READ, NOTICE, GENERAL)';
+
 
 

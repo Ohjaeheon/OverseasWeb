@@ -21,7 +21,14 @@ import {
   Sparkles,
   PlusCircle,
   MinusCircle,
-  Save
+  Save,
+  Paperclip,
+  Lock,
+  Unlock,
+  Trash2,
+  Edit3,
+  AlertTriangle,
+  Eye
 } from 'lucide-react';
 
 interface BusinessModuleProps {
@@ -88,6 +95,224 @@ export const BusinessModule: React.FC<BusinessModuleProps> = ({ initialTab = 'le
     const currentYear = new Date().getFullYear();
     return Math.max(2026, currentYear).toString();
   });
+
+  // Current logged in user info (from localStorage)
+  const [currentUser, setCurrentUser] = useState<{ username: string; role: string; name: string } | null>(() => {
+    const userStr = localStorage.getItem('user');
+    if (userStr) {
+      try {
+        return JSON.parse(userStr);
+      } catch (e) {
+        return null;
+      }
+    }
+    return null;
+  });
+
+  // Bulletin Board States (Only for ledger_archive)
+  const [boardPosts, setBoardPosts] = useState<any[]>([]);
+  const [boardLoading, setBoardLoading] = useState<boolean>(false);
+  const [isBoardWriteModalOpen, setIsBoardWriteModalOpen] = useState<boolean>(false);
+  const [isBoardDetailModalOpen, setIsBoardDetailModalOpen] = useState<boolean>(false);
+  const [selectedPost, setSelectedPost] = useState<any>(null);
+  
+  // Write modal state inputs
+  const [boardWriteTitle, setBoardWriteTitle] = useState<string>('');
+  const [boardWriteContent, setBoardWriteContent] = useState<string>('');
+  const [boardWriteNoticeType, setBoardWriteNoticeType] = useState<string>('GENERAL');
+  
+  // Categorized attachments for Write/Edit
+  const [boardWriteProposalFile, setBoardWriteProposalFile] = useState<File | null>(null);
+  const [boardWriteMinutesFile, setBoardWriteMinutesFile] = useState<File | null>(null);
+  const [boardWriteEtcFiles, setBoardWriteEtcFiles] = useState<File[]>([]);
+  
+  // Deleted attachment IDs list during Edit
+  const [deleteAttachmentIds, setDeleteAttachmentIds] = useState<number[]>([]);
+  const [isEditingPost, setIsEditingPost] = useState<boolean>(false);
+  const [boardIsUploading, setBoardIsUploading] = useState<boolean>(false);
+
+  const fetchBoardPosts = async () => {
+    if (activeTab !== 'ledger_archive') return;
+    setBoardLoading(true);
+    try {
+      const response = await api.get('/business/board/list', {
+        params: { category: 'ledger_archive' }
+      });
+      if (Array.isArray(response.data)) {
+        setBoardPosts(response.data);
+      } else {
+        console.error("Expected array from board list API, got:", response.data);
+        setBoardPosts([]);
+      }
+    } catch (err: any) {
+      console.error("Failed to fetch board posts:", err);
+      if (err.response?.data) {
+        console.error("Backend Error Detail:", err.response.data);
+      }
+      setBoardPosts([]);
+    } finally {
+      setBoardLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'ledger_archive') {
+      fetchBoardPosts();
+    }
+  }, [activeTab]);
+
+  const handleBoardPostSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!boardWriteTitle.trim()) {
+      alert('제목을 입력해 주세요.');
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append('category', 'ledger_archive');
+    formData.append('title', boardWriteTitle);
+    formData.append('content', boardWriteContent);
+    formData.append('noticeType', boardWriteNoticeType);
+    
+    if (boardWriteProposalFile) {
+      formData.append('proposalFile', boardWriteProposalFile);
+    }
+    if (boardWriteMinutesFile) {
+      formData.append('minutesFile', boardWriteMinutesFile);
+    }
+    if (boardWriteEtcFiles && boardWriteEtcFiles.length > 0) {
+      boardWriteEtcFiles.forEach((file) => {
+        formData.append('etcFiles', file);
+      });
+    }
+    if (isEditingPost && selectedPost && deleteAttachmentIds.length > 0) {
+      deleteAttachmentIds.forEach((id) => {
+        formData.append('deleteAttachmentIds', id.toString());
+      });
+    }
+
+    setBoardIsUploading(true);
+    try {
+      if (isEditingPost && selectedPost) {
+        await api.post(`/business/board/${selectedPost.id}/edit`, formData, {
+          headers: { 'Content-Type': 'multipart/form-data' }
+        });
+        alert('게시글이 성공적으로 수정되었습니다.');
+      } else {
+        await api.post('/business/board/write', formData, {
+          headers: { 'Content-Type': 'multipart/form-data' }
+        });
+        alert('게시글이 성공적으로 등록되었습니다.');
+      }
+      setIsBoardWriteModalOpen(false);
+      setBoardWriteTitle('');
+      setBoardWriteContent('');
+      setBoardWriteNoticeType('GENERAL');
+      setBoardWriteProposalFile(null);
+      setBoardWriteMinutesFile(null);
+      setBoardWriteEtcFiles([]);
+      setDeleteAttachmentIds([]);
+      setSelectedPost(null);
+      fetchBoardPosts();
+    } catch (err: any) {
+      console.error(err);
+      alert(err.response?.data?.error || '게시글 저장 중 오류가 발생했습니다.');
+    } finally {
+      setBoardIsUploading(false);
+    }
+  };
+
+  const handleOpenDetail = async (post: any) => {
+    setSelectedPost(post);
+    setIsBoardDetailModalOpen(true);
+    try {
+      const response = await api.get(`/business/board/${post.id}`);
+      setBoardPosts(prev => prev.map(p => p.id === post.id ? response.data : p));
+      setSelectedPost(response.data);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleDeletePost = async (post: any) => {
+    if (!window.confirm('정말 이 게시글을 삭제하시겠습니까?')) return;
+    try {
+      await api.delete(`/business/board/${post.id}`);
+      alert('게시글이 삭제되었습니다.');
+      setIsBoardDetailModalOpen(false);
+      setSelectedPost(null);
+      fetchBoardPosts();
+    } catch (err: any) {
+      console.error(err);
+      alert(err.response?.data?.error || '삭제 중 오류가 발생했습니다.');
+    }
+  };
+
+  const handleToggleLock = async (post: any) => {
+    try {
+      const response = await api.post(`/business/board/${post.id}/toggle-lock`);
+      const updated = response.data;
+      alert(updated.isLocked ? '수정이 잠겼습니다.' : '수정 잠금이 해제되었습니다.');
+      setBoardPosts(prev => prev.map(p => p.id === post.id ? updated : p));
+      setSelectedPost(updated);
+    } catch (err: any) {
+      console.error(err);
+      alert(err.response?.data?.error || '수정 잠금 토글 중 오류가 발생했습니다.');
+    }
+  };
+
+  const handleDownloadAttachment = (attachment: any) => {
+    const token = localStorage.getItem('accessToken');
+    if (!token) {
+      alert('로그인이 만료되었습니다.');
+      return;
+    }
+    api.get(`/business/board/attachment/${attachment.id}/download`, { responseType: 'blob' })
+      .then((response) => {
+        const url = window.URL.createObjectURL(new Blob([response.data]));
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', attachment.fileName);
+        document.body.appendChild(link);
+        link.click();
+        link.parentNode?.removeChild(link);
+      })
+      .catch((err) => {
+        console.error(err);
+        alert('첨부파일 다운로드 권한이 없거나 파일을 찾을 수 없습니다.');
+      });
+  };
+
+  const handlePreviewAttachment = (attachment: any) => {
+    const token = localStorage.getItem('accessToken');
+    if (!token) {
+      alert('로그인이 만료되었습니다.');
+      return;
+    }
+    setPreviewLoading(true);
+    setPreviewError(null);
+    api.get(`/business/board/attachment/${attachment.id}/download`, { responseType: 'blob' })
+      .then((response) => {
+        const blob = response.data;
+        const objectUrl = window.URL.createObjectURL(new Blob([blob], { type: blob.type }));
+        setPreviewModalFile({
+          month: 0, // board identifier
+          docType: attachment.docType.toLowerCase() as any,
+          file: {
+            name: attachment.fileName,
+            type: blob.type,
+            size: attachment.fileSize,
+            data: objectUrl
+          }
+        });
+        setPreviewLoading(false);
+      })
+      .catch((err) => {
+        console.error(err);
+        setPreviewLoading(false);
+        alert('파일을 불러오는 권한이 없거나 미리보기를 생성할 수 없습니다.');
+      });
+  };
 
   const [archiveFiles, setArchiveFiles] = useState<Record<string, ArchiveFile>>({});
 
@@ -187,20 +412,26 @@ export const BusinessModule: React.FC<BusinessModuleProps> = ({ initialTab = 'le
         if (!container) return;
         container.innerHTML = ''; // clear previous content
 
-        const category = activeTab.replace('_archive', '');
-        const downloadUrl = `/api/v1/business/archive/download?category=${category}&year=${archiveYear}&month=${month}&docType=${docType}&fileName=${encodeURIComponent(file.name)}`;
-        
-        const token = localStorage.getItem('accessToken');
-        const headers: Record<string, string> = {};
-        if (token) {
-          headers['Authorization'] = `Bearer ${token}`;
+        let arrayBuffer;
+        if (month === 0) {
+          const res = await fetch(file.data);
+          arrayBuffer = await res.arrayBuffer();
+        } else {
+          const category = activeTab.replace('_archive', '');
+          const downloadUrl = `/api/v1/business/archive/download?category=${category}&year=${archiveYear}&month=${month}&docType=${docType}&fileName=${encodeURIComponent(file.name)}`;
+          
+          const token = localStorage.getItem('accessToken');
+          const headers: Record<string, string> = {};
+          if (token) {
+            headers['Authorization'] = `Bearer ${token}`;
+          }
+          
+          const response = await fetch(downloadUrl, { headers });
+          if (!response.ok) {
+            throw new Error('서버로부터 파일을 가져오는데 실패했습니다.');
+          }
+          arrayBuffer = await response.arrayBuffer();
         }
-        
-        const response = await fetch(downloadUrl, { headers });
-        if (!response.ok) {
-          throw new Error('서버로부터 파일을 가져오는데 실패했습니다.');
-        }
-        const arrayBuffer = await response.arrayBuffer();
 
         if (isDocx) {
           // Load JSZip and docx-preview dynamically if they aren't loaded yet
@@ -1284,6 +1515,459 @@ export const BusinessModule: React.FC<BusinessModuleProps> = ({ initialTab = 'le
       </html>
     `);
     printWindow.document.close();
+  };
+
+  const renderArchiveBulletinBoard = () => {
+    return (
+      <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '16px', padding: '24px', boxShadow: '0 4px 14px rgba(0,0,0,0.03)' }}>
+        {boardLoading ? (
+          <div style={{ padding: '60px 0', textAlign: 'center', color: '#64748b', fontWeight: 700 }}>
+            로딩 중...
+          </div>
+        ) : (
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem', textAlign: 'left' }}>
+              <thead>
+                <tr style={{ background: '#f8fafc', borderBottom: '2px solid #cbd5e1', color: '#475569', fontWeight: 800 }}>
+                  <th style={{ padding: '12px 16px', width: '80px', textAlign: 'center' }}>구분</th>
+                  <th style={{ padding: '12px 16px' }}>제목</th>
+                  <th style={{ padding: '12px 16px', width: '120px' }}>작성자</th>
+                  <th style={{ padding: '12px 16px', width: '120px', textAlign: 'center' }}>작성일</th>
+                  <th style={{ padding: '12px 16px', width: '80px', textAlign: 'center' }}>조회수</th>
+                </tr>
+              </thead>
+              <tbody>
+                {Array.isArray(boardPosts) && boardPosts.map((post) => {
+                  const isMustRead = post.noticeType === 'MUST_READ';
+                  const isNotice = post.noticeType === 'NOTICE';
+                  
+                  let noticeBadge = null;
+                  if (isMustRead) {
+                    noticeBadge = (
+                      <span style={{
+                        background: '#fee2e2',
+                        color: '#ef4444',
+                        padding: '2px 8px',
+                        borderRadius: '4px',
+                        fontSize: '0.75rem',
+                        fontWeight: 800,
+                        border: '1px solid #fecaca'
+                      }}>필독</span>
+                    );
+                  } else if (isNotice) {
+                    noticeBadge = (
+                      <span style={{
+                        background: '#fef3c7',
+                        color: '#d97706',
+                        padding: '2px 8px',
+                        borderRadius: '4px',
+                        fontSize: '0.75rem',
+                        fontWeight: 800,
+                        border: '1px solid #fde68a'
+                      }}>공지</span>
+                    );
+                  } else {
+                    noticeBadge = <span style={{ color: '#94a3b8', fontSize: '0.85rem' }}>{post.id}</span>;
+                  }
+
+                  const rowBg = isMustRead ? '#fff5f5' : isNotice ? '#fffbeb' : '#ffffff';
+                  const titleColor = isMustRead ? '#e11d48' : isNotice ? '#b45309' : '#1e293b';
+
+                  return (
+                    <tr
+                      key={post.id}
+                      onClick={() => handleOpenDetail(post)}
+                      style={{
+                        background: rowBg,
+                        borderBottom: '1px solid #e2e8f0',
+                        cursor: 'pointer',
+                        transition: 'background 0.15s'
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.background = isMustRead ? '#fee2e2' : isNotice ? '#fef3c7' : '#f1f5f9'}
+                      onMouseLeave={(e) => e.currentTarget.style.background = rowBg}
+                    >
+                      <td style={{ padding: '12px 16px', textAlign: 'center', fontWeight: 700 }}>
+                        {noticeBadge}
+                      </td>
+                      <td style={{ padding: '12px 16px', fontWeight: (isMustRead || isNotice) ? 800 : 500 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span style={{ color: titleColor }}>{post.title}</span>
+                          {((post.attachments && post.attachments.length > 0) || post.fileName) && (
+                            <span title="첨부파일 있음"><Paperclip size={14} color="#64748b" /></span>
+                          )}
+                          {post.isLocked && (
+                            <span title="수정 잠김 상태"><Lock size={12} color="#94a3b8" /></span>
+                          )}
+                        </div>
+                      </td>
+                      <td style={{ padding: '12px 16px', color: '#475569' }}>
+                        {post.author}
+                      </td>
+                      <td style={{ padding: '12px 16px', color: '#64748b', textAlign: 'center', fontSize: '0.85rem' }}>
+                        {new Date(post.createdAt).toLocaleDateString('ko-KR', {
+                          year: 'numeric',
+                          month: '2-digit',
+                          day: '2-digit'
+                        })}
+                      </td>
+                      <td style={{ padding: '12px 16px', color: '#64748b', textAlign: 'center' }}>
+                        {post.viewCount}
+                      </td>
+                    </tr>
+                  );
+                })}
+                {(!Array.isArray(boardPosts) || boardPosts.length === 0) && (
+                  <tr>
+                    <td colSpan={5} style={{ padding: '40px 16px', textAlign: 'center', color: '#64748b', fontWeight: 600 }}>
+                      등록된 게시글이 없습니다. 첫 번째 글을 작성해 보세요!
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const renderArchiveCalendarGrid = () => {
+    return (
+      <div style={{ 
+        display: 'grid', 
+        gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', 
+        gap: '16px', 
+        marginTop: '20px' 
+      }}>
+        {Array.from({ length: 12 }, (_, i) => {
+          const month = i + 1;
+          const proposalKey = `${month}_proposal`;
+          const minutesKey = `${month}_minutes`;
+          
+          const proposalFile = archiveFiles[proposalKey];
+          const minutesFile = archiveFiles[minutesKey];
+
+          return (
+            <div key={month} style={{
+              background: '#ffffff',
+              borderRadius: '14px',
+              border: '1px solid #e2e8f0',
+              boxShadow: '0 2px 8px rgba(15, 23, 42, 0.04)',
+              overflow: 'hidden',
+              display: 'flex',
+              flexDirection: 'column',
+              transition: 'transform 0.15s ease, box-shadow 0.15s ease'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.transform = 'translateY(-2px)';
+              e.currentTarget.style.boxShadow = '0 6px 16px rgba(15, 23, 42, 0.08)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = 'none';
+              e.currentTarget.style.boxShadow = '0 2px 8px rgba(15, 23, 42, 0.04)';
+            }}>
+              
+              {/* Calendar Box Header */}
+              <div style={{ 
+                background: '#f8fafc', 
+                borderBottom: '1px solid #f1f5f9', 
+                padding: '10px 14px', 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'space-between' 
+              }}>
+                <span style={{ fontSize: '0.95rem', fontWeight: 800, color: '#0f172a', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  📅 {month}월
+                </span>
+                <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#94a3b8' }}>
+                  {archiveYear}년
+                </span>
+              </div>
+
+              {/* Calendar Box Body */}
+              <div style={{ padding: '12px', display: 'flex', flexDirection: 'column', gap: '10px', flex: 1 }}>
+                
+                {/* 1. 품의서 Slot */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <input 
+                    type="file" 
+                    id={`file-input-${month}-proposal`} 
+                    style={{ display: 'none' }} 
+                    onChange={(e) => handleFileUpload(month, 'proposal', e)}
+                  />
+                  {proposalFile ? (
+                    <div 
+                      onClick={() => setPreviewModalFile({ month, docType: 'proposal', file: proposalFile })}
+                      style={{
+                        background: '#f0fdf4',
+                        border: '1px solid #bbf7d0',
+                        borderRadius: '8px',
+                        padding: '6px 10px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        cursor: 'pointer',
+                        transition: 'background 0.15s'
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.background = '#dcfce7'}
+                      onMouseLeave={(e) => e.currentTarget.style.background = '#f0fdf4'}
+                      title="클릭하여 미리보기"
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', overflow: 'hidden' }}>
+                        <FileCheck size={14} color="#15803d" style={{ flexShrink: 0 }} />
+                        <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#14532d', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '140px' }} title={proposalFile.name}>
+                          품의서 완료
+                        </span>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
+                        <button 
+                          onClick={(e) => handleFileDownload(month, 'proposal', proposalFile.name, e)}
+                          style={{ background: 'none', border: 'none', color: '#16a34a', padding: '3px', cursor: 'pointer', borderRadius: '4px' }}
+                          title="다운로드"
+                        >
+                          <Download size={13} />
+                        </button>
+                        <button 
+                          onClick={(e) => handleFileDelete(month, 'proposal', e)}
+                          style={{ background: 'none', border: 'none', color: '#dc2626', padding: '3px', cursor: 'pointer', borderRadius: '4px' }}
+                          title="삭제"
+                        >
+                          <XCircle size={13} />
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <button 
+                      onClick={() => document.getElementById(`file-input-${month}-proposal`)?.click()}
+                      style={{
+                        background: '#f8fafc',
+                        border: '1px dashed #cbd5e1',
+                        borderRadius: '8px',
+                        padding: '6px 10px',
+                        fontSize: '0.78rem',
+                        color: '#64748b',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '4px',
+                        transition: 'all 0.15s'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.borderColor = '#3b82f6';
+                        e.currentTarget.style.color = '#3b82f6';
+                        e.currentTarget.style.background = '#eff6ff';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.borderColor = '#cbd5e1';
+                        e.currentTarget.style.color = '#64748b';
+                        e.currentTarget.style.background = '#f8fafc';
+                      }}
+                    >
+                      <Plus size={13} /> 품의서 등록
+                    </button>
+                  )}
+                </div>
+
+                {/* 2. 회의록 Slot */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <input 
+                    type="file" 
+                    id={`file-input-${month}-minutes`} 
+                    style={{ display: 'none' }} 
+                    onChange={(e) => handleFileUpload(month, 'minutes', e)}
+                  />
+                  {minutesFile ? (
+                    <div 
+                      onClick={() => setPreviewModalFile({ month, docType: 'minutes', file: minutesFile })}
+                      style={{
+                        background: '#f0fdf4',
+                        border: '1px solid #bbf7d0',
+                        borderRadius: '8px',
+                        padding: '6px 10px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        cursor: 'pointer',
+                        transition: 'background 0.15s'
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.background = '#dcfce7'}
+                      onMouseLeave={(e) => e.currentTarget.style.background = '#f0fdf4'}
+                      title="클릭하여 미리보기"
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', overflow: 'hidden' }}>
+                        <FileCheck size={14} color="#15803d" style={{ flexShrink: 0 }} />
+                        <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#14532d', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '140px' }} title={minutesFile.name}>
+                          회의록 완료
+                        </span>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
+                        <button 
+                          onClick={(e) => handleFileDownload(month, 'minutes', minutesFile.name, e)}
+                          style={{ background: 'none', border: 'none', color: '#16a34a', padding: '3px', cursor: 'pointer', borderRadius: '4px' }}
+                          title="다운로드"
+                        >
+                          <Download size={13} />
+                        </button>
+                        <button 
+                          onClick={(e) => handleFileDelete(month, 'minutes', e)}
+                          style={{ background: 'none', border: 'none', color: '#dc2626', padding: '3px', cursor: 'pointer', borderRadius: '4px' }}
+                          title="삭제"
+                        >
+                          <XCircle size={13} />
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <button 
+                      onClick={() => document.getElementById(`file-input-${month}-minutes`)?.click()}
+                      style={{
+                        background: '#f8fafc',
+                        border: '1px dashed #cbd5e1',
+                        borderRadius: '8px',
+                        padding: '6px 10px',
+                        fontSize: '0.78rem',
+                        color: '#64748b',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '4px',
+                        transition: 'all 0.15s'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.borderColor = '#3b82f6';
+                        e.currentTarget.style.color = '#3b82f6';
+                        e.currentTarget.style.background = '#eff6ff';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.borderColor = '#cbd5e1';
+                        e.currentTarget.style.color = '#64748b';
+                        e.currentTarget.style.background = '#f8fafc';
+                      }}
+                    >
+                      <Plus size={13} /> 회의록 등록
+                    </button>
+                  )}
+                </div>
+
+                {/* Divider */}
+                <div style={{ borderBottom: '1px solid #f1f5f9', margin: '4px 0' }} />
+
+                {/* 3. 기타 첨부파일 Section */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', borderTop: '1px solid #f1f5f9', paddingTop: '8px', marginTop: '4px' }}>
+                  <label style={{ fontSize: '0.72rem', fontWeight: 800, color: '#64748b', display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '2px' }}>
+                    📎 기타 첨부파일
+                  </label>
+                  <input 
+                    type="file" 
+                    id={`file-input-${month}-etc`} 
+                    style={{ display: 'none' }} 
+                    onChange={(e) => handleFileUpload(month, 'etc', e)}
+                  />
+                  
+                  {/* Uploaded ETC Files List */}
+                  {(() => {
+                    const etcKey = `${month}_etc`;
+                    const etcFiles = archiveFiles[etcKey];
+                    const fileList = Array.isArray(etcFiles) ? etcFiles : [];
+                    
+                    return (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                        {fileList.map((f, idx) => (
+                          <div 
+                            key={idx}
+                            onClick={() => setPreviewModalFile({ month, docType: 'etc', file: f })}
+                            style={{
+                              background: '#f8fafc',
+                              border: '1px solid #e2e8f0',
+                              borderRadius: '6px',
+                              padding: '4px 8px',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              cursor: 'pointer',
+                              transition: 'background 0.15s'
+                            }}
+                            onMouseEnter={(e) => e.currentTarget.style.background = '#f1f5f9'}
+                            onMouseLeave={(e) => e.currentTarget.style.background = '#f8fafc'}
+                            title="클릭하여 미리보기"
+                          >
+                            <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#334155', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '140px' }} title={f.name}>
+                              {f.name}
+                            </span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '3px', flexShrink: 0 }}>
+                              <button 
+                                onClick={(e) => handleFileDownload(month, 'etc', f.name, e)}
+                                style={{ background: 'none', border: 'none', color: '#475569', padding: '2px', cursor: 'pointer', borderRadius: '4px' }}
+                                title="다운로드"
+                              >
+                                <Download size={11} />
+                              </button>
+                              <button 
+                                onClick={(e) => handleFileDelete(month, 'etc', e, idx)}
+                                style={{ background: 'none', border: 'none', color: '#dc2626', padding: '2px', cursor: 'pointer', borderRadius: '4px' }}
+                                title="삭제"
+                              >
+                                <XCircle size={11} />
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                        
+                        {/* Plus button to add more etc files, or to upload the first one */}
+                        <button 
+                          onClick={() => document.getElementById(`file-input-${month}-etc`)?.click()}
+                          style={{
+                            background: 'transparent',
+                            border: '1px dashed #cbd5e1',
+                            borderRadius: '6px',
+                            padding: '4px 8px',
+                            fontSize: '0.72rem',
+                            color: '#64748b',
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '3px',
+                            transition: 'all 0.15s',
+                            marginTop: fileList.length > 0 ? '2px' : '0'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.borderColor = '#3b82f6';
+                            e.currentTarget.style.color = '#3b82f6';
+                            e.currentTarget.style.background = '#eff6ff';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.borderColor = '#cbd5e1';
+                            e.currentTarget.style.color = '#64748b';
+                            e.currentTarget.style.background = 'transparent';
+                          }}
+                        >
+                          <Plus size={12} /> {fileList.length > 0 ? '파일 추가' : '파일 등록'}
+                        </button>
+                      </div>
+                    );
+                  })()}
+                </div>
+
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
+
+  const renderArchivesGrid = () => {
+    if (activeTab === 'ledger_archive') {
+      return renderArchiveBulletinBoard();
+    } else {
+      return renderArchiveCalendarGrid();
+    }
   };
 
   return (
@@ -2415,43 +3099,81 @@ export const BusinessModule: React.FC<BusinessModuleProps> = ({ initialTab = 'le
               </p>
             </div>
             
-            {/* Year Selector */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <span style={{ fontSize: '0.9rem', fontWeight: 700, color: '#475569' }}>조회 연도:</span>
-              <select
-                value={archiveYear}
-                onChange={(e) => setArchiveYear(e.target.value)}
-                style={{
-                  padding: '8px 16px',
-                  borderRadius: '10px',
-                  border: '1px solid #cbd5e1',
-                  background: '#ffffff',
-                  fontSize: '0.9rem',
-                  fontWeight: 700,
-                  color: '#1e293b',
-                  outline: 'none',
-                  cursor: 'pointer',
-                  boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
+            {/* Conditional Action/Selector Header Right */}
+            {activeTab === 'ledger_archive' ? (
+              <button
+                onClick={() => {
+                  setIsEditingPost(false);
+                  setBoardWriteTitle('');
+                  setBoardWriteContent('');
+                  setBoardWriteNoticeType('GENERAL');
+                  setBoardWriteProposalFile(null);
+                  setBoardWriteMinutesFile(null);
+                  setBoardWriteEtcFiles([]);
+                  setDeleteAttachmentIds([]);
+                  setSelectedPost(null);
+                  setIsBoardWriteModalOpen(true);
                 }}
+                style={{
+                  padding: '10px 20px',
+                  borderRadius: '10px',
+                  border: 'none',
+                  background: '#2563eb',
+                  color: '#ffffff',
+                  fontWeight: 800,
+                  fontSize: '0.92rem',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  boxShadow: '0 4px 12px rgba(37,99,235,0.2)',
+                  transition: 'background 0.2s'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.background = '#1d4ed8'}
+                onMouseLeave={(e) => e.currentTarget.style.background = '#2563eb'}
               >
-                {(() => {
-                  const startYear = 2026;
-                  const currentYear = new Date().getFullYear();
-                  const endYear = Math.max(startYear, currentYear);
-                  const options = [];
-                  for (let y = startYear; y <= endYear; y++) {
-                    options.push(
-                      <option key={y} value={y.toString()}>{y}년</option>
-                    );
-                  }
-                  return options;
-                })()}
-              </select>
-            </div>
+                <Plus size={18} /> 글쓰기
+              </button>
+            ) : (
+              /* Year Selector */
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <span style={{ fontSize: '0.9rem', fontWeight: 700, color: '#475569' }}>조회 연도:</span>
+                <select
+                  value={archiveYear}
+                  onChange={(e) => setArchiveYear(e.target.value)}
+                  style={{
+                    padding: '8px 16px',
+                    borderRadius: '10px',
+                    border: '1px solid #cbd5e1',
+                    background: '#ffffff',
+                    fontSize: '0.9rem',
+                    fontWeight: 700,
+                    color: '#1e293b',
+                    outline: 'none',
+                    cursor: 'pointer',
+                    boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
+                  }}
+                >
+                  {(() => {
+                    const startYear = 2026;
+                    const currentYear = new Date().getFullYear();
+                    const endYear = Math.max(startYear, currentYear);
+                    const options = [];
+                    for (let y = startYear; y <= endYear; y++) {
+                      options.push(
+                        <option key={y} value={y.toString()}>{y}년</option>
+                      );
+                    }
+                    return options;
+                  })()}
+                </select>
+              </div>
+            )}
           </div>
 
           {/* Calendar style compact 12-month Grid (Grid of 4 columns, auto-adjusting) */}
-          <div style={{ 
+          {renderArchivesGrid()}
+          {false && <div style={{ 
             display: 'grid', 
             gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', 
             gap: '16px', 
@@ -2773,7 +3495,7 @@ export const BusinessModule: React.FC<BusinessModuleProps> = ({ initialTab = 'le
                 </div>
               );
             })}
-          </div>
+          </div>}
         </div>
       )}
 
@@ -2797,7 +3519,7 @@ export const BusinessModule: React.FC<BusinessModuleProps> = ({ initialTab = 'le
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            zIndex: 9999,
+            zIndex: 10200,
             padding: '20px',
             animation: 'fadeIn 0.2s ease-out'
           }}
@@ -3130,6 +3852,703 @@ export const BusinessModule: React.FC<BusinessModuleProps> = ({ initialTab = 'le
               >
                 추가
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ======================================================== */}
+      {/* 8. BULLETIN BOARD WRITE/EDIT MODAL */}
+      {isBoardWriteModalOpen && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(15, 23, 42, 0.65)',
+          backdropFilter: 'blur(6px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 10100,
+          padding: '20px',
+          animation: 'fadeIn 0.2s ease-out'
+        }}
+        onClick={() => setIsBoardWriteModalOpen(false)}>
+          <div style={{
+            background: '#ffffff',
+            borderRadius: '24px',
+            width: '100%',
+            maxWidth: '650px',
+            maxHeight: '90vh',
+            display: 'flex',
+            flexDirection: 'column',
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+            overflow: 'hidden',
+            animation: 'slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1)'
+          }}
+          onClick={(e) => e.stopPropagation()}>
+            {/* Header */}
+            <div style={{ padding: '20px 28px', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f8fafc' }}>
+              <h3 style={{ fontSize: '1.2rem', fontWeight: 800, margin: 0, color: '#0f172a' }}>
+                {isEditingPost ? '✏️ 게시글 수정' : '📝 새 게시글 작성'}
+              </h3>
+              <button 
+                onClick={() => setIsBoardWriteModalOpen(false)}
+                style={{ background: '#f1f5f9', border: 'none', width: '28px', height: '28px', borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b', fontWeight: 800 }}
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Form Body */}
+            <form onSubmit={handleBoardPostSubmit} style={{ padding: '28px', display: 'flex', flexDirection: 'column', gap: '20px', overflowY: 'auto', position: 'relative' }}>
+              
+              {/* Uploading loading overlay */}
+              {boardIsUploading && (
+                <div style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  background: 'rgba(255, 255, 255, 0.85)',
+                  zIndex: 10,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '16px'
+                }}>
+                  {/* Loading Spinner */}
+                  <div className="spinner" style={{
+                    width: '45px',
+                    height: '45px',
+                    border: '5px solid #cbd5e1',
+                    borderTop: '5px solid #2563eb',
+                    borderRadius: '50%',
+                    animation: 'spin 1s linear infinite'
+                  }}></div>
+                  <span style={{ fontSize: '0.95rem', fontWeight: 700, color: '#1e293b' }}>
+                    파일 업로드 및 게시글 저장 중...
+                  </span>
+                </div>
+              )}
+              
+              {/* Notice Type Selector (Admin only can select MUST_READ/NOTICE) */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <label style={{ fontSize: '0.85rem', fontWeight: 700, color: '#334155' }}>말머리 (분류)</label>
+                <select
+                  value={boardWriteNoticeType}
+                  onChange={(e) => setBoardWriteNoticeType(e.target.value)}
+                  style={{ padding: '10px 14px', borderRadius: '10px', border: '1px solid #cbd5e1', outline: 'none', background: '#ffffff', fontSize: '0.9rem', color: '#1e293b' }}
+                >
+                  <option value="GENERAL">일반</option>
+                  {(currentUser?.role === 'ROLE_ADMIN' || currentUser?.role === 'ADMIN') && (
+                    <>
+                      <option value="NOTICE">공지사항</option>
+                      <option value="MUST_READ">필독</option>
+                    </>
+                  )}
+                </select>
+              </div>
+
+              {/* Title */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <label style={{ fontSize: '0.85rem', fontWeight: 700, color: '#334155' }}>제목</label>
+                <input
+                  type="text"
+                  placeholder="제목을 입력해 주세요."
+                  value={boardWriteTitle}
+                  onChange={(e) => setBoardWriteTitle(e.target.value)}
+                  style={{ padding: '10px 14px', borderRadius: '10px', border: '1px solid #cbd5e1', outline: 'none', fontSize: '0.9rem', color: '#1e293b' }}
+                />
+              </div>
+
+              {/* Content */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <label style={{ fontSize: '0.85rem', fontWeight: 700, color: '#334155' }}>본문 및 메모</label>
+                <textarea
+                  placeholder="내용을 입력해 주세요."
+                  rows={8}
+                  value={boardWriteContent}
+                  onChange={(e) => setBoardWriteContent(e.target.value)}
+                  style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid #cbd5e1', outline: 'none', fontSize: '0.9rem', color: '#1e293b', resize: 'vertical', fontFamily: 'inherit' }}
+                />
+              </div>
+
+              {/* File Attachment Section */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', borderTop: '1px solid #e2e8f0', paddingTop: '16px' }}>
+                <label style={{ fontSize: '0.9rem', fontWeight: 800, color: '#0f172a' }}>📎 첨부파일 구성</label>
+                
+                {/* 1. 품의서 (Proposal) */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <input
+                    type="file"
+                    id="board-proposal-file-input"
+                    style={{ display: 'none' }}
+                    onChange={(e) => {
+                      const file = e.target.files?.[0] || null;
+                      if (file && file.size > 10 * 1024 * 1024) {
+                        alert('파일 크기는 최대 10MB까지 가능합니다.');
+                        e.target.value = '';
+                        return;
+                      }
+                      setBoardWriteProposalFile(file);
+                    }}
+                  />
+                  
+                  {/* If file exists (either uploaded now or existing under edit) */}
+                  {((isEditingPost && selectedPost?.attachments?.some((a: any) => a.docType === 'PROPOSAL' && !deleteAttachmentIds.includes(a.id))) || boardWriteProposalFile) ? (
+                    <div style={{
+                      background: '#f0fdf4',
+                      border: '1px solid #bbf7d0',
+                      borderRadius: '10px',
+                      padding: '10px 14px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between'
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', overflow: 'hidden' }}>
+                        <FileCheck size={16} color="#15803d" style={{ flexShrink: 0 }} />
+                        <span style={{ fontSize: '0.88rem', fontWeight: 700, color: '#14532d', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          [품의서] {boardWriteProposalFile ? boardWriteProposalFile.name : selectedPost.attachments.find((a: any) => a.docType === 'PROPOSAL').fileName}
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (boardWriteProposalFile) {
+                            setBoardWriteProposalFile(null);
+                          } else {
+                            const att = selectedPost.attachments.find((a: any) => a.docType === 'PROPOSAL');
+                            if (att) setDeleteAttachmentIds(prev => [...prev, att.id]);
+                          }
+                        }}
+                        style={{ background: 'none', border: 'none', color: '#dc2626', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                      >
+                        <XCircle size={18} />
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => document.getElementById('board-proposal-file-input')?.click()}
+                      style={{
+                        width: '100%',
+                        height: '46px',
+                        background: '#f8fafc',
+                        border: '1px dashed #cbd5e1',
+                        borderRadius: '10px',
+                        color: '#64748b',
+                        fontSize: '0.88rem',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '6px',
+                        transition: 'all 0.15s'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.borderColor = '#3b82f6';
+                        e.currentTarget.style.color = '#3b82f6';
+                        e.currentTarget.style.background = '#eff6ff';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.borderColor = '#cbd5e1';
+                        e.currentTarget.style.color = '#64748b';
+                        e.currentTarget.style.background = '#f8fafc';
+                      }}
+                    >
+                      <Plus size={16} /> 품의서 등록
+                    </button>
+                  )}
+                </div>
+
+                {/* 2. 회의록 (Minutes) */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <input
+                    type="file"
+                    id="board-minutes-file-input"
+                    style={{ display: 'none' }}
+                    onChange={(e) => {
+                      const file = e.target.files?.[0] || null;
+                      if (file && file.size > 10 * 1024 * 1024) {
+                        alert('파일 크기는 최대 10MB까지 가능합니다.');
+                        e.target.value = '';
+                        return;
+                      }
+                      setBoardWriteMinutesFile(file);
+                    }}
+                  />
+                  
+                  {/* If file exists (either uploaded now or existing under edit) */}
+                  {((isEditingPost && selectedPost?.attachments?.some((a: any) => a.docType === 'MINUTES' && !deleteAttachmentIds.includes(a.id))) || boardWriteMinutesFile) ? (
+                    <div style={{
+                      background: '#f0fdf4',
+                      border: '1px solid #bbf7d0',
+                      borderRadius: '10px',
+                      padding: '10px 14px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between'
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', overflow: 'hidden' }}>
+                        <FileCheck size={16} color="#15803d" style={{ flexShrink: 0 }} />
+                        <span style={{ fontSize: '0.88rem', fontWeight: 700, color: '#14532d', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          [회의록] {boardWriteMinutesFile ? boardWriteMinutesFile.name : selectedPost.attachments.find((a: any) => a.docType === 'MINUTES').fileName}
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (boardWriteMinutesFile) {
+                            setBoardWriteMinutesFile(null);
+                          } else {
+                            const att = selectedPost.attachments.find((a: any) => a.docType === 'MINUTES');
+                            if (att) setDeleteAttachmentIds(prev => [...prev, att.id]);
+                          }
+                        }}
+                        style={{ background: 'none', border: 'none', color: '#dc2626', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                      >
+                        <XCircle size={18} />
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => document.getElementById('board-minutes-file-input')?.click()}
+                      style={{
+                        width: '100%',
+                        height: '46px',
+                        background: '#f8fafc',
+                        border: '1px dashed #cbd5e1',
+                        borderRadius: '10px',
+                        color: '#64748b',
+                        fontSize: '0.88rem',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '6px',
+                        transition: 'all 0.15s'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.borderColor = '#3b82f6';
+                        e.currentTarget.style.color = '#3b82f6';
+                        e.currentTarget.style.background = '#eff6ff';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.borderColor = '#cbd5e1';
+                        e.currentTarget.style.color = '#64748b';
+                        e.currentTarget.style.background = '#f8fafc';
+                      }}
+                    >
+                      <Plus size={16} /> 회의록 등록
+                    </button>
+                  )}
+                </div>
+
+                {/* 3. 기타 첨부파일 (ETC) */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <Paperclip size={14} color="#475569" />
+                    <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#475569' }}>기타 첨부파일</span>
+                  </div>
+
+                  <input
+                    type="file"
+                    id="board-etc-file-input"
+                    multiple
+                    style={{ display: 'none' }}
+                    onChange={(e) => {
+                      const newFiles = Array.from(e.target.files || []);
+                      const validFiles = newFiles.filter(file => {
+                        if (file.size > 10 * 1024 * 1024) {
+                          alert(`파일 "${file.name}"의 크기가 10MB를 초과하여 제외되었습니다. (최대 10MB 가능)`);
+                          return false;
+                        }
+                        return true;
+                      });
+                      setBoardWriteEtcFiles(prev => [...prev, ...validFiles]);
+                    }}
+                  />
+
+                  {/* List newly added ETC files */}
+                  {boardWriteEtcFiles.map((file, idx) => (
+                    <div key={`new-etc-${idx}`} style={{
+                      background: '#f8fafc',
+                      border: '1px solid #cbd5e1',
+                      borderRadius: '10px',
+                      padding: '8px 12px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between'
+                    }}>
+                      <span style={{ fontSize: '0.82rem', fontWeight: 600, color: '#334155', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '80%' }}>
+                        {file.name} ({(file.size / 1024 / 1024).toFixed(2)} MB)
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setBoardWriteEtcFiles(prev => prev.filter((_, i) => i !== idx))}
+                        style={{ background: 'none', border: 'none', color: '#dc2626', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                      >
+                        <XCircle size={16} />
+                      </button>
+                    </div>
+                  ))}
+
+                  {/* List existing non-deleted ETC files */}
+                  {isEditingPost && selectedPost?.attachments?.filter((a: any) => a.docType === 'ETC' && !deleteAttachmentIds.includes(a.id)).map((a: any) => (
+                    <div key={`old-etc-${a.id}`} style={{
+                      background: '#f8fafc',
+                      border: '1px solid #cbd5e1',
+                      borderRadius: '10px',
+                      padding: '8px 12px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between'
+                    }}>
+                      <span style={{ fontSize: '0.82rem', fontWeight: 600, color: '#334155', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '80%' }}>
+                        {a.fileName} ({(a.fileSize / 1024 / 1024).toFixed(2)} MB)
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setDeleteAttachmentIds(prev => [...prev, a.id])}
+                        style={{ background: 'none', border: 'none', color: '#dc2626', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                      >
+                        <XCircle size={16} />
+                      </button>
+                    </div>
+                  ))}
+
+                  <button
+                    type="button"
+                    onClick={() => document.getElementById('board-etc-file-input')?.click()}
+                    style={{
+                      width: '100%',
+                      height: '46px',
+                      background: '#f8fafc',
+                      border: '1px dashed #cbd5e1',
+                      borderRadius: '10px',
+                      color: '#64748b',
+                      fontSize: '0.88rem',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '6px',
+                      transition: 'all 0.15s'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.borderColor = '#3b82f6';
+                      e.currentTarget.style.color = '#3b82f6';
+                      e.currentTarget.style.background = '#eff6ff';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.borderColor = '#cbd5e1';
+                      e.currentTarget.style.color = '#64748b';
+                      e.currentTarget.style.background = '#f8fafc';
+                    }}
+                  >
+                    <Plus size={16} /> 파일 등록
+                  </button>
+                </div>
+              </div>
+
+              {/* Buttons */}
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '10px' }}>
+                <button
+                  type="button"
+                  onClick={() => setIsBoardWriteModalOpen(false)}
+                  style={{ padding: '10px 20px', borderRadius: '10px', border: '1px solid #cbd5e1', background: '#ffffff', color: '#64748b', fontWeight: 700, cursor: 'pointer' }}
+                >
+                  취소
+                </button>
+                <button
+                  type="submit"
+                  style={{ padding: '10px 20px', borderRadius: '10px', border: 'none', background: '#2563eb', color: '#ffffff', fontWeight: 700, cursor: 'pointer' }}
+                >
+                  {isEditingPost ? '수정 완료' : '등록'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* 9. BULLETIN BOARD DETAIL MODAL */}
+      {isBoardDetailModalOpen && selectedPost && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(15, 23, 42, 0.65)',
+          backdropFilter: 'blur(6px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 9999,
+          padding: '20px',
+          animation: 'fadeIn 0.2s ease-out'
+        }}
+        onClick={() => {
+          setIsBoardDetailModalOpen(false);
+          setSelectedPost(null);
+        }}>
+          <div style={{
+            background: '#ffffff',
+            borderRadius: '24px',
+            width: '100%',
+            maxWidth: '700px',
+            maxHeight: '90vh',
+            display: 'flex',
+            flexDirection: 'column',
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+            overflow: 'hidden',
+            animation: 'slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1)'
+          }}
+          onClick={(e) => e.stopPropagation()}>
+            {/* Header */}
+            <div style={{ padding: '24px 30px', borderBottom: '1px solid #f1f5f9', background: '#f8fafc', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  {selectedPost.noticeType === 'MUST_READ' ? (
+                    <span style={{ background: '#fee2e2', color: '#ef4444', border: '1px solid #fecaca', padding: '2px 8px', borderRadius: '4px', fontSize: '0.72rem', fontWeight: 800 }}>필독</span>
+                  ) : selectedPost.noticeType === 'NOTICE' ? (
+                    <span style={{ background: '#fef3c7', color: '#d97706', border: '1px solid #fde68a', padding: '2px 8px', borderRadius: '4px', fontSize: '0.72rem', fontWeight: 800 }}>공지</span>
+                  ) : (
+                    <span style={{ color: '#94a3b8', fontSize: '0.8rem', fontWeight: 600 }}>게시글</span>
+                  )}
+                  {selectedPost.isLocked && (
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '3px', background: '#f1f5f9', color: '#475569', padding: '2px 6px', borderRadius: '4px', fontSize: '0.72rem', fontWeight: 700 }}>
+                      <Lock size={10} /> 수정 잠김
+                    </span>
+                  )}
+                </div>
+                <button 
+                  onClick={() => {
+                    setIsBoardDetailModalOpen(false);
+                    setSelectedPost(null);
+                  }}
+                  style={{ background: '#e2e8f0', border: 'none', width: '28px', height: '28px', borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#475569', fontWeight: 800 }}
+                >
+                  ✕
+                </button>
+              </div>
+
+              <h3 style={{ fontSize: '1.35rem', fontWeight: 800, margin: '4px 0 0 0', color: '#0f172a' }}>{selectedPost.title}</h3>
+              
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '4px', fontSize: '0.82rem', color: '#64748b' }}>
+                <div style={{ display: 'flex', gap: '12px' }}>
+                  <span>작성자: <strong style={{ color: '#334155' }}>{selectedPost.author}</strong></span>
+                  <span>작성일: {new Date(selectedPost.createdAt).toLocaleString()}</span>
+                </div>
+                <span>조회수 {selectedPost.viewCount}</span>
+              </div>
+            </div>
+
+            {/* Content & Action Buttons */}
+            <div style={{ padding: '30px', display: 'flex', flexDirection: 'column', gap: '24px', overflowY: 'auto', flex: 1 }}>
+              {/* Body Content */}
+              <div style={{ 
+                fontSize: '0.95rem', 
+                lineHeight: '1.7', 
+                color: '#334155', 
+                whiteSpace: 'pre-wrap', 
+                minHeight: '150px',
+                background: '#f8fafc',
+                padding: '20px',
+                borderRadius: '12px',
+                border: '1px solid #eff2f6'
+              }}>
+                {selectedPost.content || <em style={{ color: '#94a3b8' }}>본문 내용이 없습니다.</em>}
+              </div>
+
+              {/* Attachment List */}
+              {((selectedPost.attachments && selectedPost.attachments.length > 0) || selectedPost.fileName) && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  <label style={{ fontSize: '0.88rem', fontWeight: 800, color: '#334155' }}>📎 첨부파일 목록</label>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    
+                    {/* Old file scheme compatibility */}
+                    {selectedPost.fileName && (
+                      <div style={{
+                        background: '#f8fafc',
+                        border: '1px solid #e2e8f0',
+                        borderRadius: '12px',
+                        padding: '12px 16px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between'
+                      }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', overflow: 'hidden' }}>
+                          <Paperclip size={14} color="#64748b" style={{ flexShrink: 0 }} />
+                          <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b', background: '#e2e8f0', padding: '2px 6px', borderRadius: '4px', flexShrink: 0 }}>일반</span>
+                          <button
+                            onClick={() => handlePreviewAttachment({ id: selectedPost.id, fileName: selectedPost.fileName, fileSize: selectedPost.fileSize, docType: 'ETC' })}
+                            style={{ background: 'none', border: 'none', padding: 0, textAlign: 'left', fontSize: '0.85rem', fontWeight: 700, color: '#2563eb', cursor: 'pointer', textDecoration: 'underline', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                            title={selectedPost.fileName}
+                          >
+                            {selectedPost.fileName}
+                          </button>
+                        </div>
+                        {(currentUser?.username === selectedPost.author || currentUser?.role === 'ROLE_ADMIN' || currentUser?.role === 'ADMIN') ? (
+                          <button
+                            onClick={() => handleDownloadAttachment({ id: selectedPost.id, fileName: selectedPost.fileName })}
+                            style={{ background: '#f1f5f9', border: 'none', padding: '4px 10px', borderRadius: '6px', fontSize: '0.75rem', color: '#475569', fontWeight: 700, cursor: 'pointer' }}
+                          >
+                            다운로드
+                          </button>
+                        ) : (
+                          <span style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 600 }}>권한 없음</span>
+                        )}
+                      </div>
+                    )}
+
+                    {/* New attachments list */}
+                    {selectedPost.attachments?.map((a: any) => {
+                      const badgeLabel = a.docType === 'PROPOSAL' ? '품의서' : a.docType === 'MINUTES' ? '회의록' : '기타';
+                      const badgeColor = a.docType === 'PROPOSAL' ? '#eff6ff' : a.docType === 'MINUTES' ? '#ecfdf5' : '#f1f5f9';
+                      const badgeTextColor = a.docType === 'PROPOSAL' ? '#1d4ed8' : a.docType === 'MINUTES' ? '#047857' : '#475569';
+                      
+                      return (
+                        <div key={a.id} style={{
+                          background: '#f8fafc',
+                          border: '1px solid #e2e8f0',
+                          borderRadius: '12px',
+                          padding: '12px 16px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between'
+                        }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', overflow: 'hidden' }}>
+                            <Paperclip size={14} color="#64748b" style={{ flexShrink: 0 }} />
+                            <span style={{ fontSize: '0.72rem', fontWeight: 800, color: badgeTextColor, background: badgeColor, padding: '2px 6px', borderRadius: '4px', flexShrink: 0 }}>
+                              {badgeLabel}
+                            </span>
+                            <button
+                              onClick={() => handlePreviewAttachment(a)}
+                              style={{ background: 'none', border: 'none', padding: 0, textAlign: 'left', fontSize: '0.85rem', fontWeight: 700, color: '#2563eb', cursor: 'pointer', textDecoration: 'underline', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                              title={a.fileName}
+                            >
+                              {a.fileName}
+                            </button>
+                            <span style={{ fontSize: '0.72rem', color: '#94a3b8', marginLeft: '4px' }}>
+                              ({(a.fileSize / 1024).toFixed(1)} KB)
+                            </span>
+                          </div>
+                          {(currentUser?.username === selectedPost.author || currentUser?.role === 'ROLE_ADMIN' || currentUser?.role === 'ADMIN') ? (
+                            <button
+                              onClick={() => handleDownloadAttachment(a)}
+                              style={{ background: '#f1f5f9', border: 'none', padding: '4px 10px', borderRadius: '6px', fontSize: '0.75rem', color: '#475569', fontWeight: 700, cursor: 'pointer' }}
+                            >
+                              다운로드
+                            </button>
+                          ) : (
+                            <span style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 600 }}>권한 없음</span>
+                          )}
+                        </div>
+                      );
+                    })}
+
+                  </div>
+                </div>
+              )}
+
+              {/* Action Buttons (Edit/Delete/Lock) */}
+              <div style={{ 
+                borderTop: '1px solid #f1f5f9', 
+                paddingTop: '20px', 
+                display: 'flex', 
+                justifyContent: 'space-between',
+                alignItems: 'center'
+              }}>
+                <div>
+                  {/* Admin controls for toggle lock */}
+                  {(currentUser?.role === 'ROLE_ADMIN' || currentUser?.role === 'ADMIN') && (
+                    <button
+                      onClick={() => handleToggleLock(selectedPost)}
+                      style={{
+                        background: selectedPost.isLocked ? '#f1f5f9' : '#fff7ed',
+                        color: selectedPost.isLocked ? '#475569' : '#c2410c',
+                        border: '1px solid ' + (selectedPost.isLocked ? '#cbd5e1' : '#ffedd5'),
+                        padding: '8px 16px',
+                        borderRadius: '8px',
+                        fontSize: '0.82rem',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px'
+                      }}
+                    >
+                      {selectedPost.isLocked ? <Unlock size={13} /> : <Lock size={13} />}
+                      {selectedPost.isLocked ? '수정잠금 해제' : '수정잠금 설정'}
+                    </button>
+                  )}
+                </div>
+
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  {/* Edit/Delete permission: (author and not locked) or admin */}
+                  {((currentUser?.username === selectedPost.author && !selectedPost.isLocked) || currentUser?.role === 'ROLE_ADMIN' || currentUser?.role === 'ADMIN') && (
+                    <>
+                      <button
+                        onClick={() => {
+                          setIsEditingPost(true);
+                          setBoardWriteTitle(selectedPost.title);
+                          setBoardWriteContent(selectedPost.content || '');
+                          setBoardWriteNoticeType(selectedPost.noticeType);
+                          setBoardWriteProposalFile(null);
+                          setBoardWriteMinutesFile(null);
+                          setBoardWriteEtcFiles([]);
+                          setDeleteAttachmentIds([]);
+                          setIsBoardWriteModalOpen(true);
+                        }}
+                        style={{
+                          background: '#f1f5f9',
+                          color: '#475569',
+                          border: '1px solid #cbd5e1',
+                          padding: '8px 16px',
+                          borderRadius: '8px',
+                          fontSize: '0.82rem',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '4px'
+                        }}
+                      >
+                        <Edit3 size={13} /> 수정
+                      </button>
+                      <button
+                        onClick={() => handleDeletePost(selectedPost)}
+                        style={{
+                          background: '#fee2e2',
+                          color: '#dc2626',
+                          border: 'none',
+                          padding: '8px 16px',
+                          borderRadius: '8px',
+                          fontSize: '0.82rem',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '4px'
+                        }}
+                      >
+                        <Trash2 size={13} /> 삭제
+                      </button>
+                    </>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
         </div>

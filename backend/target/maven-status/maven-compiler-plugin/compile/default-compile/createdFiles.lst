@@ -32,6 +32,7 @@ com\overseas\portal\controller\AuthController$TelegramLoginRequest.class
 com\overseas\portal\repository\FileUploadLogRepository.class
 com\overseas\portal\service\WeeklyWorshipService.class
 com\overseas\portal\service\DiagnosisService$SummaryMetric.class
+com\overseas\portal\repository\BusinessBoardAttachmentRepository.class
 com\overseas\portal\controller\I18nController.class
 com\overseas\portal\domain\EvangelismEditRequest.class
 com\overseas\portal\domain\AccessLog$AccessLogBuilder.class
@@ -39,8 +40,11 @@ com\overseas\portal\service\AdminService.class
 com\overseas\portal\controller\UserController$PasswordUpdateRequest.class
 com\overseas\portal\controller\UserController$1.class
 com\overseas\portal\domain\BusinessLedgerRecord.class
+com\overseas\portal\domain\BusinessBoardAttachment.class
 com\overseas\portal\domain\FileUploadLog$FileUploadLogBuilder.class
 com\overseas\portal\service\AuthService$TelegramUser.class
+com\overseas\portal\domain\BusinessBoardPost.class
+com\overseas\portal\domain\BusinessBoardAttachment$BusinessBoardAttachmentBuilder.class
 com\overseas\portal\service\WeeklyWorshipService$WorshipJobResult$WorshipJobResultBuilder.class
 com\overseas\portal\repository\EvangelismWeeklyRecordRepository.class
 com\overseas\portal\controller\EvangelismController.class
@@ -56,6 +60,7 @@ com\overseas\portal\domain\WeeklyWorshipHistory.class
 com\overseas\portal\domain\MembershipEditRequest.class
 com\overseas\portal\service\DiagnosisService$RecordDTO.class
 com\overseas\portal\service\TelegramBotPollingService$1.class
+com\overseas\portal\controller\BusinessBoardController.class
 com\overseas\portal\domain\BusinessLedgerRecord$BusinessLedgerRecordBuilder.class
 com\overseas\portal\domain\EvangelismWeeklyRecord.class
 com\overseas\portal\service\TelegramBotService.class
@@ -99,7 +104,9 @@ com\overseas\portal\repository\BusinessLedgerRecordRepository.class
 com\overseas\portal\domain\FileDownloadLog$FileDownloadLogBuilder.class
 com\overseas\portal\service\BusinessLedgerService.class
 com\overseas\portal\service\AuthService.class
+com\overseas\portal\repository\BusinessBoardPostRepository.class
 com\overseas\portal\repository\AccessLogRepository.class
+com\overseas\portal\domain\BusinessBoardPost$BusinessBoardPostBuilder.class
 com\overseas\portal\controller\UserController$ProfileUpdateRequest.class
 com\overseas\portal\controller\WeeklyWorshipController.class
 com\overseas\portal\service\DiagnosisService.class
