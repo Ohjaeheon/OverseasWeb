@@ -95,12 +95,7 @@ export const DiagnosisPage: React.FC<DiagnosisPageProps> = ({ section = 'home', 
 
     (window as any).reactNavigate = (path: string) => {
       const cleanPath = path.startsWith('/') ? path : '/' + path;
-      const legacyPaths = ['/', '/diag', '/inspect', '/funnel', '/trend', '/map', '/globe'];
-      const currentPath = window.location.pathname.replace('/OverseasPortal', '');
-      const isCurrentLegacy = legacyPaths.includes(currentPath) || currentPath === '';
-      const isTargetLegacy = legacyPaths.includes(cleanPath);
-
-      if (isCurrentLegacy !== isTargetLegacy || cleanPath === '/profile' || cleanPath.startsWith('/adminsetting') || cleanPath === '/calendar' || cleanPath.startsWith('/business')) {
+      if (cleanPath === '/profile' || cleanPath.startsWith('/adminsetting')) {
         window.location.href = '/OverseasPortal' + cleanPath;
       } else {
         navigate(cleanPath);

@@ -4546,16 +4546,12 @@ export const BusinessModule: React.FC<BusinessModuleProps> = ({ initialTab = 'le
                             {selectedPost.fileName}
                           </button>
                         </div>
-                        {(currentUser?.username === selectedPost.author || currentUser?.role === 'ROLE_ADMIN' || currentUser?.role === 'ADMIN' || selectedPost.referrers?.includes(currentUser?.username)) ? (
-                          <button
-                            onClick={() => handleDownloadAttachment({ id: selectedPost.id, fileName: selectedPost.fileName })}
-                            style={{ background: '#f1f5f9', border: 'none', padding: '4px 10px', borderRadius: '6px', fontSize: '0.75rem', color: '#475569', fontWeight: 700, cursor: 'pointer' }}
-                          >
-                            다운로드
-                          </button>
-                        ) : (
-                          <span style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 600 }}>권한 없음</span>
-                        )}
+                        <button
+                          onClick={() => handleDownloadAttachment({ id: selectedPost.id, fileName: selectedPost.fileName })}
+                          style={{ background: '#f1f5f9', border: 'none', padding: '4px 10px', borderRadius: '6px', fontSize: '0.75rem', color: '#475569', fontWeight: 700, cursor: 'pointer' }}
+                        >
+                          다운로드
+                        </button>
                       </div>
                     )}
 
@@ -4591,16 +4587,12 @@ export const BusinessModule: React.FC<BusinessModuleProps> = ({ initialTab = 'le
                               ({(a.fileSize / 1024).toFixed(1)} KB)
                             </span>
                           </div>
-                          {(currentUser?.username === selectedPost.author || currentUser?.role === 'ROLE_ADMIN' || currentUser?.role === 'ADMIN' || selectedPost.referrers?.includes(currentUser?.username)) ? (
                             <button
                               onClick={() => handleDownloadAttachment(a)}
                               style={{ background: '#f1f5f9', border: 'none', padding: '4px 10px', borderRadius: '6px', fontSize: '0.75rem', color: '#475569', fontWeight: 700, cursor: 'pointer' }}
                             >
                               다운로드
                             </button>
-                          ) : (
-                            <span style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 600 }}>권한 없음</span>
-                          )}
                         </div>
                       );
                     })}

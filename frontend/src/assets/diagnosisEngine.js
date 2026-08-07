@@ -1465,7 +1465,7 @@ function renderFunnel(){
 // ── render ──
 function render(){
   const sec=ST.section||"home";
-  if (sec === 'evangelism/check' || sec === 'evangelism/aggregate' || sec === 'membership/check' || sec === 'membership/input' || sec === 'approvals/pending' || sec === 'approvals/completed' || sec === 'profile' || (sec && sec.startsWith('business'))) {
+  if (sec === 'calendar' || sec === 'evangelism/check' || sec === 'evangelism/aggregate' || sec === 'membership/check' || sec === 'membership/input' || sec === 'approvals/pending' || sec === 'approvals/completed' || sec === 'profile' || (sec && sec.startsWith('business'))) {
     buildSidebar();
     return;
   }
