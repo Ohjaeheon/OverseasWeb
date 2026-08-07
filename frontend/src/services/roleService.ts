@@ -28,6 +28,7 @@ export const DEFAULT_ROLES: RoleDefinition[] = [
 export const DEFAULT_MENUS: { menuKey: string; menuName: string; category: string; path: string }[] = [
   // User Diagnosis Portal Menus
   { menuKey: 'home', menuName: '🏠 해외 총괄 요약', category: '🖥️ 일반 사용자 진단서 포탈', path: '/' },
+  { menuKey: 'calendar', menuName: '📅 캘린더', category: '🖥️ 일반 사용자 진단서 포탈', path: '/calendar' },
   { menuKey: 'diag', menuName: '🩺 교회 진단서', category: '🖥️ 일반 사용자 진단서 포탈', path: '/diag' },
   { menuKey: 'inspect', menuName: '🚨 점검 (양·질)', category: '🖥️ 일반 사용자 진단서 포탈', path: '/inspect' },
   { menuKey: 'funnel', menuName: '🚦 관문별 통과율', category: '🖥️ 일반 사용자 진단서 포탈', path: '/funnel' },
@@ -196,10 +197,10 @@ export const roleService = {
             const isRestricted = ['users', 'roles', 'perm', 'sys', 'admin_bot', 'business', 'business_ledger', 'business_ledger_report', 'business_fruit', 'business_transport', 'business_mission', 'approvals_pending', 'approvals_completed'].includes(m.menuKey);
             permObj[r.roleId] = { read: !isRestricted, write: !isRestricted };
           } else if (r.roleId === 'ROLE_GUEST') {
-            permObj[r.roleId] = { read: ['home', 'diag', 'inspect', 'funnel', 'map'].includes(m.menuKey), write: false };
+            permObj[r.roleId] = { read: ['home', 'diag', 'inspect', 'funnel', 'map', 'calendar'].includes(m.menuKey), write: false };
           } else {
             // Custom roles default read access
-            permObj[r.roleId] = { read: ['home', 'diag'].includes(m.menuKey), write: false };
+            permObj[r.roleId] = { read: ['home', 'diag', 'calendar'].includes(m.menuKey), write: false };
           }
         }
       });
@@ -294,9 +295,9 @@ export const roleService = {
       const isRestricted = ['users', 'roles', 'perm', 'sys', 'admin_bot', 'login_logs', 'access_logs', 'file_upload_logs', 'file_download_logs', 'business', 'business_ledger', 'business_ledger_report', 'business_fruit', 'business_transport', 'business_mission', 'approvals_pending', 'approvals_completed'].includes(normKey);
       return { read: !isRestricted, write: !isRestricted };
     } else if (cleanRoleId === 'ROLE_GUEST') {
-      return { read: ['home', 'diag', 'inspect', 'funnel', 'map'].includes(normKey), write: false };
+      return { read: ['home', 'diag', 'inspect', 'funnel', 'map', 'calendar'].includes(normKey), write: false };
     }
-    return { read: ['home', 'diag'].includes(normKey), write: false };
+    return { read: ['home', 'diag', 'calendar'].includes(normKey), write: false };
   },
 
   getLoginRedirectPath: (role: string): string => {

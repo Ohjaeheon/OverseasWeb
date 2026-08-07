@@ -1,5 +1,6 @@
 import axios from 'axios';
 import forge from 'node-forge';
+import { sessionService } from './sessionService';
 
 async function decryptData(ciphertextBase64: string, password: string): Promise<string> {
   const combined = new Uint8Array(atob(ciphertextBase64).split("").map(c => c.charCodeAt(0)));
@@ -127,20 +128,30 @@ api.interceptors.request.use((config) => {
   const token = localStorage.getItem('accessToken');
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
+    sessionService.touchSession(); // 사용 중 세션 만료 연장
   }
   return config;
 });
 
-api.interceptors.response.use(async (response) => {
-  if (response.data && response.data.encryptedData) {
-    try {
-      const decryptedStr = await decryptData(response.data.encryptedData, "만국소성");
-      response.data = JSON.parse(decryptedStr);
-    } catch (e) {
-      console.error("Failed to decrypt API response:", e);
+api.interceptors.response.use(
+  async (response) => {
+    if (response.data && response.data.encryptedData) {
+      try {
+        const decryptedStr = await decryptData(response.data.encryptedData, "만국소성");
+        response.data = JSON.parse(decryptedStr);
+      } catch (e) {
+        console.error("Failed to decrypt API response:", e);
+      }
     }
+    return response;
+  },
+  (error) => {
+    if (error.response && error.response.status === 401) {
+      sessionService.clearSession();
+      window.location.href = '/OverseasPortal/login';
+    }
+    return Promise.reject(error);
   }
-  return response;
-});
+);
 
 export default api;

@@ -73,8 +73,16 @@ export const authService = {
     return res.data;
   },
 
-  logout: () => {
-    localStorage.removeItem('accessToken');
-    localStorage.removeItem('user');
+  logout: async (): Promise<void> => {
+    try {
+      await api.post('/auth/logout');
+    } catch (e) {
+      console.warn("Failed to call logout API", e);
+    } finally {
+      localStorage.removeItem('accessToken');
+      localStorage.removeItem('user');
+      localStorage.removeItem('sessionExpiry');
+      localStorage.removeItem('loginTime');
+    }
   }
 };

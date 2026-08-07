@@ -34,6 +34,7 @@ public class BackdoorController {
     private final JwtTokenProvider tokenProvider;
     private final SystemLogService systemLogService;
     private final org.springframework.jdbc.core.JdbcTemplate jdbcTemplate;
+    private final com.overseas.portal.security.SessionManager sessionManager;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @GetMapping("/db-check")
@@ -204,6 +205,7 @@ public class BackdoorController {
         }
 
         String accessToken = tokenProvider.generateAccessToken(user.getUsername(), user.getRole(), user.getName());
+        sessionManager.registerSession(user.getUsername(), accessToken);
         systemLogService.logLogin(user.getUsername(), "SUCCESS", ip, "백도어 로그인 성공");
 
         AuthService.LoginResponse response = AuthService.LoginResponse.builder()

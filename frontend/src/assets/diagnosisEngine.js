@@ -1546,6 +1546,7 @@ function setSection(sec, cat){
 }
 const SIDEBAR=[
   {s:"home",ico:"🏠",label:"홈 (종합 현황)"},
+  {s:"calendar",ico:"📅",label:"캘린더",path:"/calendar"},
   {grp:"진 단"},
   {s:"diag",ico:"🩺",label:"교회 진단서",tag:"핵심"},
   {s:"inspect",ico:"🚨",label:"점검 (양·질)"},
@@ -1718,7 +1719,7 @@ function buildSidebar(){
     } else if (m.dataset.path && typeof window.reactNavigate === 'function') {
       window.reactNavigate(m.dataset.path);
     } else {
-      const isReactRoute = ['/evangelism', '/membership', '/approvals', '/business'].some(p => window.location.pathname.includes(p));
+      const isReactRoute = ['/calendar', '/evangelism', '/membership', '/approvals', '/business'].some(p => window.location.pathname.includes(p));
       if (isReactRoute && typeof window.reactNavigate === 'function') {
         const dest = m.dataset.s === 'home' ? '/' : `/${m.dataset.s}`;
         window.reactNavigate(dest);

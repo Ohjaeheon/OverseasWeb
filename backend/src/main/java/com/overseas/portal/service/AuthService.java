@@ -10,6 +10,7 @@ import com.overseas.portal.repository.SystemConfigRepository;
 import com.overseas.portal.repository.TelegramOtpLogRepository;
 import com.overseas.portal.repository.UserRepository;
 import com.overseas.portal.security.JwtTokenProvider;
+import com.overseas.portal.security.SessionManager;
 import lombok.Builder;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
@@ -44,6 +45,7 @@ public class AuthService {
     private final JwtTokenProvider tokenProvider;
     private final PasswordEncoder passwordEncoder;
     private final SystemConfigRepository configRepository;
+    private final SessionManager sessionManager;
     private final ObjectMapper objectMapper = new ObjectMapper()
             .configure(com.fasterxml.jackson.databind.DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
     private final SecureRandom random = new SecureRandom();
@@ -171,6 +173,7 @@ public class AuthService {
 
         // OTP 제외 계정이거나, 텔레그램 웹앱 로그인, 혹은 OTP 봇이 비활성화된 경우, 혹은 최초 로그인인 경우 즉시 AccessToken 발급
         String accessToken = tokenProvider.generateAccessToken(user.getUsername(), user.getRole(), user.getName());
+        sessionManager.registerSession(user.getUsername(), accessToken);
         return LoginResponse.builder()
                 .requireOtp(false)
                 .accessToken(accessToken)
@@ -245,6 +248,7 @@ public class AuthService {
 
         // 텔레그램 웹앱 접속 시 2차 인증(OTP)은 강제 면제
         String accessToken = tokenProvider.generateAccessToken(user.getUsername(), user.getRole(), user.getName());
+        sessionManager.registerSession(user.getUsername(), accessToken);
         return LoginResponse.builder()
                 .requireOtp(false)
                 .accessToken(accessToken)
@@ -419,6 +423,7 @@ public class AuthService {
         otpLogRepository.save(otpLog);
 
         String accessToken = tokenProvider.generateAccessToken(user.getUsername(), user.getRole(), user.getName());
+        sessionManager.registerSession(user.getUsername(), accessToken);
 
         return LoginResponse.builder()
                 .requireOtp(false)
@@ -432,5 +437,9 @@ public class AuthService {
                 .telegramChatId(user.getTelegramChatId())
                 .message("2차 텔레그램 OTP 인증 성공!")
                 .build();
+    }
+
+    public void logout(String token) {
+        sessionManager.removeSession(token);
     }
 }

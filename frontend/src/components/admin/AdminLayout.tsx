@@ -148,8 +148,8 @@ export const AdminLayout: React.FC = () => {
     }
   }, [location.pathname, currentUserRole, navigate]);
 
-  const handleLogout = () => {
-    sessionService.clearSession();
+  const handleLogout = async () => {
+    await authService.logout();
     navigate('/login');
   };
 
@@ -241,24 +241,28 @@ export const AdminLayout: React.FC = () => {
         </button>
 
         {/* Logo */}
-        <div style={{
-          width: '38px',
-          height: '38px',
-          borderRadius: '11px',
-          background: 'linear-gradient(135deg, #4b8bff, #2563eb)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          fontSize: '19px',
-          color: 'white',
-          boxShadow: '0 6px 16px rgba(37, 99, 235, 0.32)',
-          flexShrink: 0
-        }}>
+        <div
+          onClick={() => navigate('/')}
+          style={{
+            width: '38px',
+            height: '38px',
+            borderRadius: '11px',
+            background: 'linear-gradient(135deg, #4b8bff, #2563eb)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '19px',
+            color: 'white',
+            boxShadow: '0 6px 16px rgba(37, 99, 235, 0.32)',
+            flexShrink: 0,
+            cursor: 'pointer'
+          }}
+        >
           🌐
         </div>
 
         {/* Brand Title */}
-        <div>
+        <div onClick={() => navigate('/')} style={{ cursor: 'pointer' }}>
           <div style={{ fontSize: '1.05rem', fontWeight: 800, color: '#1f2a44', letterSpacing: '-0.3px', lineHeight: 1.2 }}>
             해외선교부 <span style={{ color: '#2563eb' }}>업무포탈</span>
           </div>

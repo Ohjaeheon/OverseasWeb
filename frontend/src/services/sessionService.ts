@@ -11,6 +11,17 @@ export const sessionService = {
     localStorage.setItem('sessionExpiry', String(expiryTime));
   },
 
+  // 사용 중 세션 만료 연장 (30분 추가)
+  touchSession: () => {
+    const token = localStorage.getItem('accessToken');
+    const userStr = localStorage.getItem('user');
+    if (token && userStr) {
+      const now = Date.now();
+      const expiryTime = now + SESSION_EXPIRY_MS;
+      localStorage.setItem('sessionExpiry', String(expiryTime));
+    }
+  },
+
   // 유효한 세션인지 30분 만료 여부 검사
   isSessionValid: (): boolean => {
     const token = localStorage.getItem('accessToken');

@@ -2003,6 +2003,7 @@ function setSection(sec, cat){
 }
 var SIDEBAR=[
   {s:"home",ico:"🏠",label:"홈 (종합 현황)"},
+  {s:"calendar",ico:"📅",label:"캘린더",path:"/calendar"},
   {grp:"진 단"},
   {s:"diag",ico:"🩺",label:"교회 진단서",tag:"핵심"},
   {s:"inspect",ico:"🚨",label:"점검 (양·질)"},
@@ -2074,6 +2075,7 @@ function checkMenuAccess(menuKey){
       }
       for(let i=0; i<keys.length; i++){
         const k = keys[i];
+        if(k === 'calendar') return true; // 신규 메뉴 기본 허용 폴백
         if(perms[k] && perms[k][normRole] && perms[k][normRole].read){
           return true;
         }

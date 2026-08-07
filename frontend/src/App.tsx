@@ -30,6 +30,7 @@ import { roleService } from './services/roleService';
 import { TelegramLifecycleHandler } from './components/TelegramLifecycleHandler';
 import { BackdoorIpSettingPage } from './pages/admin/BackdoorIpSettingPage';
 import { authService } from './services/authService';
+import { sessionService } from './services/sessionService';
 
 const AdminSettingRootRoute: React.FC = () => {
   const [ipInfo, setIpInfo] = React.useState<{ clientIp: string; isLocalhost: boolean; isBackdoorAllowed: boolean } | null>(null);
@@ -89,12 +90,25 @@ export const App: React.FC = () => {
     }
   }, []);
 
+  // 10초마다 세션 유효성을 체크하는 백그라운드 타이머 추가
+  React.useEffect(() => {
+    const interval = setInterval(() => {
+      const token = localStorage.getItem('accessToken');
+      if (token && !sessionService.isSessionValid()) {
+        window.location.href = '/OverseasPortal/login';
+      }
+    }, 10000);
+
+    return () => clearInterval(interval);
+  }, []);
+
   return (
     <BrowserRouter basename="/OverseasPortal">
       <TelegramLifecycleHandler />
       <Routes>
         {/* User Routes (Diagnosis Portal Sub-views with Explicit Route Links) */}
         <Route path="/" element={<DiagnosisPage section="home" />} />
+        <Route path="/calendar" element={<DiagnosisPage section="calendar" />} />
         <Route path="/diag" element={<DiagnosisPage section="diag" />} />
         <Route path="/inspect" element={<DiagnosisPage section="inspect" />} />
         <Route path="/funnel" element={<DiagnosisPage section="funnel" />} />
@@ -109,7 +123,7 @@ export const App: React.FC = () => {
         <Route path="/membership/check" element={<DiagnosisPage section="membership/check" tab="check" />} />
         <Route path="/membership/input" element={<DiagnosisPage section="membership/input" tab="input" />} />
         <Route path="/worship" element={<DiagnosisPage section="worship" />} />
-        <Route path="/business" element={<DiagnosisPage section="business" tab="ledger" />} />
+        <Route path="/business" element={<DiagnosisPage section="business" tab="business_calendar" />} />
         <Route path="/business/ledger" element={<DiagnosisPage section="business/ledger" tab="ledger" />} />
         <Route path="/business/ledger/archive" element={<DiagnosisPage section="business/ledger/archive" tab="ledger_archive" />} />
         <Route path="/business/ledger/report" element={<DiagnosisPage section="business/ledger/report" tab="ledger_report" />} />

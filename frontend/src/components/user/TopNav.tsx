@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { Globe, Search, Settings, LogIn, LogOut, Share2, FileText, User } from 'lucide-react';
 import api from '../../services/api';
 import { telegramService } from '../../services/telegramService';
+import { authService } from '../../services/authService';
 
 interface TopNavProps {
   months: string[];
@@ -69,8 +70,8 @@ export const TopNav: React.FC<TopNavProps> = ({
     return () => window.removeEventListener('refreshEditRequests', handleRefreshRequests);
   }, [user]);
 
-  const handleLogout = () => {
-    localStorage.removeItem('accessToken');
+  const handleLogout = async () => {
+    await authService.logout();
     navigate('/login');
   };
 

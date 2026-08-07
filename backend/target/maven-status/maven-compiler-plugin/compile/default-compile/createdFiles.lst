@@ -16,8 +16,10 @@ com\overseas\portal\security\JwtTokenProvider.class
 com\overseas\portal\service\AdminService$AdminDashboardSummary$AdminDashboardSummaryBuilder.class
 com\overseas\portal\controller\AuthController$LoginRequest.class
 com\overseas\portal\controller\AdminController$TelegramMapRequest.class
+com\overseas\portal\domain\CalendarEvent.class
 com\overseas\portal\controller\BackdoorController$1.class
 com\overseas\portal\repository\MembershipEditRequestRepository.class
+com\overseas\portal\controller\CalendarEventController.class
 com\overseas\portal\controller\BusinessArchiveController.class
 com\overseas\portal\domain\TelegramBotConfig.class
 com\overseas\portal\service\AuthService$LoginResponse$LoginResponseBuilder.class
@@ -69,6 +71,8 @@ com\overseas\portal\controller\BusinessBoardController.class
 com\overseas\portal\domain\BusinessLedgerRecord$BusinessLedgerRecordBuilder.class
 com\overseas\portal\domain\EvangelismWeeklyRecord.class
 com\overseas\portal\service\TelegramBotService.class
+com\overseas\portal\security\SessionManager$UserSessionInfo.class
+com\overseas\portal\security\SessionManager.class
 com\overseas\portal\controller\AuthController.class
 com\overseas\portal\repository\ChurchRepository.class
 com\overseas\portal\repository\WeeklyWorshipHistoryRepository.class
@@ -80,6 +84,7 @@ com\overseas\portal\domain\TelegramOtpLog$TelegramOtpLogBuilder.class
 com\overseas\portal\domain\TelegramOtpLog.class
 com\overseas\portal\dto\LedgerSaveRequest$CountryAmount.class
 com\overseas\portal\domain\AuditLog$AuditLogBuilder.class
+com\overseas\portal\exception\GlobalExceptionHandler.class
 com\overseas\portal\repository\AuditLogRepository.class
 com\overseas\portal\service\WeeklyWorshipService$2.class
 com\overseas\portal\service\TelegramBotService$1.class
@@ -109,6 +114,7 @@ com\overseas\portal\repository\BusinessLedgerRecordRepository.class
 com\overseas\portal\domain\FileDownloadLog$FileDownloadLogBuilder.class
 com\overseas\portal\service\BusinessLedgerService.class
 com\overseas\portal\service\AuthService.class
+com\overseas\portal\domain\CalendarEvent$CalendarEventBuilder.class
 com\overseas\portal\repository\BusinessBoardPostRepository.class
 com\overseas\portal\repository\AccessLogRepository.class
 com\overseas\portal\domain\BusinessBoardPost$BusinessBoardPostBuilder.class
@@ -117,6 +123,7 @@ com\overseas\portal\controller\WeeklyWorshipController.class
 com\overseas\portal\service\DiagnosisService.class
 com\overseas\portal\controller\SystemLogController.class
 com\overseas\portal\domain\MembershipMonthlyRecord$MembershipMonthlyRecordBuilder.class
+com\overseas\portal\repository\CalendarEventRepository.class
 com\overseas\portal\repository\LoginLogRepository.class
 com\overseas\portal\domain\MembershipEditRequest$MembershipEditRequestBuilder.class
 com\overseas\portal\service\AuthService$2.class

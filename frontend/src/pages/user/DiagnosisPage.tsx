@@ -9,18 +9,36 @@ import { MembershipModule } from '../../components/user/MembershipModule';
 import { ApprovalModule } from '../../components/user/ApprovalModule';
 import { BusinessModule } from '../../components/user/BusinessModule';
 import { MyProfilePage } from './MyProfilePage';
+import { CalendarPage } from '../../components/user/CalendarPage';
 import { roleService } from '../../services/roleService';
 import api from '../../services/api';
 import { authService } from '../../services/authService';
 
 interface DiagnosisPageProps {
   section?: string;
-  tab?: 'check' | 'aggregate' | 'input' | 'ledger' | 'ledger_archive' | 'ledger_report' | 'fruit' | 'fruit_archive' | 'transport' | 'transport_archive' | 'mission' | 'mission_archive';
+  tab?: 'check' | 'aggregate' | 'input' | 'ledger' | 'ledger_archive' | 'ledger_report' | 'fruit' | 'fruit_archive' | 'transport' | 'transport_archive' | 'mission' | 'mission_archive' | 'business_calendar';
 }
 
 export const DiagnosisPage: React.FC<DiagnosisPageProps> = ({ section = 'home', tab = 'check' }) => {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const navigate = useNavigate();
+  const [showBackdoorBtn, setShowBackdoorBtn] = React.useState(false);
+
+  const userStrForBtn = localStorage.getItem('user');
+  const showAdminBtn = React.useMemo(() => {
+    if (!userStrForBtn) return false;
+    try {
+      const u = JSON.parse(userStrForBtn);
+      const role = u.role || '';
+      const isAdmin = role === 'ROLE_ADMIN' || role === 'ADMIN' || role === '관리자' || role === 'ROLE_관리자';
+      return isAdmin || roleService.getMenuPermissions().some(m => {
+        const isAdminMenu = m.category.includes('adminsetting') || m.path.startsWith('/adminsetting');
+        return isAdminMenu && roleService.canRoleAccessMenu(role, m.menuKey).read;
+      });
+    } catch (e) {
+      return false;
+    }
+  }, [userStrForBtn]);
 
   const filterByAssignedLocation = (records: any[]) => {
     const userStr = localStorage.getItem('user');
@@ -77,7 +95,12 @@ export const DiagnosisPage: React.FC<DiagnosisPageProps> = ({ section = 'home', 
 
     (window as any).reactNavigate = (path: string) => {
       const cleanPath = path.startsWith('/') ? path : '/' + path;
-      if (cleanPath === '/profile' || cleanPath.startsWith('/adminsetting')) {
+      const legacyPaths = ['/', '/diag', '/inspect', '/funnel', '/trend', '/map', '/globe'];
+      const currentPath = window.location.pathname.replace('/OverseasPortal', '');
+      const isCurrentLegacy = legacyPaths.includes(currentPath) || currentPath === '';
+      const isTargetLegacy = legacyPaths.includes(cleanPath);
+
+      if (isCurrentLegacy !== isTargetLegacy || cleanPath === '/profile' || cleanPath.startsWith('/adminsetting') || cleanPath === '/calendar' || cleanPath.startsWith('/business')) {
         window.location.href = '/OverseasPortal' + cleanPath;
       } else {
         navigate(cleanPath);
@@ -185,6 +208,7 @@ export const DiagnosisPage: React.FC<DiagnosisPageProps> = ({ section = 'home', 
 
     const sectionToMenuKey: Record<string, string> = {
       'home': 'home',
+      'calendar': 'calendar',
       'diag': 'diag',
       'inspect': 'inspect',
       'funnel': 'funnel',
@@ -252,6 +276,7 @@ export const DiagnosisPage: React.FC<DiagnosisPageProps> = ({ section = 'home', 
     // Record Access Log for User Diagnosis Portal Section Page
     const sectionLabels: Record<string, string> = {
       home: '🏠 해외 총괄 요약',
+      calendar: '📅 캘린더',
       diag: '🩺 교회 진단서',
       inspect: '🚨 점검 (양·질)',
       funnel: '🚦 관문별 통과율',
@@ -294,7 +319,7 @@ export const DiagnosisPage: React.FC<DiagnosisPageProps> = ({ section = 'home', 
 
     (window as any).handleGoToBackdoorLogin = () => {
       sessionService.clearSession();
-      navigate('/login?mode=backdoor', { replace: true });
+      window.location.href = '/OverseasPortal/login?mode=backdoor';
     };
 
     (window as any).toggleSidebar = () => {
@@ -340,6 +365,7 @@ export const DiagnosisPage: React.FC<DiagnosisPageProps> = ({ section = 'home', 
       try {
         const info = await authService.checkBackdoorIp();
         if (info.isBackdoorAllowed) {
+          setShowBackdoorBtn(true);
           const backdoorBtn = document.getElementById('btnBackdoorSetting');
           if (backdoorBtn) backdoorBtn.style.display = 'inline-flex';
         }
@@ -582,26 +608,99 @@ export const DiagnosisPage: React.FC<DiagnosisPageProps> = ({ section = 'home', 
     }
   }, [section]);
 
-  if (section === 'evangelism/check' || section === 'evangelism/aggregate' || section === 'membership/check' || section === 'membership/input' || section === 'approvals/pending' || section === 'approvals/completed' || section === 'profile' || section === 'business' || section.startsWith('business/')) {
+  if (section === 'calendar' || section === 'evangelism/check' || section === 'evangelism/aggregate' || section === 'membership/check' || section === 'membership/input' || section === 'approvals/pending' || section === 'approvals/completed' || section === 'profile' || section === 'business' || section.startsWith('business/')) {
     return (
       <div style={{ minHeight: '100vh', background: '#f8fafc' }}>
         <div className="topbar">
           <button className="menu-toggle" id="menuToggle" onClick={() => (window as any).toggleSidebar()}>☰</button>
-          <div className="logo">🌐</div>
-          <div className="brandwrap">
+          <div className="logo" style={{ cursor: 'pointer' }} onClick={() => navigate('/')}>🌐</div>
+          <div className="brandwrap" style={{ cursor: 'pointer' }} onClick={() => navigate('/')}>
             <div className="brand">해외선교부 <b>업무포탈</b></div>
             <div className="brandsub">GLOBAL MISSION DASHBOARD</div>
           </div>
           <span className="spacer"></span>
-          {/*<button className="repbtn" onClick={() => navigate('/')}>🏠 인트로</button>*/}
-          <button className="repbtn" onClick={() => window.location.href = '/OverseasPortal/profile'}>👤 <span className="btn-txt-label">회원관리</span></button>
-          {!telegramService.isTelegramWebApp() && (
-            <button className="repbtn" id="btnLogout" onClick={() => {
-              if (window.confirm("정말 로그아웃 하시겠습니까?")) {
-                sessionService.clearSession();
-                navigate('/login', { replace: true });
+          
+          <div className="searchwrap">
+            <span className="si">🔍</span>
+            <input
+              className="searchin"
+              id="globalSearch"
+              placeholder="교회명 검색…"
+              autoComplete="off"
+              onClick={() => {
+                navigate('/');
+                setTimeout(() => {
+                  const searchInput = document.getElementById('globalSearch');
+                  if (searchInput) searchInput.focus();
+                }, 100);
+              }}
+              onChange={() => navigate('/')}
+            />
+            <div className="searchsug" id="searchSug"></div>
+          </div>
+
+          <select
+            className="langSel tb-langsel"
+            onChange={(e) => {
+              const val = e.target.value;
+              if (typeof (window as any).setLang === 'function') {
+                (window as any).setLang(val);
               }
-            }} style={{ background: '#ef4444', color: 'white', border: 'none', fontWeight: 700 }}>🔒 <span className="btn-txt-label">로그아웃</span></button>
+            }}
+            title="Language / 语言 / 言語"
+            value={(window as any).ST?.diagLang || 'ko'}
+          >
+            <option value="ko">한국어</option>
+            <option value="en">English</option>
+            <option value="zh">中文</option>
+            <option value="ja">日本語</option>
+          </select>
+
+          <button className="repbtn" id="btnCover" onClick={() => navigate('/')}>🏠 <span className="btn-txt-label">인트로</span></button>
+          <button className="repbtn" id="btnProfile" onClick={() => navigate('/profile')} title="회원 정보 및 텔레그램 연동을 관리합니다">👤 <span className="btn-txt-label">회원관리</span></button>
+          
+          {showAdminBtn && (
+            <button
+              className="repbtn"
+              id="btnAdminSystem"
+              onClick={() => navigate('/adminsetting/dashboard')}
+              style={{ display: 'inline-flex', background: '#2563eb', color: 'white', border: 'none', fontWeight: 700 }}
+              title="관리자 시스템으로 이동"
+            >
+              ⚙️ <span className="btn-txt-label">관리자 시스템</span>
+            </button>
+          )}
+
+          {showBackdoorBtn && (
+            <button
+              className="repbtn"
+              id="btnBackdoorSetting"
+              onClick={() => {
+                sessionService.clearSession();
+                window.location.href = '/OverseasPortal/login?mode=backdoor';
+              }}
+              style={{ display: 'inline-flex', background: '#7c3aed', color: 'white', border: 'none', fontWeight: 700 }}
+              title="백도어 로그인 화면으로 이동"
+            >
+              🚪 <span className="btn-txt-label">백도어 설정</span>
+            </button>
+          )}
+
+          {!telegramService.isTelegramWebApp() && (
+            <button
+              className="repbtn"
+              id="btnLogout"
+              onClick={() => {
+                if (window.confirm("정말 로그아웃 하시겠습니까?")) {
+                  sessionService.clearSession();
+                  navigate('/login', { replace: true });
+                }
+              }}
+              style={{ background: '#ef4444', color: 'white', border: 'none', fontWeight: 700 }}
+              title="로그아웃"
+            >
+              🔒 <span className="btn-txt-label">로그아웃</span>
+            </button>
           )}
         </div>
         <div className="shell">
@@ -610,6 +709,10 @@ export const DiagnosisPage: React.FC<DiagnosisPageProps> = ({ section = 'home', 
           <main className="main" style={{ flex: 1, padding: '20px', overflowY: 'auto' }}>
             {section === 'profile' ? (
               <MyProfilePage />
+            ) : section === 'calendar' ? (
+              <CalendarPage mode="MAIN" />
+            ) : (section === 'business' && tab === 'business_calendar') ? (
+              <CalendarPage mode="BUSINESS" />
             ) : (section === 'evangelism/check' || section === 'evangelism/aggregate') ? (
               <EvangelismModule initialTab={section === 'evangelism/check' ? 'check' : 'aggregate'} />
             ) : (section === 'membership/check' || section === 'membership/input') ? (
@@ -666,8 +769,8 @@ export const DiagnosisPage: React.FC<DiagnosisPageProps> = ({ section = 'home', 
 
 <div class="topbar">
   <button class="menu-toggle" id="menuToggle" onclick="toggleSidebar()">☰</button>
-  <div class="logo">🌐</div>
-  <div class="brandwrap">
+  <div class="logo" style="cursor: pointer;" onclick="reactNavigate('/')">🌐</div>
+  <div class="brandwrap" style="cursor: pointer;" onclick="reactNavigate('/')">
     <div class="brand" id="tbBrand">해외선교부 <b>업무포탈</b></div>
     <div class="brandsub">GLOBAL MISSION DASHBOARD</div>
   </div>
