@@ -49,6 +49,18 @@ public class UserController {
         return ResponseEntity.ok(user);
     }
 
+    @GetMapping("/list-simple")
+    public ResponseEntity<?> getSimpleUserList() {
+        List<java.util.Map<String, String>> simpleList = userRepository.findAll().stream()
+                .filter(User::getIsActive)
+                .map(u -> java.util.Map.of(
+                        "username", u.getUsername(),
+                        "name", u.getName()
+                ))
+                .toList();
+        return ResponseEntity.ok(simpleList);
+    }
+
     @Data
     public static class ProfileUpdateRequest {
         private String telegramId;

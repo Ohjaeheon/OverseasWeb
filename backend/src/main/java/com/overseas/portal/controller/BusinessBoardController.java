@@ -24,6 +24,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.HashSet;
 
 @RestController
 @RequestMapping("/api/v1/business/board")
@@ -43,10 +44,60 @@ public class BusinessBoardController {
     }
 
     @GetMapping("/list")
+    @org.springframework.transaction.annotation.Transactional(readOnly = true)
     public ResponseEntity<?> listPosts(@RequestParam("category") String category) {
         try {
-            List<BusinessBoardPost> posts = postRepository.findAllByCategoryOrderByNoticeTypeAndCreatedAtDesc(category);
-            return ResponseEntity.ok(posts);
+            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+            String username = auth.getName();
+            boolean isAdmin = auth.getAuthorities().stream().anyMatch(a -> a.getAuthority().contains("ADMIN"));
+
+            List<BusinessBoardPost> posts;
+            if (isAdmin) {
+                posts = postRepository.findAllByCategoryForAdmin(category);
+            } else {
+                posts = postRepository.findAllByCategoryForUser(category, username);
+            }
+
+            List<Map<String, Object>> mappedPosts = new java.util.ArrayList<>();
+            for (BusinessBoardPost p : posts) {
+                Map<String, Object> map = new HashMap<>();
+                map.put("id", p.getId());
+                map.put("category", p.getCategory());
+                map.put("title", p.getTitle());
+                map.put("content", p.getContent());
+                map.put("fileName", p.getFileName());
+                map.put("filePath", p.getFilePath());
+                map.put("fileSize", p.getFileSize());
+                map.put("author", p.getAuthor());
+                map.put("createdAt", p.getCreatedAt() != null ? p.getCreatedAt().toString() : null);
+                map.put("viewCount", p.getViewCount());
+                map.put("isLocked", p.getIsLocked());
+                map.put("noticeType", p.getNoticeType());
+                
+                List<Map<String, Object>> atts = new java.util.ArrayList<>();
+                if (p.getAttachments() != null) {
+                    for (BusinessBoardAttachment att : p.getAttachments()) {
+                        Map<String, Object> aMap = new HashMap<>();
+                        aMap.put("id", att.getId());
+                        aMap.put("docType", att.getDocType());
+                        aMap.put("fileName", att.getFileName());
+                        aMap.put("filePath", att.getFilePath());
+                        aMap.put("fileSize", att.getFileSize());
+                        atts.add(aMap);
+                    }
+                }
+                map.put("attachments", atts);
+                
+                List<String> refs = new java.util.ArrayList<>();
+                if (p.getReferrers() != null) {
+                    refs.addAll(p.getReferrers());
+                }
+                map.put("referrers", refs);
+                
+                mappedPosts.add(map);
+            }
+
+            return ResponseEntity.ok(mappedPosts);
         } catch (Exception e) {
             e.printStackTrace();
             java.io.StringWriter sw = new java.io.StringWriter();
@@ -58,15 +109,65 @@ public class BusinessBoardController {
     }
 
     @GetMapping("/{id}")
+    @org.springframework.transaction.annotation.Transactional(readOnly = true)
     public ResponseEntity<?> getPost(@PathVariable("id") Long id) {
         try {
             BusinessBoardPost post = postRepository.findById(id).orElse(null);
             if (post == null) {
                 return ResponseEntity.notFound().build();
             }
+
+            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+            String username = auth.getName();
+            boolean isAdmin = auth.getAuthorities().stream().anyMatch(a -> a.getAuthority().contains("ADMIN"));
+
+            boolean isNotice = "MUST_READ".equals(post.getNoticeType()) || "NOTICE".equals(post.getNoticeType());
+            boolean isAuthor = post.getAuthor().equals(username);
+            boolean isReferrer = post.getReferrers().contains(username);
+
+            if (!isNotice && !isAuthor && !isAdmin && !isReferrer) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(Map.of("error", "조회 권한이 없습니다. (지정된 참조인만 조회 가능합니다.)"));
+            }
+
             post.setViewCount(post.getViewCount() + 1);
-            postRepository.save(post);
-            return ResponseEntity.ok(post);
+            BusinessBoardPost saved = postRepository.save(post);
+
+            Map<String, Object> map = new HashMap<>();
+            map.put("id", saved.getId());
+            map.put("category", saved.getCategory());
+            map.put("title", saved.getTitle());
+            map.put("content", saved.getContent());
+            map.put("fileName", saved.getFileName());
+            map.put("filePath", saved.getFilePath());
+            map.put("fileSize", saved.getFileSize());
+            map.put("author", saved.getAuthor());
+            map.put("createdAt", saved.getCreatedAt() != null ? saved.getCreatedAt().toString() : null);
+            map.put("viewCount", saved.getViewCount());
+            map.put("isLocked", saved.getIsLocked());
+            map.put("noticeType", saved.getNoticeType());
+
+            List<Map<String, Object>> atts = new java.util.ArrayList<>();
+            if (saved.getAttachments() != null) {
+                for (BusinessBoardAttachment att : saved.getAttachments()) {
+                    Map<String, Object> aMap = new HashMap<>();
+                    aMap.put("id", att.getId());
+                    aMap.put("docType", att.getDocType());
+                    aMap.put("fileName", att.getFileName());
+                    aMap.put("filePath", att.getFilePath());
+                    aMap.put("fileSize", att.getFileSize());
+                    atts.add(aMap);
+                }
+            }
+            map.put("attachments", atts);
+
+            List<String> refs = new java.util.ArrayList<>();
+            if (saved.getReferrers() != null) {
+                refs.addAll(saved.getReferrers());
+            }
+            map.put("referrers", refs);
+
+            return ResponseEntity.ok(map);
         } catch (Exception e) {
             e.printStackTrace();
             java.io.StringWriter sw = new java.io.StringWriter();
@@ -85,7 +186,8 @@ public class BusinessBoardController {
             @RequestParam("noticeType") String noticeType,
             @RequestParam(value = "proposalFile", required = false) MultipartFile proposalFile,
             @RequestParam(value = "minutesFile", required = false) MultipartFile minutesFile,
-            @RequestParam(value = "etcFiles", required = false) List<MultipartFile> etcFiles) {
+            @RequestParam(value = "etcFiles", required = false) List<MultipartFile> etcFiles,
+            @RequestParam(value = "referrers", required = false) List<String> referrers) {
 
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         String username = auth.getName();
@@ -117,6 +219,10 @@ public class BusinessBoardController {
                 .viewCount(0)
                 .isLocked(false)
                 .build();
+
+        if (referrers != null) {
+            post.setReferrers(new HashSet<>(referrers));
+        }
 
         if (proposalFile != null && !proposalFile.isEmpty()) {
             try {
@@ -160,7 +266,8 @@ public class BusinessBoardController {
             @RequestParam(value = "proposalFile", required = false) MultipartFile proposalFile,
             @RequestParam(value = "minutesFile", required = false) MultipartFile minutesFile,
             @RequestParam(value = "etcFiles", required = false) List<MultipartFile> etcFiles,
-            @RequestParam(value = "deleteAttachmentIds", required = false) List<Long> deleteAttachmentIds) {
+            @RequestParam(value = "deleteAttachmentIds", required = false) List<Long> deleteAttachmentIds,
+            @RequestParam(value = "referrers", required = false) List<String> referrers) {
 
         BusinessBoardPost post = postRepository.findById(id).orElse(null);
         if (post == null) {
@@ -204,6 +311,13 @@ public class BusinessBoardController {
         post.setTitle(title);
         post.setContent(content);
         post.setNoticeType(noticeType);
+
+        if (referrers != null) {
+            post.getReferrers().clear();
+            post.getReferrers().addAll(referrers);
+        } else {
+            post.getReferrers().clear();
+        }
 
         // 1. Delete requested attachments
         if (deleteAttachmentIds != null) {
@@ -325,7 +439,9 @@ public class BusinessBoardController {
         postRepository.save(post);
 
         return ResponseEntity.ok(post);
-    }    @GetMapping("/attachment/{attachmentId}/download")
+    }
+
+    @GetMapping("/attachment/{attachmentId}/download")
     @org.springframework.transaction.annotation.Transactional(readOnly = true)
     public ResponseEntity<?> downloadAttachment(@PathVariable("attachmentId") Long attachmentId) {
         try {
@@ -340,9 +456,13 @@ public class BusinessBoardController {
             String username = auth.getName();
             boolean isAdmin = auth.getAuthorities().stream().anyMatch(a -> a.getAuthority().contains("ADMIN"));
 
-            if (post != null && !post.getAuthor().equals(username) && !isAdmin) {
+            boolean isNotice = post != null && ("MUST_READ".equals(post.getNoticeType()) || "NOTICE".equals(post.getNoticeType()));
+            boolean isAuthor = post != null && post.getAuthor().equals(username);
+            boolean isReferrer = post != null && post.getReferrers().contains(username);
+
+            if (post != null && !isNotice && !isAuthor && !isAdmin && !isReferrer) {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                        .body(Map.of("error", "다운로드 권한이 없습니다. (작성자 및 관리자만 가능)"));
+                        .body(Map.of("error", "다운로드 권한이 없습니다. (작성자, 관리자 및 참조인만 가능)"));
             }
 
             Path filePath = Paths.get(attachment.getFilePath());
@@ -372,6 +492,7 @@ public class BusinessBoardController {
                     .body(Map.of("error", e.getMessage() != null ? e.getMessage() : "Unknown Error", "details", sw.toString()));
         }
     }
+
     private void saveAttachmentEntity(BusinessBoardPost post, MultipartFile file, String docType) throws IOException {
         String category = post.getCategory();
         Path targetDir = Paths.get(uploadDirRoot, "board", category);

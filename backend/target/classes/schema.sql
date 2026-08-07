@@ -354,5 +354,36 @@ COMMENT ON COLUMN overseas.business_board_posts.view_count IS '조회수';
 COMMENT ON COLUMN overseas.business_board_posts.is_locked IS '수정 잠금 여부';
 COMMENT ON COLUMN overseas.business_board_posts.notice_type IS '공지사항 유형 (MUST_READ, NOTICE, GENERAL)';
 
+-- 14. 업무포탈 게시판 다중 첨부파일 테이블
+CREATE TABLE IF NOT EXISTS overseas.business_board_attachments (
+    attachment_id BIGSERIAL PRIMARY KEY,
+    post_id BIGINT NOT NULL,
+    doc_type VARCHAR(50) NOT NULL,
+    file_name VARCHAR(255) NOT NULL,
+    file_path VARCHAR(500) NOT NULL,
+    file_size BIGINT NOT NULL,
+    CONSTRAINT fk_board_attachment_post FOREIGN KEY (post_id) REFERENCES overseas.business_board_posts (post_id) ON DELETE CASCADE
+);
+
+COMMENT ON TABLE overseas.business_board_attachments IS '통합 게시판 첨부파일 테이블';
+COMMENT ON COLUMN overseas.business_board_attachments.attachment_id IS '첨부파일 고유 ID';
+COMMENT ON COLUMN overseas.business_board_attachments.post_id IS '게시글 ID';
+COMMENT ON COLUMN overseas.business_board_attachments.doc_type IS '문서 유형 (PROPOSAL, MINUTES, ETC)';
+COMMENT ON COLUMN overseas.business_board_attachments.file_name IS '첨부파일 원본 명칭';
+COMMENT ON COLUMN overseas.business_board_attachments.file_path IS '서버 저장 첨부파일 경로';
+COMMENT ON COLUMN overseas.business_board_attachments.file_size IS '첨부파일 용량 (Byte)';
+
+-- 15. 업무포탈 게시판 참조자 테이블
+CREATE TABLE IF NOT EXISTS overseas.business_board_post_referrers (
+    post_id BIGINT NOT NULL,
+    referrer_username VARCHAR(100) NOT NULL,
+    PRIMARY KEY (post_id, referrer_username),
+    CONSTRAINT fk_board_post_referrer FOREIGN KEY (post_id) REFERENCES overseas.business_board_posts (post_id) ON DELETE CASCADE
+);
+
+COMMENT ON TABLE overseas.business_board_post_referrers IS '게시글 참조자 정보 매핑 테이블';
+COMMENT ON COLUMN overseas.business_board_post_referrers.post_id IS '게시글 고유 ID';
+COMMENT ON COLUMN overseas.business_board_post_referrers.referrer_username IS '참조자 로그인 아이디';
+
 
 

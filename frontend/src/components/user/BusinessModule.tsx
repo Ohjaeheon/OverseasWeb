@@ -131,6 +131,22 @@ export const BusinessModule: React.FC<BusinessModuleProps> = ({ initialTab = 'le
   const [isEditingPost, setIsEditingPost] = useState<boolean>(false);
   const [boardIsUploading, setBoardIsUploading] = useState<boolean>(false);
 
+  const [availableUsers, setAvailableUsers] = useState<{ username: string; name: string }[]>([]);
+  const [boardWriteReferrers, setBoardWriteReferrers] = useState<string[]>([]);
+  const [referrerSearchQuery, setReferrerSearchQuery] = useState<string>('');
+
+  useEffect(() => {
+    if (isBoardWriteModalOpen && availableUsers.length === 0) {
+      api.get('/users/list-simple')
+        .then(res => {
+          if (Array.isArray(res.data)) {
+            setAvailableUsers(res.data);
+          }
+        })
+        .catch(err => console.error("Failed to fetch user list for referrers:", err));
+    }
+  }, [isBoardWriteModalOpen, availableUsers.length]);
+
   const fetchBoardPosts = async () => {
     if (activeTab !== 'ledger_archive') return;
     setBoardLoading(true);
@@ -173,6 +189,12 @@ export const BusinessModule: React.FC<BusinessModuleProps> = ({ initialTab = 'le
     formData.append('title', boardWriteTitle);
     formData.append('content', boardWriteContent);
     formData.append('noticeType', boardWriteNoticeType);
+
+    if (boardWriteNoticeType === 'GENERAL' && boardWriteReferrers && boardWriteReferrers.length > 0) {
+      boardWriteReferrers.forEach((ref) => {
+        formData.append('referrers', ref);
+      });
+    }
     
     if (boardWriteProposalFile) {
       formData.append('proposalFile', boardWriteProposalFile);
@@ -212,6 +234,8 @@ export const BusinessModule: React.FC<BusinessModuleProps> = ({ initialTab = 'le
       setBoardWriteMinutesFile(null);
       setBoardWriteEtcFiles([]);
       setDeleteAttachmentIds([]);
+      setBoardWriteReferrers([]);
+      setReferrerSearchQuery('');
       setSelectedPost(null);
       fetchBoardPosts();
     } catch (err: any) {
@@ -225,6 +249,15 @@ export const BusinessModule: React.FC<BusinessModuleProps> = ({ initialTab = 'le
   const handleOpenDetail = async (post: any) => {
     setSelectedPost(post);
     setIsBoardDetailModalOpen(true);
+    if (availableUsers.length === 0) {
+      api.get('/users/list-simple')
+        .then(res => {
+          if (Array.isArray(res.data)) {
+            setAvailableUsers(res.data);
+          }
+        })
+        .catch(err => console.error("Failed to fetch user list:", err));
+    }
     try {
       const response = await api.get(`/business/board/${post.id}`);
       setBoardPosts(prev => prev.map(p => p.id === post.id ? response.data : p));
@@ -3111,6 +3144,8 @@ export const BusinessModule: React.FC<BusinessModuleProps> = ({ initialTab = 'le
                   setBoardWriteMinutesFile(null);
                   setBoardWriteEtcFiles([]);
                   setDeleteAttachmentIds([]);
+                  setBoardWriteReferrers([]);
+                  setReferrerSearchQuery('');
                   setSelectedPost(null);
                   setIsBoardWriteModalOpen(true);
                 }}
@@ -3954,6 +3989,118 @@ export const BusinessModule: React.FC<BusinessModuleProps> = ({ initialTab = 'le
                 </select>
               </div>
 
+              {/* Referrers Selector (Only visible when noticeType is GENERAL) */}
+              {boardWriteNoticeType === 'GENERAL' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <label style={{ fontSize: '0.85rem', fontWeight: 700, color: '#334155' }}>참조인 지정 (지정된 사람만 조회 및 다운로드 가능)</label>
+                  
+                  {/* Search Input */}
+                  <input
+                    type="text"
+                    placeholder="이름이나 아이디로 검색해 보세요..."
+                    value={referrerSearchQuery}
+                    onChange={(e) => setReferrerSearchQuery(e.target.value)}
+                    style={{
+                      padding: '10px 14px',
+                      borderRadius: '10px',
+                      border: '1px solid #cbd5e1',
+                      outline: 'none',
+                      fontSize: '0.85rem',
+                      color: '#1e293b',
+                      background: '#f8fafc'
+                    }}
+                  />
+                  
+                  {/* User List Box (Scrollable list of candidates) */}
+                  <div style={{
+                    border: '1px solid #e2e8f0',
+                    borderRadius: '10px',
+                    maxHeight: '120px',
+                    overflowY: 'auto',
+                    padding: '8px',
+                    display: 'flex',
+                    flexWrap: 'wrap',
+                    gap: '6px',
+                    background: '#ffffff'
+                  }}>
+                    {availableUsers
+                      .filter(user => {
+                        const query = referrerSearchQuery.toLowerCase();
+                        return user.name.toLowerCase().includes(query) || user.username.toLowerCase().includes(query);
+                      })
+                      .map(user => {
+                        const isSelected = boardWriteReferrers.includes(user.username);
+                        return (
+                          <div
+                            key={user.username}
+                            onClick={() => {
+                              if (isSelected) {
+                                setBoardWriteReferrers(prev => prev.filter(u => u !== user.username));
+                              } else {
+                                setBoardWriteReferrers(prev => [...prev, user.username]);
+                              }
+                            }}
+                            style={{
+                              padding: '4px 10px',
+                              borderRadius: '6px',
+                              fontSize: '0.8rem',
+                              cursor: 'pointer',
+                              border: isSelected ? '1px solid #86efac' : '1px solid #e2e8f0',
+                              background: isSelected ? '#ecfdf5' : '#f8fafc',
+                              color: isSelected ? '#047857' : '#475569',
+                              fontWeight: isSelected ? 800 : 500,
+                              transition: 'all 0.15s'
+                            }}
+                          >
+                            {user.name} ({user.username})
+                          </div>
+                        );
+                      })}
+                    {availableUsers.length === 0 && (
+                      <span style={{ fontSize: '0.8rem', color: '#94a3b8', padding: '4px' }}>사용자 목록을 불러오는 중...</span>
+                    )}
+                  </div>
+                  
+                  {/* Selected Referrers Preview */}
+                  {boardWriteReferrers.length > 0 && (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '4px' }}>
+                      <span style={{ fontSize: '0.78rem', color: '#64748b', alignSelf: 'center', fontWeight: 600 }}>선택됨:</span>
+                      {boardWriteReferrers.map(username => {
+                        const userObj = availableUsers.find(u => u.username === username);
+                        const displayName = userObj ? `${userObj.name}(${username})` : username;
+                        return (
+                          <span
+                            key={username}
+                            style={{
+                              background: '#2563eb',
+                              color: '#ffffff',
+                              padding: '2px 8px',
+                              borderRadius: '9999px',
+                              fontSize: '0.75rem',
+                              fontWeight: 700,
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px'
+                            }}
+                          >
+                            {displayName}
+                            <span
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setBoardWriteReferrers(prev => prev.filter(u => u !== username));
+                              }}
+                              style={{ cursor: 'pointer', marginLeft: '2px', fontWeight: 800 }}
+                            >
+                              ×
+                            </span>
+                          </span>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* Title */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                 <label style={{ fontSize: '0.85rem', fontWeight: 700, color: '#334155' }}>제목</label>
@@ -4399,7 +4546,7 @@ export const BusinessModule: React.FC<BusinessModuleProps> = ({ initialTab = 'le
                             {selectedPost.fileName}
                           </button>
                         </div>
-                        {(currentUser?.username === selectedPost.author || currentUser?.role === 'ROLE_ADMIN' || currentUser?.role === 'ADMIN') ? (
+                        {(currentUser?.username === selectedPost.author || currentUser?.role === 'ROLE_ADMIN' || currentUser?.role === 'ADMIN' || selectedPost.referrers?.includes(currentUser?.username)) ? (
                           <button
                             onClick={() => handleDownloadAttachment({ id: selectedPost.id, fileName: selectedPost.fileName })}
                             style={{ background: '#f1f5f9', border: 'none', padding: '4px 10px', borderRadius: '6px', fontSize: '0.75rem', color: '#475569', fontWeight: 700, cursor: 'pointer' }}
@@ -4444,7 +4591,7 @@ export const BusinessModule: React.FC<BusinessModuleProps> = ({ initialTab = 'le
                               ({(a.fileSize / 1024).toFixed(1)} KB)
                             </span>
                           </div>
-                          {(currentUser?.username === selectedPost.author || currentUser?.role === 'ROLE_ADMIN' || currentUser?.role === 'ADMIN') ? (
+                          {(currentUser?.username === selectedPost.author || currentUser?.role === 'ROLE_ADMIN' || currentUser?.role === 'ADMIN' || selectedPost.referrers?.includes(currentUser?.username)) ? (
                             <button
                               onClick={() => handleDownloadAttachment(a)}
                               style={{ background: '#f1f5f9', border: 'none', padding: '4px 10px', borderRadius: '6px', fontSize: '0.75rem', color: '#475569', fontWeight: 700, cursor: 'pointer' }}
@@ -4458,6 +4605,35 @@ export const BusinessModule: React.FC<BusinessModuleProps> = ({ initialTab = 'le
                       );
                     })}
 
+                  </div>
+                </div>
+              )}
+
+              {/* Referrers List Display in Detail view */}
+              {selectedPost.noticeType === 'GENERAL' && selectedPost.referrers && selectedPost.referrers.length > 0 && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <label style={{ fontSize: '0.88rem', fontWeight: 800, color: '#334155' }}>👥 지정된 참조인 ({selectedPost.referrers.length}명)</label>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                    {selectedPost.referrers.map((username: string) => {
+                      const userObj = availableUsers.find(u => u.username === username);
+                      const displayName = userObj ? `${userObj.name}(${username})` : username;
+                      return (
+                        <span
+                          key={username}
+                          style={{
+                            background: '#eff6ff',
+                            color: '#1d4ed8',
+                            border: '1px solid #bfdbfe',
+                            padding: '4px 12px',
+                            borderRadius: '9999px',
+                            fontSize: '0.78rem',
+                            fontWeight: 700
+                          }}
+                        >
+                          {displayName}
+                        </span>
+                      );
+                    })}
                   </div>
                 </div>
               )}
@@ -4509,6 +4685,8 @@ export const BusinessModule: React.FC<BusinessModuleProps> = ({ initialTab = 'le
                           setBoardWriteMinutesFile(null);
                           setBoardWriteEtcFiles([]);
                           setDeleteAttachmentIds([]);
+                          setBoardWriteReferrers(selectedPost.referrers || []);
+                          setReferrerSearchQuery('');
                           setIsBoardWriteModalOpen(true);
                         }}
                         style={{

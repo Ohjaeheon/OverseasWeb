@@ -23,11 +23,31 @@ public class DataInitializer implements CommandLineRunner {
     private final SystemConfigRepository systemConfigRepository;
     private final PasswordEncoder passwordEncoder;
     private final EvangelismWeeklyRecordRepository evangelismWeeklyRecordRepository;
+    private final org.springframework.jdbc.core.JdbcTemplate jdbcTemplate;
 
     @Override
     @Transactional
     public void run(String... args) {
         log.info("Checking and initializing default system data...");
+
+        try {
+            jdbcTemplate.execute("CREATE TABLE IF NOT EXISTS overseas.business_board_attachments (" +
+                    "attachment_id BIGSERIAL PRIMARY KEY, " +
+                    "post_id BIGINT NOT NULL, " +
+                    "doc_type VARCHAR(50) NOT NULL, " +
+                    "file_name VARCHAR(255) NOT NULL, " +
+                    "file_path VARCHAR(500) NOT NULL, " +
+                    "file_size BIGINT NOT NULL" +
+                    ");");
+            jdbcTemplate.execute("CREATE TABLE IF NOT EXISTS overseas.business_board_post_referrers (" +
+                    "post_id BIGINT NOT NULL, " +
+                    "referrer_username VARCHAR(100) NOT NULL, " +
+                    "PRIMARY KEY (post_id, referrer_username)" +
+                    ");");
+            log.info("Programmatically verified/created board tables.");
+        } catch (Exception e) {
+            log.error("Failed to verify/create board tables programmatically: {}", e.getMessage());
+        }
 
         // 1. Initial Admin & Test Users
         if (!userRepository.existsByUsername("admin")) {

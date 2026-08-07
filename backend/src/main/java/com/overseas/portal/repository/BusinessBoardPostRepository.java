@@ -13,12 +13,24 @@ import java.util.Optional;
 @Repository
 public interface BusinessBoardPostRepository extends JpaRepository<BusinessBoardPost, Long> {
 
-    @EntityGraph(attributePaths = {"attachments"})
+    @EntityGraph(attributePaths = {"attachments", "referrers"})
     @Query("SELECT p FROM BusinessBoardPost p WHERE p.category = :category " +
            "ORDER BY CASE p.noticeType WHEN 'MUST_READ' THEN 1 WHEN 'NOTICE' THEN 2 ELSE 3 END ASC, " +
            "p.createdAt DESC")
-    List<BusinessBoardPost> findAllByCategoryOrderByNoticeTypeAndCreatedAtDesc(@Param("category") String category);
+    List<BusinessBoardPost> findAllByCategoryForAdmin(@Param("category") String category);
 
-    @EntityGraph(attributePaths = {"attachments"})
+    @EntityGraph(attributePaths = {"attachments", "referrers"})
+    @Query("SELECT p FROM BusinessBoardPost p WHERE p.category = :category AND (" +
+           "p.noticeType IN ('MUST_READ', 'NOTICE') " +
+           "OR p.author = :username " +
+           "OR EXISTS (SELECT 1 FROM p.referrers r WHERE r = :username)) " +
+           "ORDER BY CASE p.noticeType WHEN 'MUST_READ' THEN 1 WHEN 'NOTICE' THEN 2 ELSE 3 END ASC, " +
+           "p.createdAt DESC")
+    List<BusinessBoardPost> findAllByCategoryForUser(
+       @Param("category") String category,
+       @Param("username") String username
+    );
+
+    @EntityGraph(attributePaths = {"attachments", "referrers"})
     Optional<BusinessBoardPost> findById(Long id);
 }

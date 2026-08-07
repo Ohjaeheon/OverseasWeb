@@ -33,7 +33,29 @@ public class BackdoorController {
     private final SystemConfigRepository systemConfigRepository;
     private final JwtTokenProvider tokenProvider;
     private final SystemLogService systemLogService;
+    private final org.springframework.jdbc.core.JdbcTemplate jdbcTemplate;
     private final ObjectMapper objectMapper = new ObjectMapper();
+
+    @GetMapping("/db-check")
+    public ResponseEntity<?> dbCheck() {
+        java.util.Map<String, Object> status = new java.util.HashMap<>();
+        try {
+            List<String> tables = jdbcTemplate.queryForList(
+                "SELECT table_name FROM information_schema.tables WHERE table_schema = 'overseas'",
+                String.class
+            );
+            status.put("tables", tables);
+            status.put("success", true);
+        } catch (Exception e) {
+            java.io.StringWriter sw = new java.io.StringWriter();
+            java.io.PrintWriter pw = new java.io.PrintWriter(sw);
+            e.printStackTrace(pw);
+            status.put("success", false);
+            status.put("error", e.getMessage());
+            status.put("details", sw.toString());
+        }
+        return ResponseEntity.ok(status);
+    }
 
     @Data
     public static class CheckIpResponse {

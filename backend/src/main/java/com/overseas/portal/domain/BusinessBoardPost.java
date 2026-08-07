@@ -77,4 +77,14 @@ public class BusinessBoardPost {
     @OneToMany(mappedBy = "post", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     private java.util.List<BusinessBoardAttachment> attachments = new java.util.ArrayList<>();
+
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(
+        name = "business_board_post_referrers",
+        schema = "overseas",
+        joinColumns = @JoinColumn(name = "post_id")
+    )
+    @Column(name = "referrer_username")
+    @Builder.Default
+    private java.util.Set<String> referrers = new java.util.HashSet<>();
 }
