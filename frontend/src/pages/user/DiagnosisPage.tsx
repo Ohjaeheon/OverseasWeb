@@ -339,7 +339,7 @@ export const DiagnosisPage: React.FC<DiagnosisPageProps> = ({ section = 'home', 
     const checkLocalhostForButton = async () => {
       try {
         const info = await authService.checkBackdoorIp();
-        if (info.isLocalhost) {
+        if (info.isBackdoorAllowed) {
           const backdoorBtn = document.getElementById('btnBackdoorSetting');
           if (backdoorBtn) backdoorBtn.style.display = 'inline-flex';
         }
