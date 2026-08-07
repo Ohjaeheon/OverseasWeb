@@ -10,6 +10,7 @@ import { ApprovalModule } from '../../components/user/ApprovalModule';
 import { BusinessModule } from '../../components/user/BusinessModule';
 import { MyProfilePage } from './MyProfilePage';
 import { CalendarPage } from '../../components/user/CalendarPage';
+import { OrganizationPage } from '../../components/user/OrganizationPage';
 import { roleService } from '../../services/roleService';
 import api from '../../services/api';
 import { authService } from '../../services/authService';
@@ -585,7 +586,7 @@ export const DiagnosisPage: React.FC<DiagnosisPageProps> = ({ section = 'home', 
       };
     }
 
-    loadScript('diag-engine-script', `${getUrl('assets/diagnosisEngine.js')}?v=4`)
+    loadScript('diag-engine-script', `${getUrl('assets/diagnosisEngine.js')}?v=5`)
       .then(() => {
         initEngine();
       });
@@ -603,7 +604,7 @@ export const DiagnosisPage: React.FC<DiagnosisPageProps> = ({ section = 'home', 
     }
   }, [section]);
 
-  if (section === 'calendar' || section === 'evangelism/check' || section === 'evangelism/aggregate' || section === 'membership/check' || section === 'membership/input' || section === 'approvals/pending' || section === 'approvals/completed' || section === 'profile' || section === 'business' || section.startsWith('business/')) {
+  if (section === 'calendar' || section === 'organization' || section === 'evangelism/check' || section === 'evangelism/aggregate' || section === 'membership/check' || section === 'membership/input' || section === 'approvals/pending' || section === 'approvals/completed' || section === 'profile' || section === 'business' || section.startsWith('business/')) {
     return (
       <div style={{ minHeight: '100vh', background: '#f8fafc' }}>
         <div className="topbar">
@@ -706,6 +707,8 @@ export const DiagnosisPage: React.FC<DiagnosisPageProps> = ({ section = 'home', 
               <MyProfilePage />
             ) : section === 'calendar' ? (
               <CalendarPage mode="MAIN" />
+            ) : section === 'organization' ? (
+              <OrganizationPage />
             ) : (section === 'business' && tab === 'business_calendar') ? (
               <CalendarPage mode="BUSINESS" />
             ) : (section === 'evangelism/check' || section === 'evangelism/aggregate') ? (

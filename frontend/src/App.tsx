@@ -109,6 +109,7 @@ export const App: React.FC = () => {
         {/* User Routes (Diagnosis Portal Sub-views with Explicit Route Links) */}
         <Route path="/" element={<DiagnosisPage section="home" />} />
         <Route path="/calendar" element={<DiagnosisPage section="calendar" />} />
+        <Route path="/organization" element={<DiagnosisPage section="organization" />} />
         <Route path="/diag" element={<DiagnosisPage section="diag" />} />
         <Route path="/inspect" element={<DiagnosisPage section="inspect" />} />
         <Route path="/funnel" element={<DiagnosisPage section="funnel" />} />

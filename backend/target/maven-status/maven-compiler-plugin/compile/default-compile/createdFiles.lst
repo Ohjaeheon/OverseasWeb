@@ -31,6 +31,7 @@ com\overseas\portal\domain\SystemConfig.class
 com\overseas\portal\service\FileLogService.class
 com\overseas\portal\service\I18nService.class
 com\overseas\portal\service\TelegramBotPollingService.class
+com\overseas\portal\controller\OrganizationChartController.class
 com\overseas\portal\domain\FaithProcessRecord.class
 com\overseas\portal\controller\AuthController$TelegramLoginRequest.class
 com\overseas\portal\repository\FileUploadLogRepository.class
@@ -68,6 +69,7 @@ com\overseas\portal\domain\MembershipEditRequest.class
 com\overseas\portal\service\DiagnosisService$RecordDTO.class
 com\overseas\portal\service\TelegramBotPollingService$1.class
 com\overseas\portal\controller\BusinessBoardController.class
+com\overseas\portal\repository\OrganizationChartRepository.class
 com\overseas\portal\domain\BusinessLedgerRecord$BusinessLedgerRecordBuilder.class
 com\overseas\portal\domain\EvangelismWeeklyRecord.class
 com\overseas\portal\service\TelegramBotService.class
@@ -87,6 +89,7 @@ com\overseas\portal\domain\AuditLog$AuditLogBuilder.class
 com\overseas\portal\exception\GlobalExceptionHandler.class
 com\overseas\portal\repository\AuditLogRepository.class
 com\overseas\portal\service\WeeklyWorshipService$2.class
+com\overseas\portal\domain\OrganizationChart.class
 com\overseas\portal\service\TelegramBotService$1.class
 com\overseas\portal\controller\FileLogController.class
 com\overseas\portal\domain\MembershipMonthlyRecord.class
@@ -109,6 +112,7 @@ com\overseas\portal\controller\AdminController$ConfigUpdateRequest.class
 com\overseas\portal\security\EncryptionUtil.class
 com\overseas\portal\controller\AdminController$1.class
 com\overseas\portal\domain\AuditLog.class
+com\overseas\portal\domain\OrganizationChart$OrganizationChartBuilder.class
 com\overseas\portal\controller\UserController.class
 com\overseas\portal\repository\BusinessLedgerRecordRepository.class
 com\overseas\portal\domain\FileDownloadLog$FileDownloadLogBuilder.class

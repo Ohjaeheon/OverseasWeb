@@ -44,9 +44,15 @@ public class DataInitializer implements CommandLineRunner {
                     "referrer_username VARCHAR(100) NOT NULL, " +
                     "PRIMARY KEY (post_id, referrer_username)" +
                     ");");
-            log.info("Programmatically verified/created board tables.");
+            
+            // 해선부 본부 노드 (ID = 0L) 등록
+            jdbcTemplate.execute("INSERT INTO overseas.churches (church_id, continent, country, jipa, gubun, name, leader_name, flight_time, distance_km, time_diff, language, religion, is_active) " +
+                    "VALUES (0, '본부', '한국', '본부', '부서', '해선부', '해외선교부장', '', 0, '', '', '', true) " +
+                    "ON CONFLICT (church_id) DO NOTHING;");
+            
+            log.info("Programmatically verified/created board tables and HaeSeonBu headquarter node.");
         } catch (Exception e) {
-            log.error("Failed to verify/create board tables programmatically: {}", e.getMessage());
+            log.error("Failed to initialize board tables or HaeSeonBu: {}", e.getMessage());
         }
 
         // 1. Initial Admin & Test Users

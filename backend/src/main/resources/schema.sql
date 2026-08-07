@@ -385,5 +385,19 @@ COMMENT ON TABLE overseas.business_board_post_referrers IS '게시글 참조자 
 COMMENT ON COLUMN overseas.business_board_post_referrers.post_id IS '게시글 고유 ID';
 COMMENT ON COLUMN overseas.business_board_post_referrers.referrer_username IS '참조자 로그인 아이디';
 
+-- 16. 해외교회 조직도 테이블
+CREATE TABLE IF NOT EXISTS overseas.organization_charts (
+    church_id BIGINT NOT NULL PRIMARY KEY,
+    chart_data TEXT,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_organization_chart_church FOREIGN KEY (church_id) REFERENCES overseas.churches(church_id) ON DELETE CASCADE
+);
+
+COMMENT ON TABLE overseas.organization_charts IS '해외교회 조직도 정보 테이블';
+COMMENT ON COLUMN overseas.organization_charts.church_id IS '교회 고유 PK';
+COMMENT ON COLUMN overseas.organization_charts.chart_data IS '조직도 트리 및 하이라커 JSON 데이터';
+COMMENT ON COLUMN overseas.organization_charts.updated_at IS '수정 일시';
+
+
 
 

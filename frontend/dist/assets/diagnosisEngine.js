@@ -2004,6 +2004,7 @@ function setSection(sec, cat){
 var SIDEBAR=[
   {s:"home",ico:"🏠",label:"홈 (종합 현황)"},
   {s:"calendar",ico:"📅",label:"캘린더",path:"/calendar"},
+  {s:"organization",ico:"🌳",label:"조직도",path:"/organization"},
   {grp:"진 단"},
   {s:"diag",ico:"🩺",label:"교회 진단서",tag:"핵심"},
   {s:"inspect",ico:"🚨",label:"점검 (양·질)"},
@@ -2075,7 +2076,7 @@ function checkMenuAccess(menuKey){
       }
       for(let i=0; i<keys.length; i++){
         const k = keys[i];
-        if(k === 'calendar') return true; // 신규 메뉴 기본 허용 폴백
+        if(k === 'calendar' || k === 'organization') return true; // 신규 메뉴 기본 허용 폴백
         if(perms[k] && perms[k][normRole] && perms[k][normRole].read){
           return true;
         }
@@ -2113,7 +2114,7 @@ function buildSidebar(){
     const on=(!it.children && isParentActive)?'on':'';
     const arrow=it.children?`<span style="margin-left:auto;color:var(--muted);font-size:11px">${isParentActive?'▾':'▸'}</span>`:'';
 
-    html+=`<div class="mitem ${on}" data-s="${it.s}" data-cat="${it.cat||''}"><span class="ico">${it.ico}</span>${it.label}${it.tag?`<span class="tag">${it.tag}</span>`:''}${arrow}</div>`;
+    html+=`<div class="mitem ${on}" data-s="${it.s}" data-path="${it.path||''}" data-cat="${it.cat||''}"><span class="ico">${it.ico}</span>${it.label}${it.tag?`<span class="tag">${it.tag}</span>`:''}${arrow}</div>`;
 
     if(it.children && isParentActive){
       it.children.forEach(ch=>{

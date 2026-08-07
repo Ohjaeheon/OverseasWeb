@@ -7,6 +7,7 @@ E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\service\I18nServ
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\domain\BusinessBoardPost.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\repository\AuditLogRepository.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\domain\BusinessLedgerRecord.java
+E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\domain\OrganizationChart.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\config\DataInitializer.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\controller\AuthController.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\domain\EvangelismWeeklyRecord.java
@@ -41,10 +42,12 @@ E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\domain\SystemCon
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\repository\BusinessLedgerRecordRepository.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\controller\SystemLogController.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\domain\FileUploadLog.java
+E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\repository\OrganizationChartRepository.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\repository\TelegramOtpLogRepository.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\domain\I18nDictionary.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\repository\LoginLogRepository.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\repository\BusinessBoardAttachmentRepository.java
+E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\controller\OrganizationChartController.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\domain\EvangelismEditRequest.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\service\TelegramBotPollingService.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\domain\CalendarEvent.java
