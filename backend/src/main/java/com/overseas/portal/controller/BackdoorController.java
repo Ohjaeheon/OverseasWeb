@@ -82,9 +82,9 @@ public class BackdoorController {
     public ResponseEntity<?> getIps(HttpServletRequest request) {
         String ip = getClientIp(request);
         boolean localhost = isLocalhost(ip);
-        boolean admin = isAuthorizedAdmin();
+        boolean allowedIp = getAllowedIps().contains(ip);
 
-        if (!localhost && !admin) {
+        if (!localhost && !allowedIp) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body("IP 목록 조회 권한이 없습니다.");
         }
         return ResponseEntity.ok(getAllowedIps());
@@ -94,9 +94,9 @@ public class BackdoorController {
     public ResponseEntity<?> addIp(@RequestBody IpRequest ipReq, HttpServletRequest request) {
         String ip = getClientIp(request);
         boolean localhost = isLocalhost(ip);
-        boolean admin = isAuthorizedAdmin();
+        boolean allowedIp = getAllowedIps().contains(ip);
 
-        if (!localhost && !admin) {
+        if (!localhost && !allowedIp) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body("IP 등록 권한이 없습니다.");
         }
         String newIp = ipReq.getIp();
@@ -116,9 +116,9 @@ public class BackdoorController {
     public ResponseEntity<?> deleteIp(@RequestBody IpRequest ipReq, HttpServletRequest request) {
         String ip = getClientIp(request);
         boolean localhost = isLocalhost(ip);
-        boolean admin = isAuthorizedAdmin();
+        boolean allowedIp = getAllowedIps().contains(ip);
 
-        if (!localhost && !admin) {
+        if (!localhost && !allowedIp) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body("IP 삭제 권한이 없습니다.");
         }
         String delIp = ipReq.getIp();
