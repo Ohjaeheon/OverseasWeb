@@ -1498,7 +1498,7 @@ export const EvangelismModule: React.FC<EvangelismModuleProps> = ({ initialTab =
                     mainItems.forEach(item => {
                       sums[item.key] = 0;
                     });
-                    const displayWeek = (selectedWeekCheck === '전체')
+                    const displayWeek = (selectedWeekCheck === '전체 ')
                       ? (filteredWeeks[filteredWeeks.length - 1] || '1월1주차')
                       : (filteredWeeks[0] || '1월1주차');
                     const targetWeekData = getWeeklyData(displayWeek, dept);
