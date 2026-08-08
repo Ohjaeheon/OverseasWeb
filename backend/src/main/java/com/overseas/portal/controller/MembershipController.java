@@ -49,6 +49,10 @@ public class MembershipController {
             @RequestParam(name = "year", required = false, defaultValue = "2026년") String year,
             @RequestParam(name = "month", required = false) String month) {
 
+        if (church != null) {
+            recalculateSubsequentMonths(church, year, "0월");
+        }
+
         if (church != null && month != null) {
             return encryptResponse(membershipMonthlyRecordRepository.findByChurchNameAndYearStrAndMonthKey(church, year, month));
         }
@@ -72,6 +76,14 @@ public class MembershipController {
     @PostMapping("/records")
     public ResponseEntity<List<MembershipMonthlyRecord>> saveRecords(@RequestBody List<MembershipMonthlyRecord> records) {
         log.info("Batch saving/updating {} membership monthly records into PostgreSQL DB...", records.size());
+        if (records.isEmpty()) {
+            return ResponseEntity.ok(records);
+        }
+
+        String churchName = records.get(0).getChurchName();
+        String yearStr = records.get(0).getYearStr();
+        String monthKey = records.get(0).getMonthKey();
+
         for (MembershipMonthlyRecord r : records) {
             List<MembershipMonthlyRecord> existing = membershipMonthlyRecordRepository.findByChurchNameAndYearStrAndMonthKey(
                     r.getChurchName(), r.getYearStr(), r.getMonthKey()
@@ -89,32 +101,42 @@ public class MembershipController {
             target.setAttendDecrease(r.getAttendDecrease());
             target.setUpdatedBy(r.getUpdatedBy() != null ? r.getUpdatedBy() : "system");
 
-            // Calculate the current month's evangReg count based on last month + increase - decrease
-            int prevEvangReg = getPreviousMonthEvangReg(r.getChurchName(), r.getYearStr(), r.getMonthKey(), r.getDepartment());
-            int newEvangReg = Math.max(0, prevEvangReg + (r.getEvangIncrease() != null ? r.getEvangIncrease() : 0) - (r.getEvangDecrease() != null ? r.getEvangDecrease() : 0));
+            // Calculate current month's cumulative registries (Assembly/Current, Evangelism, Attendance)
+            Map<String, Integer> prevRegs = getPreviousMonthRegs(r.getChurchName(), r.getYearStr(), r.getMonthKey(), r.getDepartment());
+            int prevAssembly = prevRegs.getOrDefault("assembly", 0);
+            int prevEvang = prevRegs.getOrDefault("evang", 0);
+            int prevAttend = prevRegs.getOrDefault("attend", 0);
+
+            int newAssemblyReg = Math.max(0, prevAssembly + (r.getAssemblyAdmit() != null ? r.getAssemblyAdmit() : 0) - (r.getAssemblyAccident() != null ? r.getAssemblyAccident() : 0));
+            int newEvangReg = Math.max(0, prevEvang + (r.getEvangIncrease() != null ? r.getEvangIncrease() : 0) - (r.getEvangDecrease() != null ? r.getEvangDecrease() : 0));
+            int newAttendReg = Math.max(0, prevAttend + (r.getAttendIncrease() != null ? r.getAttendIncrease() : 0) - (r.getAttendDecrease() != null ? r.getAttendDecrease() : 0));
+
+            target.setCalculatedAssemblyReg(newAssemblyReg);
             target.setCalculatedEvangReg(newEvangReg);
+            target.setCalculatedAttendReg(newAttendReg);
 
             membershipMonthlyRecordRepository.save(target);
 
-            // Synchronize with weekly evangelism records of this month (e.g. 7월 -> 7월1주차, 7월2주차)
-            syncWithWeeklyEvangelismRecords(r.getChurchName(), r.getYearStr(), r.getMonthKey(), r.getDepartment(), newEvangReg);
+            // Synchronize with weekly evangelism records of this month (e.g. 7월 -> 7월1주차, 7월2주차 get 6월's prevEvang)
+            syncWithWeeklyEvangelismRecords(r.getChurchName(), r.getYearStr(), r.getMonthKey(), r.getDepartment(), prevEvang);
         }
 
+        // Cascade recalculate subsequent months for this church
+        recalculateSubsequentMonths(churchName, yearStr, monthKey);
+
         // Mark any approved request for this church, year, and month as USED
-        if (!records.isEmpty()) {
-            MembershipMonthlyRecord first = records.get(0);
-            List<MembershipEditRequest> approved = membershipEditRequestRepository
-                    .findByChurchNameAndYearStrAndMonthKeyAndStatus(first.getChurchName(), first.getYearStr(), first.getMonthKey(), "APPROVED");
-            for (MembershipEditRequest req : approved) {
-                req.setStatus("USED");
-                membershipEditRequestRepository.save(req);
-            }
+        List<MembershipEditRequest> approved = membershipEditRequestRepository
+                .findByChurchNameAndYearStrAndMonthKeyAndStatus(churchName, yearStr, monthKey, "APPROVED");
+        for (MembershipEditRequest req : approved) {
+            req.setStatus("USED");
+            membershipEditRequestRepository.save(req);
         }
 
         return ResponseEntity.ok(records);
     }
 
-    private int getPreviousMonthEvangReg(String churchName, String yearStr, String monthKey, String department) {
+    private Map<String, Integer> getPreviousMonthRegs(String churchName, String yearStr, String monthKey, String department) {
+        Map<String, Integer> res = new HashMap<>();
         try {
             int currentMonth = Integer.parseInt(monthKey.replace("월", ""));
             String prevMonthKey;
@@ -129,13 +151,69 @@ public class MembershipController {
 
             List<MembershipMonthlyRecord> prevRecords = membershipMonthlyRecordRepository
                     .findByChurchNameAndYearStrAndMonthKey(churchName, prevYearStr, prevMonthKey);
-            return prevRecords.stream()
+            Optional<MembershipMonthlyRecord> match = prevRecords.stream()
                     .filter(r -> r.getDepartment().equals(department))
-                    .findFirst()
-                    .map(r -> r.getCalculatedEvangReg() != null ? r.getCalculatedEvangReg() : 20)
-                    .orElse(20);
+                    .findFirst();
+
+            if (match.isPresent()) {
+                MembershipMonthlyRecord pm = match.get();
+                res.put("assembly", pm.getCalculatedAssemblyReg() != null ? pm.getCalculatedAssemblyReg() : 0);
+                res.put("evang", pm.getCalculatedEvangReg() != null ? pm.getCalculatedEvangReg() : 0);
+                res.put("attend", pm.getCalculatedAttendReg() != null ? pm.getCalculatedAttendReg() : 0);
+            } else {
+                res.put("assembly", 0);
+                res.put("evang", 0);
+                res.put("attend", 0);
+            }
         } catch (Exception e) {
-            return 20;
+            res.put("assembly", 0);
+            res.put("evang", 0);
+            res.put("attend", 0);
+        }
+        return res;
+    }
+
+    private void recalculateSubsequentMonths(String churchName, String yearStr, String startMonthKey) {
+        try {
+            int startMonth = Integer.parseInt(startMonthKey.replace("월", ""));
+            // Recalculate remaining months of current year
+            for (int m = startMonth + 1; m <= 12; m++) {
+                String mKey = m + "월";
+                List<MembershipMonthlyRecord> mRecords = membershipMonthlyRecordRepository
+                        .findByChurchNameAndYearStrAndMonthKey(churchName, yearStr, mKey);
+                if (mRecords.isEmpty()) continue;
+
+                for (MembershipMonthlyRecord r : mRecords) {
+                    Map<String, Integer> prevRegs = getPreviousMonthRegs(churchName, yearStr, mKey, r.getDepartment());
+                    int prevAssembly = prevRegs.getOrDefault("assembly", 0);
+                    int prevEvang = prevRegs.getOrDefault("evang", 0);
+                    int prevAttend = prevRegs.getOrDefault("attend", 0);
+
+                    int newAssembly = Math.max(0, prevAssembly + (r.getAssemblyAdmit() != null ? r.getAssemblyAdmit() : 0) - (r.getAssemblyAccident() != null ? r.getAssemblyAccident() : 0));
+                    int newEvang = Math.max(0, prevEvang + (r.getEvangIncrease() != null ? r.getEvangIncrease() : 0) - (r.getEvangDecrease() != null ? r.getEvangDecrease() : 0));
+                    int newAttend = Math.max(0, prevAttend + (r.getAttendIncrease() != null ? r.getAttendIncrease() : 0) - (r.getAttendDecrease() != null ? r.getAttendDecrease() : 0));
+
+                    r.setCalculatedAssemblyReg(newAssembly);
+                    r.setCalculatedEvangReg(newEvang);
+                    r.setCalculatedAttendReg(newAttend);
+                    membershipMonthlyRecordRepository.save(r);
+
+                    syncWithWeeklyEvangelismRecords(churchName, yearStr, mKey, r.getDepartment(), prevEvang);
+                }
+            }
+
+            // Also check next year's 1월 if yearStr December was updated
+            if (startMonth == 12) {
+                int currentYear = Integer.parseInt(yearStr.replace("년", ""));
+                String nextYearStr = (currentYear + 1) + "년";
+                List<MembershipMonthlyRecord> nextJanRecords = membershipMonthlyRecordRepository
+                        .findByChurchNameAndYearStrAndMonthKey(churchName, nextYearStr, "1월");
+                if (!nextJanRecords.isEmpty()) {
+                    recalculateSubsequentMonths(churchName, nextYearStr, "1월");
+                }
+            }
+        } catch (Exception e) {
+            log.error("Failed to recalculate subsequent months for church: {}", churchName, e);
         }
     }
 

@@ -729,7 +729,15 @@ function miniTrend(series,monthsArr,color,type,curMonth,baseMonth){
   const dots=vals.map((v,i)=>`<circle cx="${X(i).toFixed(1)}" cy="${Y(v).toFixed(1)}" r="${i===curIdx?3.4:1.9}" fill="${color}" ${i===curIdx?'stroke="#fff" stroke-width="0.8"':''}/>`).join("");
   const ylab=v=> type==="pct"? Math.round(v*100)+"%" : (v>=1000? (Math.round(v/100)/10)+"k" : Math.round(v));
   const ylabs=`<text x="${PL-3}" y="${PT+6}" font-size="7.5" fill="#8aa0c4" text-anchor="end">${ylab(max)}</text><text x="${PL-3}" y="${PT+plotH}" font-size="7.5" fill="#8aa0c4" text-anchor="end">${ylab(min)}</text>`;
-  const mlabels=months.map((m,i)=>`<text x="${X(i).toFixed(1)}" y="${H-5}" font-size="8" fill="#8aa0c4" text-anchor="middle">${m.replace("월","")}</text>`).join("");
+  const cleanLabel = (m) => {
+    if (!m) return "";
+    const digits = m.match(/(\d+)\s*월?$/);
+    if (digits && digits[1]) {
+      return `${parseInt(digits[1])}월`;
+    }
+    return m.replace(/^20\d\d[년_\-]?\s*/, '');
+  };
+  const mlabels=months.map((m,i)=>`<text x="${X(i).toFixed(1)}" y="${H-5}" font-size="8" fill="#8aa0c4" text-anchor="middle">${cleanLabel(m)}</text>`).join("");
   return `<svg class="chartanim" viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;margin-top:6px">${grid}<polyline points="${areaPts}" fill="${color}" fill-opacity="0.12" stroke="none"/>${axes}${marker}<polyline points="${linePts}" fill="none" stroke="${color}" stroke-width="1.7" stroke-linejoin="round"/>${dots}${ylabs}${mlabels}</svg>`;
 }
 function setCmp(m){ ST.cmp=m; if(ST.lastDetail) openDetail(ST.lastDetail.name, ST.lastDetail.entityMode); }
@@ -939,20 +947,60 @@ function openDetail(name, entityMode){
       ["centerCumGrad","누적종강","int"],[r=>rate(r.centerCumGrad,r.centerTotCumReg),"누적 종강율","pct"],[r=>r.catE,"현출석(초)","int"],[r=>r.catM,"현출석(중)","int"],
       [r=>r.catH,"현출석(고)","int"]]],
   ];
-  const secHtml=groupsDef.map(([title,mets])=>{
+  const isEvangelismPage = (window.location.pathname.includes('/evangelism') || window.location.hash.includes('evangelism') || (typeof ST !== 'undefined' && ST.page === 'evangelism'));
+  const activeGroupsDef = isEvangelismPage
+    ? groupsDef.filter(([t]) => t === "전도재적 대비 가개강")
+    : groupsDef;
+
+  const parseMonthNum = (mStr) => {
+    if (!mStr) return 8;
+    const match = String(mStr).match(/(\d+)\s*월/);
+    if (match && match[1]) return parseInt(match[1]);
+    const numMatch = String(mStr).match(/(\d+)$/);
+    if (numMatch && numMatch[1]) return parseInt(numMatch[1]);
+    return 8;
+  };
+
+  const curMonthNum = parseMonthNum(ST.month);
+
+  const secHtml=activeGroupsDef.map(([title,mets])=>{
     const cells=mets.map(([k,l,t])=>{
-      const getv=row=> (typeof k==="function")? k(row): row[k];
-      // 채워진 월만(그 지표 값이 있는 월). 레코드 없는 월(count 0) 및 값 null 제외.
-      const fm=months.filter(mn=>perMonth[mn].count>0).map(mn=>({m:mn,v:getv(perMonth[mn])})).filter(p=>p.v!=null);
+      const getv=row=> (typeof k==="function")? k(row): (row ? row[k] : 0);
+
+      let targetMonthKeys = [];
+      if (ST.cmp === 'prev') {
+        const prevNum = curMonthNum > 1 ? curMonthNum - 1 : 1;
+        targetMonthKeys = [prevNum + '월', curMonthNum + '월'];
+      } else {
+        // 'first': 1월 ~ 현재월 (1월 .. curMonthNum월)
+        for (let m = 1; m <= curMonthNum; m++) {
+          targetMonthKeys.push(m + '월');
+        }
+      }
+
+      const fm = targetMonthKeys.map(mKey => {
+        const mNum = parseInt(mKey.replace('월', ''));
+        let foundMn = months.find(mn => parseMonthNum(mn) === mNum);
+        let val = 0;
+        if (foundMn && perMonth[foundMn] && perMonth[foundMn].count > 0) {
+          const rawV = getv(perMonth[foundMn]);
+          val = (rawV != null && !isNaN(rawV)) ? rawV : 0;
+        } else if (mNum === curMonthNum && cur) {
+          const rawV = getv(cur);
+          val = (rawV != null && !isNaN(rawV)) ? rawV : 0;
+        }
+        return { m: mKey, v: val };
+      });
+
       const fMonths=fm.map(p=>p.m), series=fm.map(p=>p.v);
-      const hasCur=perMonth[ST.month].count>0; const cv=hasCur?getv(cur):null;
+      const hasCur=perMonth[ST.month] && perMonth[ST.month].count>0;
+      const cv = hasCur ? getv(cur) : (fm[fm.length - 1] ? fm[fm.length - 1].v : null);
       const disp = (cv==null)?"-":(t==="pct"? pct(cv) : ((t==="sint"&&cv>0?"+":"")+fmt(cv)));
-      const baseM = baseIdx!=null ? months[baseIdx] : null;
-      const baseP = baseM!=null ? fm.find(p=>p.m===baseM) : null;
-      const base = baseP? baseP.v : null;
+      const baseM = fm.length > 0 ? fm[0].m : null;
+      const baseVal = fm.length > 1 ? fm[0].v : (fm[0] ? fm[0].v : null);
       let badge="";
-      if(base!=null && cv!=null){
-        const d=cv-base;
+      if(baseVal!=null && cv!=null){
+        const d=cv-baseVal;
         const dtxt = t==="pct"? ((d>=0?"+":"")+(d*100).toFixed(1)+"%p") : ((d>=0?"+":"")+fmt(d));
         const cls=d>0?"pos":(d<0?"neg":""), arr=d>0?"▲":(d<0?"▼":"–");
         badge=`<span class="${cls}" style="font-size:11px;font-weight:700;white-space:nowrap" title="${baseLbl} 대비">${arr} ${dtxt}</span>`;

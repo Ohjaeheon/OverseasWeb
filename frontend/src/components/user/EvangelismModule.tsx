@@ -366,10 +366,20 @@ export const EvangelismModule: React.FC<EvangelismModuleProps> = ({ initialTab =
     }
   };
 
+  const [membershipRegMap, setMembershipRegMap] = useState<Record<string, Record<string, number>>>({});
+
   const fetchDbRecords = async () => {
     setLoadingDb(true);
     try {
-      const res = await api.get<any[]>(`/evangelism/records?church=${encodeURIComponent(selectedChurch)}&year=${selectedYear}`);
+      const curYearNum = parseInt(selectedYear.replace(/[^0-9]/g, '')) || 2026;
+      const prevYearStr = `${curYearNum - 1}년`;
+
+      const [res, memRes, prevMemRes] = await Promise.all([
+        api.get<any[]>(`/evangelism/records?church=${encodeURIComponent(selectedChurch)}&year=${selectedYear}`),
+        api.get<any[]>(`/membership/records?church=${encodeURIComponent(selectedChurch)}&year=${selectedYear}`).catch(() => ({ data: [] })),
+        api.get<any[]>(`/membership/records?church=${encodeURIComponent(selectedChurch)}&year=${prevYearStr}&month=12월`).catch(() => ({ data: [] }))
+      ]);
+
       const map: Record<string, Record<string, DeptData>> = {};
       res.data.forEach((r: any) => {
         if (!map[r.weekKey]) {
@@ -386,7 +396,7 @@ export const EvangelismModule: React.FC<EvangelismModuleProps> = ({ initialTab =
         }
 
         map[r.weekKey][r.department] = {
-          reg: r.regCount || 20,
+          reg: r.regCount || 0,
           find: dynamicVals.find !== undefined ? dynamicVals.find : (r.findCount || 0),
           findDrop: dynamicVals.findDrop !== undefined ? dynamicVals.findDrop : (r.findDropCount || 0),
           gospel: dynamicVals.gospel !== undefined ? dynamicVals.gospel : (r.gospelCount || 0),
@@ -397,6 +407,39 @@ export const EvangelismModule: React.FC<EvangelismModuleProps> = ({ initialTab =
         };
       });
       setDbRecords(map);
+
+      const memRawMap: Record<string, Record<string, any>> = {};
+      if (Array.isArray(memRes.data)) {
+        memRes.data.forEach((r: any) => {
+          if (!memRawMap[r.monthKey]) memRawMap[r.monthKey] = {};
+          memRawMap[r.monthKey][r.department] = r;
+        });
+      }
+
+      const prevYearDecMap: Record<string, number> = {};
+      if (Array.isArray(prevMemRes.data)) {
+        prevMemRes.data.forEach((r: any) => {
+          prevYearDecMap[r.department] = r.calculatedEvangReg || 0;
+        });
+      }
+
+      const memMap: Record<string, Record<string, number>> = {};
+      DEPARTMENTS.forEach(dept => {
+        let cumEvang = prevYearDecMap[dept] || 0;
+        for (let m = 1; m <= 12; m++) {
+          const mKey = `${m}월`;
+          if (!memMap[mKey]) memMap[mKey] = {};
+          
+          // Month m's base 전도재적 for evangelism activity is previous month's final calculated count!
+          memMap[mKey][dept] = cumEvang;
+
+          const r = memRawMap[mKey]?.[dept];
+          const inc = r?.evangIncrease || 0;
+          const dec = r?.evangDecrease || 0;
+          cumEvang = Math.max(0, cumEvang + inc - dec);
+        }
+      });
+      setMembershipRegMap(memMap);
     } catch (e) {
       console.error("Failed to fetch records from DB", e);
     } finally {
@@ -697,19 +740,26 @@ export const EvangelismModule: React.FC<EvangelismModuleProps> = ({ initialTab =
     return options;
   };
 
-  // Mock Weekly Data Generator with Database priority
+  // Weekly Data Generator with Database & Membership Sync priority
   const getWeeklyData = (weekKey: string, dept: string): DeptData => {
+    let rec: DeptData = { reg: 0 };
     if (dbRecords[weekKey] && dbRecords[weekKey][dept]) {
-      return dbRecords[weekKey][dept];
+      rec = { ...dbRecords[weekKey][dept] };
+    } else {
+      activeItems.forEach(item => {
+        rec[item.key] = 0;
+      });
     }
 
-    const defaultObj: DeptData = {
-      reg: 0
-    };
-    activeItems.forEach(item => {
-      defaultObj[item.key] = 0;
-    });
-    return defaultObj;
+    const monthMatch = weekKey.match(/^[0-9]+월/);
+    if (monthMatch && monthMatch[0]) {
+      const monthKey = monthMatch[0];
+      if (membershipRegMap[monthKey] && membershipRegMap[monthKey][dept] !== undefined && membershipRegMap[monthKey][dept] > 0) {
+        rec.reg = membershipRegMap[monthKey][dept];
+      }
+    }
+
+    return rec;
   };
 
   // Filter weeks to render based on selectedWeekCheck ('전체', '1월', '1월1주차' etc.)
@@ -736,12 +786,16 @@ export const EvangelismModule: React.FC<EvangelismModuleProps> = ({ initialTab =
     let totalGospel = 0;
     let totalAdmit = 0;
 
+    const regWeek = (selectedWeekCheck === '전체')
+      ? (filteredWeeks[filteredWeeks.length - 1] || '1월1주차')
+      : (filteredWeeks[0] || '1월1주차');
+
     DEPARTMENTS.forEach(dept => {
+      const regData = getWeeklyData(regWeek, dept);
+      totalReg += regData.reg;
+
       filteredWeeks.forEach(w => {
         const d = getWeeklyData(w, dept);
-        if (filteredWeeks.length === 1 || w === filteredWeeks[0]) {
-          totalReg += d.reg;
-        }
         totalFind += d.find;
         totalGospel += d.gospel;
         totalAdmit += d.admit;
@@ -1333,12 +1387,15 @@ export const EvangelismModule: React.FC<EvangelismModuleProps> = ({ initialTab =
                     mainItems.forEach(item => {
                       sums[item.key] = 0;
                     });
-                    const firstWeekData = getWeeklyData(filteredWeeks[0] || '1월1주차', dept);
+                    const displayWeek = (selectedWeekCheck === '전체')
+                      ? (filteredWeeks[filteredWeeks.length - 1] || '1월1주차')
+                      : (filteredWeeks[0] || '1월1주차');
+                    const targetWeekData = getWeeklyData(displayWeek, dept);
 
                     return (
                       <tr key={dept} style={{ borderBottom: '1px solid #f1f5f9' }}>
                         <td style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 700, color: '#0f172a' }}>{dept}</td>
-                        <td style={{ padding: '12px 14px', fontWeight: 700, background: '#f8fafc', color: '#475569' }}>{firstWeekData.reg}명</td>
+                        <td style={{ padding: '12px 14px', fontWeight: 700, background: '#f8fafc', color: '#475569' }}>{targetWeekData.reg}명</td>
                         {filteredWeeks.map(w => {
                           const d = getWeeklyData(w, dept);
                           return (
@@ -1366,7 +1423,14 @@ export const EvangelismModule: React.FC<EvangelismModuleProps> = ({ initialTab =
                   {/* Totals Row */}
                   <tr style={{ background: '#f8fafc', borderTop: '2px solid #cbd5e1', fontWeight: 900, color: '#0f172a' }}>
                     <td style={{ padding: '14px 16px', textAlign: 'left' }}>합계</td>
-                    <td style={{ padding: '14px' }}>{DEPARTMENTS.reduce((acc, dept) => acc + getWeeklyData(filteredWeeks[0] || '1월1주차', dept).reg, 0)}명</td>
+                    <td style={{ padding: '14px' }}>
+                      {DEPARTMENTS.reduce((acc, dept) => {
+                        const displayWeek = (selectedWeekCheck === '전체')
+                          ? (filteredWeeks[filteredWeeks.length - 1] || '1월1주차')
+                          : (filteredWeeks[0] || '1월1주차');
+                        return acc + getWeeklyData(displayWeek, dept).reg;
+                      }, 0)}명
+                    </td>
                     {filteredWeeks.map(w => {
                       return (
                         <React.Fragment key={w}>

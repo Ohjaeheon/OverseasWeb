@@ -85,6 +85,16 @@ public class Church {
     @Builder.Default
     private Boolean isActive = true;
 
+    @Column(name = "is_exposed")
+    @Comment("데이터 노출 여부 (false시 데이터 페이지에서 미노출)")
+    @Builder.Default
+    private Boolean isExposed = true;
+
+    @Column(name = "is_org_only")
+    @Comment("조직도 전용 여부 (true시 조직도에만 노출되고 데이터 페이지 미노출)")
+    @Builder.Default
+    private Boolean isOrgOnly = false;
+
     @Column(name = "sort_order")
     @Comment("출력 정렬 순서 (오름차순)")
     private Integer sortOrder;

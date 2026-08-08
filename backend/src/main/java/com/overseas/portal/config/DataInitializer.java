@@ -45,12 +45,19 @@ public class DataInitializer implements CommandLineRunner {
                     "PRIMARY KEY (post_id, referrer_username)" +
                     ");");
             
-            // 해선부 본부 노드 (ID = 0L) 등록
-            jdbcTemplate.execute("INSERT INTO overseas.churches (church_id, continent, country, jipa, gubun, name, leader_name, flight_time, distance_km, time_diff, language, religion, is_active) " +
-                    "VALUES (0, '본부', '한국', '본부', '부서', '해선부', '해외선교부장', '', 0, '', '', '', true) " +
-                    "ON CONFLICT (church_id) DO NOTHING;");
+            // overseas.churches 컬럼 추가 및 해선부 노드 처리
+            jdbcTemplate.execute("ALTER TABLE overseas.churches ADD COLUMN IF NOT EXISTS is_exposed BOOLEAN DEFAULT TRUE;");
+            jdbcTemplate.execute("ALTER TABLE overseas.churches ADD COLUMN IF NOT EXISTS is_org_only BOOLEAN DEFAULT FALSE;");
+
+            // 해선부 본부 노드 (ID = 0L) 등록 및 조직도 전용 설정
+            jdbcTemplate.execute("INSERT INTO overseas.churches (church_id, continent, country, jipa, gubun, name, leader_name, flight_time, distance_km, time_diff, language, religion, is_active, is_exposed, is_org_only) " +
+                    "VALUES (0, '본부', '한국', '본부', '부서', '해선부', '해외선교부장', '', 0, '', '', '', true, true, true) " +
+                    "ON CONFLICT (church_id) DO UPDATE SET is_org_only = true, continent = '본부', jipa = '본부';");
+
+            // 본부 또는 해선부 기존 노드가 있다면 is_org_only = true로 일괄 업데이트
+            jdbcTemplate.execute("UPDATE overseas.churches SET is_org_only = true WHERE continent = '본부' OR jipa = '본부' OR name = '해선부';");
             
-            log.info("Programmatically verified/created board tables and HaeSeonBu headquarter node.");
+            log.info("Programmatically verified/created board tables, church columns, and HaeSeonBu headquarter node.");
         } catch (Exception e) {
             log.error("Failed to initialize board tables or HaeSeonBu: {}", e.getMessage());
         }

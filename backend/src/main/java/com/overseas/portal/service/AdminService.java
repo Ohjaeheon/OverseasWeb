@@ -109,13 +109,13 @@ public class AdminService {
 
     @Transactional(readOnly = true)
     public List<Church> getAllChurches() {
-        // '본부' / '해선부' 노드는 조직도 전용 — 일반 목록에서 제외
-        return churchRepository.findAllByOrderBySortOrderAscNameAsc().stream()
-                .filter(c -> !"본부".equals(c.getContinent()) && !"본부".equals(c.getJipa()))
-                .collect(java.util.stream.Collectors.toList());
+        // 관리자 페이지(AdminFaithPage)용 전체 목록 조회 (본부/해선부 및 조직도전용 포함)
+        return churchRepository.findAllByOrderBySortOrderAscNameAsc();
     }
 
     public Church createChurch(Church church) {
+        if (church.getIsExposed() == null) church.setIsExposed(true);
+        if (church.getIsOrgOnly() == null) church.setIsOrgOnly(false);
         logAudit("ADMIN", "CREATE_CHURCH", "Created church: " + church.getName() + " (" + church.getGubun() + ")");
         return churchRepository.save(church);
     }
@@ -134,6 +134,8 @@ public class AdminService {
         if (updated.getTimeDiff() != null) church.setTimeDiff(updated.getTimeDiff());
         if (updated.getLanguage() != null) church.setLanguage(updated.getLanguage());
         if (updated.getReligion() != null) church.setReligion(updated.getReligion());
+        if (updated.getIsExposed() != null) church.setIsExposed(updated.getIsExposed());
+        if (updated.getIsOrgOnly() != null) church.setIsOrgOnly(updated.getIsOrgOnly());
         church.setSortOrder(updated.getSortOrder());
         logAudit("ADMIN", "UPDATE_CHURCH", "Updated church ID: " + churchId + ", name: " + church.getName());
         return churchRepository.save(church);

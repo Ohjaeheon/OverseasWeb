@@ -259,9 +259,11 @@ public class DiagnosisService {
     }
 
     public List<Church> getAllChurches() {
-        // '본부' / '해선부' 노드는 조직도 전용 — 일반 목록에서 제외
+        // 일반 데이터 페이지용 조회 — 조직도 전용(isOrgOnly=true), 미노출(isExposed=false), 본부/해선부 노드 제외
         return churchRepository.findByIsActiveTrueOrderBySortOrderAscNameAsc().stream()
-                .filter(c -> !"본부".equals(c.getContinent()) && !"본부".equals(c.getJipa()))
+                .filter(c -> !Boolean.FALSE.equals(c.getIsExposed()))
+                .filter(c -> !Boolean.TRUE.equals(c.getIsOrgOnly()))
+                .filter(c -> !"본부".equals(c.getContinent()) && !"본부".equals(c.getJipa()) && !"해선부".equals(c.getName()))
                 .collect(java.util.stream.Collectors.toList());
     }
 

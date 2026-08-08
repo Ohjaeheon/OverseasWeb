@@ -70,10 +70,18 @@ public class MembershipMonthlyRecord {
     @Comment("출결 재적 - 감소 수")
     private Integer attendDecrease;
 
-    // 실시간 계산 및 전도재적 연동용 필드
+    // 실시간 계산 및 재적 연동용 필드
+    @Column(name = "calculated_assembly_reg")
+    @Comment("계산된 이번달 회별 재적수(현재적) (지난달 재적 + 입교 - 사고)")
+    private Integer calculatedAssemblyReg;
+
     @Column(name = "calculated_evang_reg")
     @Comment("계산된 이번달 전도 재적수 (지난달 재적 + 증가 - 감소)")
     private Integer calculatedEvangReg;
+
+    @Column(name = "calculated_attend_reg")
+    @Comment("계산된 이번달 출결 재적수 (지난달 재적 + 증가 - 감소)")
+    private Integer calculatedAttendReg;
 
     @Column(name = "updated_by", length = 50)
     @Comment("최종 수정자 아이디/이름")

@@ -40,6 +40,8 @@ export interface ChurchItem {
   lon?: number;
   sortOrder?: number;
   isActive?: boolean;
+  isExposed?: boolean;
+  isOrgOnly?: boolean;
 }
 
 export interface AdminDashboardData {

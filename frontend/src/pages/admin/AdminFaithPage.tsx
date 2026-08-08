@@ -150,7 +150,9 @@ export const AdminFaithPage: React.FC = () => {
     timeDiff: '한국보다 4시간 느림',
     language: '우르두어·영어',
     religion: '이슬람교',
-    sortOrder: undefined
+    sortOrder: undefined,
+    isExposed: true,
+    isOrgOnly: false
   });
 
   // Map 21 default churches from defaultChurches.json
@@ -169,7 +171,9 @@ export const AdminFaithPage: React.FC = () => {
     religion: c.religion,
     lat: c.lat || 35.68,
     lon: c.lon || 139.76,
-    sortOrder: c.sortOrder
+    sortOrder: c.sortOrder,
+    isExposed: c.isExposed !== undefined ? c.isExposed : true,
+    isOrgOnly: c.isOrgOnly !== undefined ? c.isOrgOnly : (c.name === '해선부' || c.continent === '본부')
   })).sort((a, b) => {
     const orderA = a.sortOrder !== undefined && a.sortOrder !== null ? a.sortOrder : 999999;
     const orderB = b.sortOrder !== undefined && b.sortOrder !== null ? b.sortOrder : 999999;
@@ -244,9 +248,33 @@ export const AdminFaithPage: React.FC = () => {
       timeDiff: '한국보다 4시간 느림',
       language: '우르두어·영어',
       religion: '이슬람교',
-      sortOrder: undefined
+      sortOrder: undefined,
+      isExposed: true,
+      isOrgOnly: false
     });
     setIsModalOpen(true);
+  };
+
+  const handleToggleExposed = async (item: ChurchItem) => {
+    if (!item.churchId) return;
+    const nextVal = item.isExposed === false ? true : false;
+    try {
+      await adminService.updateChurch(item.churchId, { ...item, isExposed: nextVal });
+      loadChurches();
+    } catch (err) {
+      alert("상태 변경 중 오류가 발생했습니다.");
+    }
+  };
+
+  const handleToggleOrgOnly = async (item: ChurchItem) => {
+    if (!item.churchId) return;
+    const nextVal = item.isOrgOnly === true ? false : true;
+    try {
+      await adminService.updateChurch(item.churchId, { ...item, isOrgOnly: nextVal });
+      loadChurches();
+    } catch (err) {
+      alert("상태 변경 중 오류가 발생했습니다.");
+    }
   };
 
   const handleOpenEditModal = (item: ChurchItem) => {
@@ -409,6 +437,7 @@ export const AdminFaithPage: React.FC = () => {
             <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0', color: '#475569' }}>
               <th style={{ padding: '14px 18px', fontWeight: 700 }}>구분</th>
               <th style={{ padding: '14px 18px', fontWeight: 700 }}>포탈 검색 표시명 (지파 · 교회/지역명)</th>
+              <th style={{ padding: '14px 18px', fontWeight: 700, textAlign: 'center' }}>노출 제어 (데이터/조직도)</th>
               <th style={{ padding: '14px 18px', fontWeight: 700 }}>정렬 순서</th>
               <th style={{ padding: '14px 18px', fontWeight: 700 }}>대륙 / 국가</th>
               <th style={{ padding: '14px 18px', fontWeight: 700 }}>담임 / 담당자</th>
@@ -420,13 +449,13 @@ export const AdminFaithPage: React.FC = () => {
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={7} style={{ padding: '30px', textAlign: 'center', color: '#6b7a99' }}>
+                <td colSpan={9} style={{ padding: '30px', textAlign: 'center', color: '#6b7a99' }}>
                   데이터를 불러오는 중입니다...
                 </td>
               </tr>
             ) : filteredChurches.length === 0 ? (
               <tr>
-                <td colSpan={7} style={{ padding: '30px', textAlign: 'center', color: '#6b7a99' }}>
+                <td colSpan={9} style={{ padding: '30px', textAlign: 'center', color: '#6b7a99' }}>
                   등록된 교회/지역 데이터가 없습니다.
                 </td>
               </tr>
@@ -443,7 +472,13 @@ export const AdminFaithPage: React.FC = () => {
                 } else if (item.gubun === '개척지') {
                   badgeBg = '#fef3c7';
                   badgeColor = '#b45309';
+                } else if (item.gubun === '부서' || item.continent === '본부') {
+                  badgeBg = '#f3e8ff';
+                  badgeColor = '#6b21a8';
                 }
+
+                const isExposed = item.isExposed !== false;
+                const isOrgOnly = item.isOrgOnly === true;
 
                 return (
                   <tr key={item.churchId || item.name} style={{ borderBottom: '1px solid #f1f5f9', transition: 'background 0.15s ease' }}>
@@ -621,6 +656,37 @@ export const AdminFaithPage: React.FC = () => {
                   }}
                   style={{ width: '100%', padding: '10px', background: '#f8fafc', border: '1px solid #dbe2ef', borderRadius: '8px', color: '#1f2a44' }}
                 />
+              </div>
+
+              {/* 데이터 노출 / 조직도 전용 제어 옵션 */}
+              <div style={{
+                background: '#f8fafc',
+                border: '1px solid #e2e8f0',
+                borderRadius: '10px',
+                padding: '12px 16px',
+                display: 'flex',
+                gap: '24px',
+                alignItems: 'center'
+              }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.88rem', fontWeight: 600, color: '#1e293b' }}>
+                  <input
+                    type="checkbox"
+                    checked={formData.isExposed !== false}
+                    onChange={(e) => setFormData({ ...formData, isExposed: e.target.checked })}
+                    style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+                  />
+                  🌐 일반 데이터 페이지 노출
+                </label>
+
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.88rem', fontWeight: 600, color: '#7c3aed' }}>
+                  <input
+                    type="checkbox"
+                    checked={formData.isOrgOnly === true}
+                    onChange={(e) => setFormData({ ...formData, isOrgOnly: e.target.checked })}
+                    style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+                  />
+                  🌳 조직도에만 노출 (데이터 모듈 미노출)
+                </label>
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>

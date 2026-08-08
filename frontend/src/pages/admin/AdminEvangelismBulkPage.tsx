@@ -11,9 +11,18 @@ import {
 // ─── 상수 ─────────────────────────────────────────────────────────────────────
 const DEPARTMENTS = ['교역자', '자문회', '장년회', '부녀회', '청년회'];
 
-// 주차 배열 생성 (EvangelismModule과 동일한 로직)
+// 주차 배열 생성 (미래 주차 자동 제외, 2999년까지 대응)
 const buildWeeks = (yearStr: string): { weekKey: string; rangeStr: string }[] => {
   const yearNum = parseInt(yearStr.replace(/[^0-9]/g, '')) || new Date().getFullYear();
+  const today = new Date();
+  today.setHours(23, 59, 59, 999);
+  const currentYear = new Date().getFullYear();
+
+  // 아직 도달하지 않은 미래 연도의 경우 주차가 나오지 않음 (해당 시점이 되면 자동 노출)
+  if (yearNum > currentYear) {
+    return [];
+  }
+
   const d = new Date(yearNum - 1, 11, 25);
   while (d.getDay() !== 0) d.setDate(d.getDate() - 1);
 
@@ -27,9 +36,20 @@ const buildWeeks = (yearStr: string): { weekKey: string; rangeStr: string }[] =>
     const startYear = start.getFullYear();
     const m = start.getMonth() + 1;
     if (startYear > yearNum) break;
+
     if (startYear === yearNum) {
       monthWeekCounts[m] = (monthWeekCounts[m] || 0) + 1;
       const weekNum = monthWeekCounts[m];
+
+      // 현재 연도인 경우: 시작 주차가 오늘 날짜 기준 미래인 주차는 노출하지 않음
+      if (yearNum === currentYear) {
+        const s = new Date(start); s.setHours(0, 0, 0, 0);
+        if (s > today) {
+          d.setDate(d.getDate() + 7);
+          continue;
+        }
+      }
+
       weeks.push({
         weekKey: `${m}월${weekNum}주차`,
         rangeStr: `${m}/${start.getDate()} ~ ${end.getMonth() + 1}/${end.getDate()}`
@@ -42,6 +62,7 @@ const buildWeeks = (yearStr: string): { weekKey: string; rangeStr: string }[] =>
 
 const getCurrentWeekKey = (yearStr: string): string => {
   const weeks = buildWeeks(yearStr);
+  if (weeks.length === 0) return '';
   const today = new Date();
   const yearNum = parseInt(yearStr.replace(/[^0-9]/g, ''));
   if (today.getFullYear() !== yearNum) return weeks[weeks.length - 1]?.weekKey || '';
@@ -101,11 +122,19 @@ const emptyDept = (): DeptValues => ({
 // ─── 컴포넌트 ─────────────────────────────────────────────────────────────────
 export const AdminEvangelismBulkPage: React.FC = () => {
   const currentYear = new Date().getFullYear();
-  const years = Array.from({ length: 3 }, (_, i) => `${currentYear - i}년`);
+  // 2026년부터 2999년까지 지원하도록 연도 목록 구성
+  const years = useMemo(() => {
+    const arr: string[] = [];
+    const maxVal = Math.min(2999, Math.max(currentYear, 2026));
+    for (let y = maxVal; y >= 2026; y--) {
+      arr.push(`${y}년`);
+    }
+    return arr;
+  }, [currentYear]);
 
   const [selectedYear, setSelectedYear] = useState(`${currentYear}년`);
-  const [selectedWeek, setSelectedWeek] = useState(() => getCurrentWeekKey(`${currentYear}년`));
   const weeks = useMemo(() => buildWeeks(selectedYear), [selectedYear]);
+  const [selectedWeek, setSelectedWeek] = useState(() => getCurrentWeekKey(`${currentYear}년`));
 
   // 교회 목록 (faith-records 기반)
   const [allChurches, setAllChurches] = useState<ChurchInfo[]>([]);
@@ -136,8 +165,8 @@ export const AdminEvangelismBulkPage: React.FC = () => {
   // ── 교회 목록 로드 ────────────────────────────────────────────────────────
   const loadChurches = useCallback(async () => {
     setLoadingChurches(true);
-    // 본부/해선부는 조직도 전용 — 제외 헬퍼
-    const isHq = (c: any) => c.continent === '본부' || c.jipa === '본부' || c.name === '해선부';
+    // 본부/해선부 및 미노출/조직도전용 항목 데이터 페이지 제외 헬퍼
+    const isHq = (c: any) => c.continent === '본부' || c.jipa === '본부' || c.name === '해선부' || c.isExposed === false || c.isOrgOnly === true;
     try {
       const data = await diagnosisService.getChurches();
       let list: ChurchInfo[] = [];
@@ -551,9 +580,9 @@ const ChurchTable: React.FC<ChurchTableProps> = ({ church, editMode, editData, o
     verticalAlign: 'middle',
   };
 
-  const numCell = (dept: string, field: keyof DeptValues, color: string) => {
+  const numCell = (dept: string, field: keyof DeptValues, color: string, readOnlyField = false) => {
     const val = editData[dept]?.[field] as number ?? 0;
-    if (editMode) {
+    if (editMode && !readOnlyField) {
       return (
         <td style={tdCenter}>
           <input
@@ -575,7 +604,18 @@ const ChurchTable: React.FC<ChurchTableProps> = ({ church, editMode, editData, o
       );
     }
     return (
-      <td style={{ ...tdCenter, padding: '9px 8px', fontWeight: val > 0 ? 700 : 400, color: val > 0 ? color : '#cbd5e1', fontSize: '0.88rem' }}>
+      <td
+        style={{
+          ...tdCenter,
+          padding: '9px 8px',
+          fontWeight: val > 0 ? 700 : 400,
+          color: readOnlyField ? '#475569' : (val > 0 ? color : '#cbd5e1'),
+          fontSize: '0.88rem',
+          background: readOnlyField ? '#f8fafc' : 'transparent',
+          cursor: readOnlyField ? 'not-allowed' : 'default'
+        }}
+        title={readOnlyField ? '전도재적은 직접 수정할 수 없습니다 (내무 연동 수치)' : undefined}
+      >
         {val > 0 ? val : '—'}
       </td>
     );
@@ -625,7 +665,7 @@ const ChurchTable: React.FC<ChurchTableProps> = ({ church, editMode, editData, o
           <thead>
             <tr>
               <th style={{ ...thStyle, width: '80px', textAlign: 'left', paddingLeft: '16px' }}>회</th>
-              <th style={{ ...thStyle, width: '80px', color: '#2563eb' }}>전도재적</th>
+              <th style={{ ...thStyle, width: '80px', color: '#64748b', background: '#f8fafc' }} title="전도재적은 직접 수정할 수 없습니다">전도재적 🔒</th>
               <th style={{ ...thStyle, width: '70px', color: '#2563eb' }}>찾기</th>
               <th style={{ ...thStyle, width: '60px', color: '#dc2626' }}>탈락</th>
               <th style={{ ...thStyle, width: '70px', color: '#7c3aed' }}>복음방</th>
@@ -658,7 +698,7 @@ const ChurchTable: React.FC<ChurchTableProps> = ({ church, editMode, editData, o
                       {dept}
                     </span>
                   </td>
-                  {numCell(dept, 'reg', '#2563eb')}
+                  {numCell(dept, 'reg', '#64748b', true)}
                   {numCell(dept, 'find', '#2563eb')}
                   {numCell(dept, 'findDrop', '#dc2626')}
                   {numCell(dept, 'gospel', '#7c3aed')}

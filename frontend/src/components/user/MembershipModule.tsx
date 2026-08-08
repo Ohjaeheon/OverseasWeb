@@ -15,7 +15,9 @@ interface DeptMembershipData {
   evangDecrease: number;    // 전도 재적 - 감소
   attendIncrease: number;   // 출결 재적 - 증가
   attendDecrease: number;   // 출결 재적 - 감소
+  calculatedAssemblyReg?: number;
   calculatedEvangReg?: number;
+  calculatedAttendReg?: number;
 }
 
 interface MembershipModuleProps {
@@ -84,6 +86,7 @@ export const MembershipModule: React.FC<MembershipModuleProps> = ({ initialTab =
 
   // Database Records State
   const [dbRecords, setDbRecords] = useState<Record<string, Record<string, DeptMembershipData>>>({});
+  const [prevYearDecRecords, setPrevYearDecRecords] = useState<Record<string, DeptMembershipData>>({});
   const [loadingDb, setLoadingDb] = useState<boolean>(false);
 
   // Help Descriptions Tooltip Modal State
@@ -103,7 +106,14 @@ export const MembershipModule: React.FC<MembershipModuleProps> = ({ initialTab =
   const fetchDbRecords = async () => {
     setLoadingDb(true);
     try {
-      const res = await api.get<any[]>(`/membership/records?church=${encodeURIComponent(selectedChurch)}&year=${selectedYear}`);
+      const curYearNum = parseInt(selectedYear.replace(/[^0-9]/g, '')) || 2026;
+      const prevYearStr = `${curYearNum - 1}년`;
+
+      const [res, prevRes] = await Promise.all([
+        api.get<any[]>(`/membership/records?church=${encodeURIComponent(selectedChurch)}&year=${selectedYear}`),
+        api.get<any[]>(`/membership/records?church=${encodeURIComponent(selectedChurch)}&year=${prevYearStr}&month=12월`).catch(() => ({ data: [] }))
+      ]);
+
       const map: Record<string, Record<string, DeptMembershipData>> = {};
       res.data.forEach((r: any) => {
         if (!map[r.monthKey]) {
@@ -116,10 +126,30 @@ export const MembershipModule: React.FC<MembershipModuleProps> = ({ initialTab =
           evangDecrease: r.evangDecrease || 0,
           attendIncrease: r.attendIncrease || 0,
           attendDecrease: r.attendDecrease || 0,
-          calculatedEvangReg: r.calculatedEvangReg || 0
+          calculatedAssemblyReg: r.calculatedAssemblyReg,
+          calculatedEvangReg: r.calculatedEvangReg,
+          calculatedAttendReg: r.calculatedAttendReg
         };
       });
       setDbRecords(map);
+
+      const prevMap: Record<string, DeptMembershipData> = {};
+      if (Array.isArray(prevRes.data)) {
+        prevRes.data.forEach((r: any) => {
+          prevMap[r.department] = {
+            assemblyAdmit: r.assemblyAdmit || 0,
+            assemblyAccident: r.assemblyAccident || 0,
+            evangIncrease: r.evangIncrease || 0,
+            evangDecrease: r.evangDecrease || 0,
+            attendIncrease: r.attendIncrease || 0,
+            attendDecrease: r.attendDecrease || 0,
+            calculatedAssemblyReg: r.calculatedAssemblyReg || 0,
+            calculatedEvangReg: r.calculatedEvangReg || 0,
+            calculatedAttendReg: r.calculatedAttendReg || 0
+          };
+        });
+      }
+      setPrevYearDecRecords(prevMap);
     } catch (e) {
       console.error("Failed to fetch membership records from DB", e);
     } finally {
@@ -297,12 +327,58 @@ export const MembershipModule: React.FC<MembershipModuleProps> = ({ initialTab =
     setCurrentMonthInputs(inputs);
   }, [selectedMonthInput, dbRecords]);
 
-  // Mock Monthly Data Generator with Database priority
+  // Monthly Data with Database priority
   const getMonthlyData = (monthKey: string, dept: string): DeptMembershipData => {
     if (dbRecords[monthKey] && dbRecords[monthKey][dept]) {
       return dbRecords[monthKey][dept];
     }
-    return { assemblyAdmit: 0, assemblyAccident: 0, evangIncrease: 0, evangDecrease: 0, attendIncrease: 0, attendDecrease: 0, calculatedEvangReg: 0 };
+    return { assemblyAdmit: 0, assemblyAccident: 0, evangIncrease: 0, evangDecrease: 0, attendIncrease: 0, attendDecrease: 0, calculatedAssemblyReg: 0, calculatedEvangReg: 0, calculatedAttendReg: 0 };
+  };
+
+  // Cumulative Monthly Data Generator (1월 ~ 12월, incorporating prev year 12월 baseline)
+  const getMonthlyCumulativeData = (monthKey: string, dept: string): DeptMembershipData => {
+    const targetMonthNum = parseInt(monthKey.replace('월', '')) || 1;
+    let cumAssembly = prevYearDecRecords[dept]?.calculatedAssemblyReg || 0;
+    let cumEvang = prevYearDecRecords[dept]?.calculatedEvangReg || 0;
+    let cumAttend = prevYearDecRecords[dept]?.calculatedAttendReg || 0;
+
+    for (let m = 1; m <= targetMonthNum; m++) {
+      const mKey = `${m}월`;
+      const rec = dbRecords[mKey]?.[dept];
+      const admit = rec?.assemblyAdmit || 0;
+      const accident = rec?.assemblyAccident || 0;
+      const evangInc = rec?.evangIncrease || 0;
+      const evangDec = rec?.evangDecrease || 0;
+      const attInc = rec?.attendIncrease || 0;
+      const attDec = rec?.attendDecrease || 0;
+
+      cumAssembly = Math.max(0, cumAssembly + admit - accident);
+      cumEvang = Math.max(0, cumEvang + evangInc - evangDec);
+      cumAttend = Math.max(0, cumAttend + attInc - attDec);
+
+      if (m === targetMonthNum) {
+        return {
+          assemblyAdmit: admit,
+          assemblyAccident: accident,
+          evangIncrease: evangInc,
+          evangDecrease: evangDec,
+          attendIncrease: attInc,
+          attendDecrease: attDec,
+          calculatedAssemblyReg: cumAssembly,
+          calculatedEvangReg: cumEvang,
+          calculatedAttendReg: cumAttend
+        };
+      }
+    }
+
+    return {
+      assemblyAdmit: 0, assemblyAccident: 0,
+      evangIncrease: 0, evangDecrease: 0,
+      attendIncrease: 0, attendDecrease: 0,
+      calculatedAssemblyReg: cumAssembly,
+      calculatedEvangReg: cumEvang,
+      calculatedAttendReg: cumAttend
+    };
   };
 
   // Filter months to render
@@ -321,7 +397,8 @@ export const MembershipModule: React.FC<MembershipModuleProps> = ({ initialTab =
     let totalAdmit = 0;
     let totalAccident = 0;
     let totalIncrease = 0;
-    let latestMonthReg = 0;
+    let latestMonthAssemblyReg = 0;
+    let latestMonthEvangReg = 0;
 
     const allMonthsToShow = getFilteredMonths();
     const latestMonth = allMonthsToShow[allMonthsToShow.length - 1] || '1월';
@@ -333,11 +410,12 @@ export const MembershipModule: React.FC<MembershipModuleProps> = ({ initialTab =
         totalAccident += d.assemblyAccident;
         totalIncrease += d.evangIncrease;
       });
-      const latestData = getMonthlyData(latestMonth, dept);
-      latestMonthReg += latestData.calculatedEvangReg || 0;
+      const latestData = getMonthlyCumulativeData(latestMonth, dept);
+      latestMonthAssemblyReg += latestData.calculatedAssemblyReg || 0;
+      latestMonthEvangReg += latestData.calculatedEvangReg || 0;
     });
 
-    return { latestMonthReg, totalIncrease, totalAccident };
+    return { latestMonthAssemblyReg, latestMonthEvangReg, totalIncrease, totalAccident };
   };
 
   const kpi = computeKpiTotals();
@@ -576,13 +654,16 @@ export const MembershipModule: React.FC<MembershipModuleProps> = ({ initialTab =
             {/* Card 1: 현재적 */}
             <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '16px', padding: '22px 26px', boxShadow: '0 4px 14px rgba(0,0,0,0.03)' }}>
               <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#64748b', marginBottom: '6px' }}>
-                👤 현재적 (전도 재적 총계)
+                👤 현재적 (회별/전도 재적 총계)
               </div>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px' }}>
-                <span style={{ fontSize: '2rem', fontWeight: 900, color: '#2563eb' }}>{kpi.latestMonthReg}명</span>
+                <span style={{ fontSize: '2rem', fontWeight: 900, color: '#2563eb' }}>{kpi.latestMonthAssemblyReg}명</span>
+                <span style={{ fontSize: '0.9rem', color: '#64748b', fontWeight: 700 }}>
+                  (전도재적: {kpi.latestMonthEvangReg}명)
+                </span>
               </div>
               <div style={{ fontSize: '0.78rem', color: '#94a3b8', marginTop: '6px' }}>
-                가장 최신 월 기준 전성도 전도재적 총합
+                가장 최신 월 기준 회별 누적 재적(현재적) 및 전도재적
               </div>
             </div>
 
@@ -650,8 +731,10 @@ export const MembershipModule: React.FC<MembershipModuleProps> = ({ initialTab =
                     try {
                       const recordsToSave = DEPARTMENTS.map(dept => {
                         const data = currentMonthInputs[dept];
-                        const prev = getMonthlyData(prevMonthKey, dept);
-                        const calculatedNextReg = Math.max(0, (prev.calculatedEvangReg || 0) + data.evangIncrease - data.evangDecrease);
+                        const prevCum = getMonthlyCumulativeData(prevMonthKey, dept);
+                        const calculatedNextAssemblyReg = Math.max(0, (prevCum.calculatedAssemblyReg || 0) + data.assemblyAdmit - data.assemblyAccident);
+                        const calculatedNextEvangReg = Math.max(0, (prevCum.calculatedEvangReg || 0) + data.evangIncrease - data.evangDecrease);
+                        const calculatedNextAttendReg = Math.max(0, (prevCum.calculatedAttendReg || 0) + data.attendIncrease - data.attendDecrease);
                         return {
                           churchName: selectedChurch,
                           yearStr: selectedYear,
@@ -663,7 +746,9 @@ export const MembershipModule: React.FC<MembershipModuleProps> = ({ initialTab =
                           evangDecrease: data.evangDecrease,
                           attendIncrease: data.attendIncrease,
                           attendDecrease: data.attendDecrease,
-                          calculatedEvangReg: calculatedNextReg,
+                          calculatedAssemblyReg: calculatedNextAssemblyReg,
+                          calculatedEvangReg: calculatedNextEvangReg,
+                          calculatedAttendReg: calculatedNextAttendReg,
                           updatedBy: localStorage.getItem('user') ? JSON.parse(localStorage.getItem('user')!).username : 'admin'
                         };
                       });
@@ -799,18 +884,18 @@ export const MembershipModule: React.FC<MembershipModuleProps> = ({ initialTab =
                 </thead>
                 <tbody>
                   {DEPARTMENTS.map(dept => {
-                    const prev = getMonthlyData(prevMonthKey, dept);
+                    const prev = getMonthlyCumulativeData(prevMonthKey, dept);
                     const curr = currentMonthInputs[dept] || { assemblyAdmit: 0, assemblyAccident: 0, evangIncrease: 0, evangDecrease: 0, attendIncrease: 0, attendDecrease: 0 };
 
-                    // Calculate real-time virtual "전도재적" count to show the user
-                    const calculatedNextReg = Math.max(0, (prev.calculatedEvangReg || 0) + curr.evangIncrease - curr.evangDecrease);
+                    const calculatedNextAssembly = Math.max(0, (prev.calculatedAssemblyReg || 0) + curr.assemblyAdmit - curr.assemblyAccident);
+                    const calculatedNextEvang = Math.max(0, (prev.calculatedEvangReg || 0) + curr.evangIncrease - curr.evangDecrease);
 
                     return (
                       <tr key={dept} style={{ borderBottom: '1px solid #f1f5f9' }}>
                         <td style={{ padding: '12px 14px', textAlign: 'left', fontWeight: 700, color: '#0f172a' }}>
                           {dept}
-                          <span style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600, marginLeft: '6px' }}>
-                            ({calculatedNextReg}명)
+                          <span style={{ fontSize: '0.72rem', color: '#2563eb', fontWeight: 700, marginLeft: '6px', display: 'inline-block' }}>
+                            (현재적: {calculatedNextAssembly}명 / 전도: {calculatedNextEvang}명)
                           </span>
                         </td>
 
@@ -892,8 +977,8 @@ export const MembershipModule: React.FC<MembershipModuleProps> = ({ initialTab =
                   <tr style={{ background: '#f8fafc', borderTop: '2px solid #cbd5e1', fontWeight: 900 }}>
                     <td style={{ padding: '14px', textAlign: 'left', fontWeight: 900 }}>
                       합계
-                      <span style={{ fontSize: '0.78rem', color: '#475569', fontWeight: 700, marginLeft: '6px' }}>
-                        ({DEPARTMENTS.reduce((sum, d) => sum + Math.max(0, (getMonthlyData(prevMonthKey, d).calculatedEvangReg || 0) + (currentMonthInputs[d]?.evangIncrease || 0) - (currentMonthInputs[d]?.evangDecrease || 0)), 0)}명)
+                      <span style={{ fontSize: '0.75rem', color: '#475569', fontWeight: 700, marginLeft: '6px' }}>
+                        (현재적: {DEPARTMENTS.reduce((sum, d) => sum + Math.max(0, (getMonthlyCumulativeData(prevMonthKey, d).calculatedAssemblyReg || 0) + (currentMonthInputs[d]?.assemblyAdmit || 0) - (currentMonthInputs[d]?.assemblyAccident || 0)), 0)}명 / 전도: {DEPARTMENTS.reduce((sum, d) => sum + Math.max(0, (getMonthlyCumulativeData(prevMonthKey, d).calculatedEvangReg || 0) + (currentMonthInputs[d]?.evangIncrease || 0) - (currentMonthInputs[d]?.evangDecrease || 0)), 0)}명)
                       </span>
                     </td>
 
