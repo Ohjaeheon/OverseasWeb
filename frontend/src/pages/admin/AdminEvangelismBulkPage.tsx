@@ -5,7 +5,7 @@ import defaultChurchesData from '../../assets/defaultChurches.json';
 import api from '../../services/api';
 import {
   RefreshCw, Save, Edit3, X, AlertTriangle, CheckCircle,
-  Globe, ChevronLeft, ChevronRight
+  Globe, ChevronLeft, ChevronRight, Download
 } from 'lucide-react';
 
 // ─── 상수 ─────────────────────────────────────────────────────────────────────
@@ -345,6 +345,63 @@ export const AdminEvangelismBulkPage: React.FC = () => {
     [allChurches, sideFilter]
   );
 
+  // ── 엑셀 추출 (CSV UTF-8 BOM 다운로드) ───────────────────────────────────
+  const handleExportExcel = () => {
+    if (visibleChurches.length === 0) {
+      showToast('error', '다운로드할 데이터가 없습니다.');
+      return;
+    }
+
+    const headers = [
+      '교회명', '대륙', '국가', '지파', '구분',
+      '부서(회)', '전도재적', '찾기', '찾기탈락',
+      '복음방', '복음방탈락', '개강', '개강탈락', '최종수정자'
+    ];
+
+    const rows: string[][] = [];
+
+    visibleChurches.forEach(church => {
+      DEPARTMENTS.forEach(dept => {
+        const d = editData[church.name]?.[dept];
+        rows.push([
+          church.name,
+          church.continent || '',
+          church.country || '',
+          church.jipa || '',
+          church.gubun || '',
+          dept,
+          String(d?.reg ?? 0),
+          String(d?.find ?? 0),
+          String(d?.findDrop ?? 0),
+          String(d?.gospel ?? 0),
+          String(d?.gospelDrop ?? 0),
+          String(d?.admit ?? 0),
+          String(d?.admitDrop ?? 0),
+          d?.updatedBy || ''
+        ]);
+      });
+    });
+
+    const escapeCsv = (str: string) => `"${(str || '').replace(/"/g, '""')}"`;
+    const csvContent = '\uFEFF' + [
+      headers.map(escapeCsv).join(','),
+      ...rows.map(row => row.map(escapeCsv).join(','))
+    ].join('\r\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    const fileName = `전도가개강_실적_전체관리_${selectedYear}_${selectedWeek}.csv`;
+    link.setAttribute('href', url);
+    link.setAttribute('download', fileName);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    showToast('success', `${fileName} 엑셀 다운로드가 완료되었습니다.`);
+  };
+
   // 주차 네비게이션
   const weekIdx = weeks.findIndex(w => w.weekKey === selectedWeek);
   const goPrev = () => { if (weekIdx > 0) setSelectedWeek(weeks[weekIdx - 1].weekKey); };
@@ -421,6 +478,15 @@ export const AdminEvangelismBulkPage: React.FC = () => {
         </div>
 
         <div style={{ flex: 1 }} />
+
+        {/* 엑셀 다운로드 */}
+        <button
+          onClick={handleExportExcel}
+          style={{ ...btnStyle('#059669'), padding: '8px 14px' }}
+          title="현재 화면의 데이터를 엑셀(CSV) 파일로 다운로드합니다"
+        >
+          <Download size={14} /> 엑셀 다운로드
+        </button>
 
         {/* 새로고침 */}
         <button
@@ -609,12 +675,13 @@ const ChurchTable: React.FC<ChurchTableProps> = ({ church, editMode, editData, o
           ...tdCenter,
           padding: '9px 8px',
           fontWeight: val > 0 ? 700 : 400,
-          color: readOnlyField ? '#475569' : (val > 0 ? color : '#cbd5e1'),
+          color: '#64748b',
           fontSize: '0.88rem',
-          background: readOnlyField ? '#f8fafc' : 'transparent',
-          cursor: readOnlyField ? 'not-allowed' : 'default'
+          background: '#f8fafc',
+          cursor: 'default',
+          userSelect: 'text',
         }}
-        title={readOnlyField ? '전도재적은 직접 수정할 수 없습니다 (내무 연동 수치)' : undefined}
+        title="전도재적은 내무(Membership) 연동 수치로 직접 수정할 수 없습니다."
       >
         {val > 0 ? val : '—'}
       </td>
@@ -665,7 +732,7 @@ const ChurchTable: React.FC<ChurchTableProps> = ({ church, editMode, editData, o
           <thead>
             <tr>
               <th style={{ ...thStyle, width: '80px', textAlign: 'left', paddingLeft: '16px' }}>회</th>
-              <th style={{ ...thStyle, width: '80px', color: '#64748b', background: '#f8fafc' }} title="전도재적은 직접 수정할 수 없습니다">전도재적 🔒</th>
+              <th style={{ ...thStyle, width: '100px', color: '#64748b', background: '#f8fafc' }} title="전도재적은 내무(Membership) 연동 수치로 직접 수정할 수 없습니다">전도재적 (수정불가)</th>
               <th style={{ ...thStyle, width: '70px', color: '#2563eb' }}>찾기</th>
               <th style={{ ...thStyle, width: '60px', color: '#dc2626' }}>탈락</th>
               <th style={{ ...thStyle, width: '70px', color: '#7c3aed' }}>복음방</th>

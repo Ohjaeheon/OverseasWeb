@@ -1540,12 +1540,12 @@ export const EvangelismModule: React.FC<EvangelismModuleProps> = ({ initialTab =
                       });
                       await api.post('/evangelism/records', recordsToSave);
                       logService.addAccessLog('💾 주차별 실적 저장 (DB 연동)', `/evangelism/save?church=${encodeURIComponent(selectedChurch)}&week=${selectedWeekAgg}`);
-                      alert(`[${selectedChurch} · ${selectedWeekAgg}] 전도 실적이 PostgreSQL 데이터베이스에 성공적으로 저장되었습니다!`);
+                      alert(`[${selectedChurch} · ${selectedWeekAgg}] 전도 실적이 성공적으로 저장되었습니다!`);
                       fetchDbRecords();
                       checkAccessPermission();
                       window.dispatchEvent(new Event('refreshEditRequests'));
                     } catch (e) {
-                      alert('데이터베이스 저장 중 오류가 발생했습니다.');
+                      alert('저장 중 오류가 발생했습니다.');
                     }
                   }}
                   style={{

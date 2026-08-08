@@ -105,7 +105,14 @@ public class EvangelismController {
                     .findFirst()
                     .orElse(r);
 
-            target.setRegCount(r.getRegCount());
+            // Preserve existing regCount (calculated from Membership) unless r.getRegCount() has a valid non-zero value
+            if (target.getRecordId() != null && target.getRegCount() != null && target.getRegCount() > 0) {
+                if (r.getRegCount() != null && r.getRegCount() > 0) {
+                    target.setRegCount(r.getRegCount());
+                }
+            } else {
+                target.setRegCount(r.getRegCount() != null ? r.getRegCount() : 0);
+            }
             target.setFindCount(r.getFindCount());
             target.setFindDropCount(r.getFindDropCount());
             target.setGospelCount(r.getGospelCount());
