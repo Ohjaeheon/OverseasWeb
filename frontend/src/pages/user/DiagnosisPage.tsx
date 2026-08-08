@@ -1,10 +1,14 @@
 import React, { useEffect, useRef } from 'react';
+import { createRoot } from 'react-dom/client';
+
 import { useNavigate } from 'react-router-dom';
 import { diagnosisService } from '../../services/diagnosisService';
 import { logService } from '../../services/logService';
 import { sessionService } from '../../services/sessionService';
 import { telegramService } from '../../services/telegramService';
 import { EvangelismModule } from '../../components/user/EvangelismModule';
+import { P1ChartDashboard } from '../../components/user/P1ChartDashboard';
+
 import { MembershipModule } from '../../components/user/MembershipModule';
 import { ApprovalModule } from '../../components/user/ApprovalModule';
 import { BusinessModule } from '../../components/user/BusinessModule';
@@ -586,10 +590,12 @@ export const DiagnosisPage: React.FC<DiagnosisPageProps> = ({ section = 'home', 
       };
     }
 
-    loadScript('diag-engine-script', `${getUrl('assets/diagnosisEngine.js')}?v=5`)
+    loadScript('diag-engine-script', `${getUrl('assets/diagnosisEngine.js')}?v=7`)
       .then(() => {
         initEngine();
       });
+
+
 
     return () => {
       delete (window as any).reactNavigate;
@@ -603,6 +609,24 @@ export const DiagnosisPage: React.FC<DiagnosisPageProps> = ({ section = 'home', 
       (window as any).setSection(section);
     }
   }, [section]);
+
+  // renderP1() 호출 후 React 그래프 대시보드 마운트
+  useEffect(() => {
+    (window as any).__mountChartDashboard = () => {
+      const mountEl = document.getElementById('chartDashboardMount');
+      if (!mountEl) return;
+      try {
+        const root = createRoot(mountEl);
+        root.render(<P1ChartDashboard />);
+      } catch (e) {
+        console.error('Failed to mount chart dashboard:', e);
+      }
+    };
+    return () => {
+      delete (window as any).__mountChartDashboard;
+    };
+  }, []);
+
 
   if (section === 'calendar' || section === 'organization' || section === 'evangelism/check' || section === 'evangelism/aggregate' || section === 'membership/check' || section === 'membership/input' || section === 'approvals/pending' || section === 'approvals/completed' || section === 'profile' || section === 'business' || section.startsWith('business/')) {
     return (
@@ -808,6 +832,7 @@ export const DiagnosisPage: React.FC<DiagnosisPageProps> = ({ section = 'home', 
       <div id="secinfo"></div>
       <div class="subtabs" id="subtabs"></div>
       <div class="homerow" id="secCharts" style="display:none"></div>
+
       <div class="grid" id="mainGrid">
         <div class="card">
           <h3 id="barTtl">순위</h3>
@@ -869,14 +894,8 @@ export const DiagnosisPage: React.FC<DiagnosisPageProps> = ({ section = 'home', 
 <div class="ovl" id="ovl"><div class="modal" id="modal"></div></div>
 
 <button id="toTop" onclick="goTop()" title="맨 위로" aria-label="맨 위로">↑</button>
-
-${(import.meta as any).env?.DEV ? `
-<div id="debugPanel" style="position:fixed;bottom:12px;right:12px;background:rgba(15,23,42,0.95);color:#10b981;padding:12px 16px;border-radius:12px;font-family:monospace;font-size:12px;z-index:9999;width:340px;box-shadow:0 10px 25px rgba(0,0,0,0.4);border:1.5px solid #334155;pointer-events:none">
-  <h4 style="margin:0 0 8px 0;color:#ffffff;font-size:13px;border-bottom:1px solid #334155;padding-bottom:4px;display:flex;align-items:center;gap:6px">⚙️ SYSTEM DEBUG PANEL</h4>
-  <div id="debugContent">Initializing...</div>
-</div>
-` : ''}
       ` }}
     />
   );
 };
+

@@ -229,6 +229,47 @@ public class EvangelismController {
         return encryptResponse(result);
     }
 
+    // =========================================================================
+    // 사용자별 그래프 대시보드 설정 (GET / POST)
+    // =========================================================================
+    @GetMapping("/chart-config")
+    public ResponseEntity<Map<String, Object>> getChartConfig(
+            @RequestParam(name = "username") String username) {
+        String key = "evangelism_chart_configs_" + username;
+        String configVal = systemConfigRepository.findByConfigKey(key)
+                .map(SystemConfig::getConfigValue)
+                .orElse("[]");
+        try {
+            Object parsed = objectMapper.readValue(configVal, Object.class);
+            return encryptResponse(parsed);
+        } catch (Exception e) {
+            return encryptResponse(java.util.Collections.emptyList());
+        }
+    }
+
+    @PostMapping("/chart-config")
+    @Transactional
+    public ResponseEntity<Map<String, Object>> saveChartConfig(
+            @RequestParam(name = "username") String username,
+            @RequestBody Object chartConfigs) {
+        String key = "evangelism_chart_configs_" + username;
+        try {
+            String json = objectMapper.writeValueAsString(chartConfigs);
+            SystemConfig config = systemConfigRepository.findByConfigKey(key)
+                    .orElseGet(() -> SystemConfig.builder()
+                            .configKey(key)
+                            .description("사용자 " + username + " 전도 그래프 대시보드 설정 (JSON)")
+                            .build());
+            config.setConfigValue(json);
+            systemConfigRepository.save(config);
+            return encryptResponse(chartConfigs);
+        } catch (Exception e) {
+            Map<String, Object> err = new HashMap<>();
+            err.put("error", e.getMessage());
+            return ResponseEntity.status(500).body(err);
+        }
+    }
+
     @PostMapping("/edit-requests/use")
     public ResponseEntity<Map<String, Object>> useRequest(
             @RequestParam(name = "church") String church,

@@ -2651,67 +2651,20 @@ function renderP1(){
   const cpm=(si>0)?pm:(cat.find(m=>m.primary)||cat[0]), cIsPct=(cpm.t==="pct");
   const empty='<div style="padding:28px 0;text-align:center;color:var(--muted);font-size:13px">데이터 없음</div>';
 
-  if (ST.section === 'p1') {
-    const chData = rows.map(g=>({...g,val:metricVal(g.agg,cpm)})).filter(g=>g.val!=null);
-    if (ST.group === '개별') {
-      chData.sort((a, b) => {
-        const orderA = a.rec && a.rec.sortOrder != null ? a.rec.sortOrder : 999999;
-        const orderB = b.rec && b.rec.sortOrder != null ? b.rec.sortOrder : 999999;
-        if (orderA !== orderB) return orderA - orderB;
-        return a.name.localeCompare(b.name, 'ko');
-      });
-    } else {
-      chData.sort((a,b)=>b.val-a.val);
-    }
-    const chMax = Math.max(0.0001,...chData.map(d=>Math.abs(d.val)||0));
-    const chBars = `<div style="display:flex;flex-direction:column;gap:8px;max-height:520px;overflow-y:auto;padding-right:6px;margin-top:6px">`+chData.map(d=>`<div class="brow" data-name="${encodeURIComponent(d.name)}"><div class="bname" title="${d.name}"><span class="dot" style="background:${d.color}"></span>${d.name}</div><div class="btrack"><div class="bfill" style="width:${Math.max(2,Math.abs(d.val)/chMax*100)}%;background:${d.color}"></div></div><div class="bval">${fmtVal(d.val,cpm)}</div></div>`).join("")+`</div>`;
-    const barCardTitle = (cpm.k === "evangReg") ? "교회별 전도재적" : `교회별 ${cpm.l}`;
-    const barCard = `<div class="card"><h3>${barCardTitle}</h3>${chData.length ? chBars : empty}</div>`;
-
-    const yearNum = getYearNumFromStr(ST.month);
-    const mo = DATA.months.filter(m => getYearNumFromStr(m) === yearNum);
-    const entities = DATA.records.filter(r => r.month === ST.month && checkAssignedLocationAccess(r)).map(r => ({ name: r.name, color: DATA.jipaColors[r.jipa] || "#888" }));
-    const series = entities.map(ent => {
-      const values = mo.map(m => {
-        const rec = getMonthlyEvangelismRecord({ name: ent.name }, m);
-        return rec.admitCount || 0;
-      });
-      return {
-        name: ent.name,
-        color: ent.color || '#2563eb',
-        values: values
-      };
-    });
-    const shortLabels = mo.map(m => getMonthNumFromStr(m) + '월');
-    const lineCard = `<div class="card" style="min-width:0"><h3>교회별 등록수</h3>${entities.length ? lineSVG(shortLabels, series) : empty}</div>`;
-
-    el.style.gridTemplateColumns="minmax(0,1fr) minmax(0,1fr)";
-    el.innerHTML = tableCard + barCard + lineCard;
-    el.style.display="grid";
-    el.querySelectorAll("#p1tbl th").forEach(th=>th.onclick=()=>{ const i=+th.dataset.i; if(ST.sortIdx===i){ST.sortDir*=-1;}else{ST.sortIdx=i;ST.sortDir=(i===0?1:-1);} render(); });
-    el.querySelectorAll("#p1tbl tr.clk, .brow").forEach(x=>x.onclick=()=>openDetail(decodeURIComponent(x.dataset.name)));
-    return;
-  }
-
-  const jvals=DATA.jipaOrder.map(j=>{const a=aggregate(recs.filter(r=>r.jipa===j)); return {label:j,value:metricVal(a,cpm),color:DATA.jipaColors[j]||"#888"};}).filter(d=>d.value!=null);
-  const cmap={}; recs.forEach(r=>{const k=contOf(r); (cmap[k]=cmap[k]||[]).push(r);});
-  const cvals=Object.entries(cmap).map(([k,rs])=>({label:k,value:metricVal(aggregate(rs),cpm),color:CONT_COLORS[k]||"#9aa8c4"})).filter(d=>d.value!=null);
-  const rateBar=(arr)=>{const mx=Math.max(0.0001,...arr.map(d=>Math.abs(d.value)||0)); return `<div style="display:flex;flex-direction:column;gap:7px;margin-top:6px">`+arr.slice().sort((a,b)=>b.value-a.value).map(d=>`<div style="display:grid;grid-template-columns:104px 1fr 56px;align-items:center;gap:9px"><span style="font-size:12px;font-weight:700;color:#41506f;white-space:nowrap"><span class="dot" style="background:${d.color}"></span>${d.label}</span><span style="height:15px;background:#eef2fa;border-radius:5px;overflow:hidden"><span class="gbar" style="display:block;height:100%;width:${(Math.abs(d.value)/mx*100).toFixed(1)}%;background:${d.color};border-radius:5px"></span></span><span style="font-size:12px;font-weight:800;text-align:right">${fmtVal(d.value,cpm)}</span></div>`).join("")+`</div>`;};
-  const donutOrBar=(arr)=> !arr.length?empty:(cIsPct?rateBar(arr):(arr.filter(d=>d.value>0).length?donutSVG(arr.filter(d=>d.value>0).sort((a,b)=>b.value-a.value),{}):empty));
-  const jCard=`<div class="card"><h3>지파별 ${cpm.l}</h3>${donutOrBar(jvals)}</div>`;
-  const cCard=`<div class="card"><h3>대륙별 ${cpm.l}</h3>${donutOrBar(cvals)}</div>`;
-  const mo=DATA.months, lv=mo.map(m=>{const v=metricVal(aggregate(recordsFor(m,ST.gubun)),cpm); return v==null?0:(cIsPct?+(v*100).toFixed(1):v);});
-  const trendCard=`<div class="card"><h3>월별 ${cpm.l} 추이</h3>${lineSVG(mo,[{name:cpm.l,color:"#2563eb",values:lv}])}</div>`;
-  const chData=rows.map(g=>({...g,val:metricVal(g.agg,cpm)})).filter(g=>g.val!=null).sort((a,b)=>b.val-a.val);
-  const chMax=Math.max(0.0001,...chData.map(d=>Math.abs(d.val)||0));
-  const chBars=`<div style="display:flex;flex-direction:column;gap:8px;max-height:520px;overflow-y:auto;padding-right:6px;margin-top:6px">`+chData.map(d=>`<div class="brow" data-name="${encodeURIComponent(d.name)}"><div class="bname" title="${d.name}"><span class="dot" style="background:${d.color}"></span>${d.name}</div><div class="btrack"><div class="bfill" style="width:${Math.max(2,Math.abs(d.val)/chMax*100)}%;background:${d.color}"></div></div><div class="bval">${fmtVal(d.val,cpm)}</div></div>`).join("")+`</div>`;
-  const barCard=`<div class="card"><h3>${gl}별 ${cpm.l} 순위</h3>${chData.length?chBars:empty}</div>`;
+  const chartMountHTML = '<div id="chartDashboardMount" style="grid-column:1/-1;min-width:0;width:100%;margin-top:16px"></div>';
   el.style.gridTemplateColumns="minmax(0,1fr) minmax(0,1fr)";
-  el.innerHTML=tableCard+jCard+barCard+cCard+trendCard+(ST.cat==="③내무"?forecastCardHTML():"")+(ST.cat==="④예배·결석"?riskCardHTML():"");
+  el.innerHTML = tableCard + chartMountHTML;
   el.style.display="grid";
   el.querySelectorAll("#p1tbl th").forEach(th=>th.onclick=()=>{ const i=+th.dataset.i; if(ST.sortIdx===i){ST.sortDir*=-1;}else{ST.sortIdx=i;ST.sortDir=(i===0?1:-1);} render(); });
   el.querySelectorAll("#p1tbl tr.clk, .brow").forEach(x=>x.onclick=()=>openDetail(decodeURIComponent(x.dataset.name)));
+
+  setTimeout(function() {
+    if (typeof window.__mountChartDashboard === 'function') {
+      window.__mountChartDashboard();
+    }
+  }, 50);
 }
+
 // 신앙 프로세스 섹션 상단 차트(지파별·대륙별 도넛 + 월별 추이) — mockup 04·05
 function renderSectionCharts(){
   const el=document.getElementById("secCharts"); if(!el) return;

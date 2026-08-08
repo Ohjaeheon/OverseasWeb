@@ -1,12 +1,30 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { logService } from '../../services/logService';
 import { adminService, UserItem } from '../../services/adminService';
 import { diagnosisService } from '../../services/diagnosisService';
 import defaultChurchesData from '../../assets/defaultChurches.json';
-import { Building2, Calendar, Lock, Send, CheckCircle2, BarChart3, Edit3, Sparkles, Filter, HelpCircle } from 'lucide-react';
+import { Building2, Calendar, Lock, Send, CheckCircle2, BarChart3, Edit3, Sparkles, Filter, HelpCircle, Plus, Pencil, Trash2, PieChart, TrendingUp, Activity, LayoutDashboard, X } from 'lucide-react';
 
 import api from '../../services/api';
+
+// ============================================================
+// 그래프 대시보드 타입 & 상수
+// ============================================================
+const CHURCH_COLOR_PALETTE = [
+  '#2563eb', '#16a34a', '#dc2626', '#9333ea', '#ea580c',
+  '#0891b2', '#d97706', '#db2777', '#65a30d', '#7c3aed'
+];
+
+interface ChartConfig {
+  id: string;
+  title: string;
+  chartType: 'bar' | 'line' | 'pie' | 'radar';
+  churches: string[];           // 다중 교회 선택
+  churchColors: Record<string, string>; // 교회별 색상
+  dataKeys: string[];           // 데이터 항목 (reg, find, gospel, admit 등)
+  weekRange: 'current' | 'month' | 'all'; // 기간
+}
 
 interface DeptData {
   reg: number;       // 전도재적
@@ -155,6 +173,21 @@ export const EvangelismModule: React.FC<EvangelismModuleProps> = ({ initialTab =
   // Dynamic config states
   const [itemsConfig, setItemsConfig] = useState<Record<string, ConfigItem[]>>({});
   const [activeItems, setActiveItems] = useState<ConfigItem[]>([]);
+
+  // ── 그래프 대시보드 상태 ──────────────────────────────────
+  const [chartConfigs, setChartConfigs] = useState<ChartConfig[]>([]);
+  const [isChartEditMode, setIsChartEditMode] = useState<boolean>(false);
+  const [isChartModalOpen, setIsChartModalOpen] = useState<boolean>(false);
+  const [editingChart, setEditingChart] = useState<ChartConfig | null>(null);
+  // 각 교회별로 로드된 dbRecords 캐시 (key: churchName)
+  const [multiChurchRecords, setMultiChurchRecords] = useState<Record<string, Record<string, Record<string, DeptData>>>>({});
+  // 모달 내부 임시 상태
+  const [modalTitle, setModalTitle] = useState<string>('');
+  const [modalChartType, setModalChartType] = useState<'bar' | 'line' | 'pie' | 'radar'>('bar');
+  const [modalChurches, setModalChurches] = useState<string[]>([]);
+  const [modalChurchColors, setModalChurchColors] = useState<Record<string, string>>({});
+  const [modalDataKeys, setModalDataKeys] = useState<string[]>(['find']);
+  const [modalWeekRange, setModalWeekRange] = useState<'current' | 'month' | 'all'>('all');
   const mainItems = activeItems.filter(item => !item.isDrop);
 
   // 5. Help Descriptions Tooltip Modal State
@@ -366,6 +399,75 @@ export const EvangelismModule: React.FC<EvangelismModuleProps> = ({ initialTab =
     }
   };
 
+  // ── 그래프 설정 DB 저장/로드 ─────────────────────────────
+  const getUsername = (): string => {
+    try {
+      const u = JSON.parse(localStorage.getItem('user') || '{}');
+      return u.username || 'guest';
+    } catch { return 'guest'; }
+  };
+
+  const fetchChartConfigs = useCallback(async () => {
+    const username = getUsername();
+    try {
+      const res = await api.get<any>(`/evangelism/chart-config?username=${encodeURIComponent(username)}`);
+      if (Array.isArray(res.data)) {
+        setChartConfigs(res.data as ChartConfig[]);
+      }
+    } catch (e) {
+      console.warn('Failed to load chart configs', e);
+    }
+  }, []);
+
+  const saveChartConfigs = async (configs: ChartConfig[]) => {
+    const username = getUsername();
+    try {
+      await api.post(`/evangelism/chart-config?username=${encodeURIComponent(username)}`, configs);
+    } catch (e) {
+      console.error('Failed to save chart configs', e);
+    }
+  };
+
+  // 여러 교회의 DB 데이터를 한번에 로드 (그래프용)
+  const fetchMultiChurchRecords = useCallback(async (churches: string[]) => {
+    const missing = churches.filter(c => !multiChurchRecords[c]);
+    if (missing.length === 0) return;
+    try {
+      const results = await Promise.all(
+        missing.map(church =>
+          api.get<any[]>(`/evangelism/records?church=${encodeURIComponent(church)}&year=${selectedYear}`)
+            .then(res => ({ church, data: res.data }))
+            .catch(() => ({ church, data: [] }))
+        )
+      );
+      setMultiChurchRecords(prev => {
+        const updated = { ...prev };
+        results.forEach(({ church, data }) => {
+          const map: Record<string, Record<string, DeptData>> = {};
+          (data || []).forEach((r: any) => {
+            if (!map[r.weekKey]) map[r.weekKey] = {};
+            let dynamicVals: Record<string, number> = {};
+            try { if (r.dynamicData) dynamicVals = JSON.parse(r.dynamicData); } catch {}
+            map[r.weekKey][r.department] = {
+              reg: r.regCount || 0,
+              find: dynamicVals.find ?? (r.findCount || 0),
+              findDrop: dynamicVals.findDrop ?? (r.findDropCount || 0),
+              gospel: dynamicVals.gospel ?? (r.gospelCount || 0),
+              gospelDrop: dynamicVals.gospelDrop ?? (r.gospelDropCount || 0),
+              admit: dynamicVals.admit ?? (r.admitCount || 0),
+              admitDrop: dynamicVals.admitDrop ?? (r.admitDropCount || 0),
+              ...dynamicVals
+            };
+          });
+          updated[church] = map;
+        });
+        return updated;
+      });
+    } catch (e) {
+      console.error('Failed to fetch multi-church records', e);
+    }
+  }, [selectedYear, multiChurchRecords]);
+
   const [membershipRegMap, setMembershipRegMap] = useState<Record<string, Record<string, number>>>({});
 
   const fetchDbRecords = async () => {
@@ -518,9 +620,10 @@ export const EvangelismModule: React.FC<EvangelismModuleProps> = ({ initialTab =
     return () => window.removeEventListener('refreshEditRequests', handleRefresh);
   }, [selectedChurch, selectedYear, selectedWeekAgg]);
 
-  // Fetch help descriptions and items configuration on mount
+  // Fetch help descriptions, items configuration, and chart configs on mount
   useEffect(() => {
     fetchConfigs();
+    fetchChartConfigs();
     adminService.getConfigs().then((data) => {
       const map: Record<string, string> = {};
       data.forEach((c: any) => {
@@ -533,6 +636,14 @@ export const EvangelismModule: React.FC<EvangelismModuleProps> = ({ initialTab =
       console.warn("Failed to load help descriptions from DB, using defaults:", e);
     });
   }, []);
+
+  // 그래프 카드에서 사용되는 교회 데이터를 selectedYear 변경시 갱신
+  useEffect(() => {
+    const allChurches = Array.from(new Set(chartConfigs.flatMap(c => c.churches)));
+    if (allChurches.length > 0) {
+      setMultiChurchRecords({});
+    }
+  }, [selectedYear]);
 
   // Update active items when selected church or config changes
   useEffect(() => {
@@ -1484,6 +1595,8 @@ export const EvangelismModule: React.FC<EvangelismModuleProps> = ({ initialTab =
               );
             });
           })()}
+
+
         </div>
       )}
 
@@ -2381,6 +2494,13 @@ export const EvangelismModule: React.FC<EvangelismModuleProps> = ({ initialTab =
     </div>
   );
 };
+
+
+
+
+
+
+
 
 // Helper Function for (2) 찾기, (3) 복음방, (4) 가개강 상세분석 Tables
 function renderDetailAnalysisTable(

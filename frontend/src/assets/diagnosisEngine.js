@@ -2217,11 +2217,18 @@ function renderP1(){
   const chMax=Math.max(0.0001,...chData.map(d=>Math.abs(d.val)||0));
   const chBars=`<div style="display:flex;flex-direction:column;gap:8px;max-height:520px;overflow-y:auto;padding-right:6px;margin-top:6px">`+chData.map(d=>`<div class="brow" data-name="${encodeURIComponent(d.name)}"><div class="bname" title="${d.name}"><span class="dot" style="background:${d.color}"></span>${d.name}</div><div class="btrack"><div class="bfill" style="width:${Math.max(2,Math.abs(d.val)/chMax*100)}%;background:${d.color}"></div></div><div class="bval">${fmtVal(d.val,cpm)}</div></div>`).join("")+`</div>`;
   const barCard=`<div class="card"><h3>${gl}별 ${cpm.l} 순위</h3>${chData.length?chBars:empty}</div>`;
-  el.style.gridTemplateColumns="minmax(0,1fr) minmax(0,1fr)";
-  el.innerHTML=tableCard+jCard+barCard+cCard+trendCard+(ST.cat==="③내무"?forecastCardHTML():"")+(ST.cat==="④예배·결석"?riskCardHTML():"");
+  const chartMountHTML = '<div id="chartDashboardMount" style="grid-column:1/-1;min-width:0;width:100%;margin-top:16px"></div>';
+  el.innerHTML=tableCard+jCard+barCard+cCard+trendCard+(ST.cat==="③내무"?forecastCardHTML():"")+(ST.cat==="④예배·결석"?riskCardHTML():"")+chartMountHTML;
   el.style.display="grid";
   el.querySelectorAll("#p1tbl th").forEach(th=>th.onclick=()=>{ const i=+th.dataset.i; if(ST.sortIdx===i){ST.sortDir*=-1;}else{ST.sortIdx=i;ST.sortDir=(i===0?1:-1);} render(); });
   el.querySelectorAll("#p1tbl tr.clk, .brow").forEach(x=>x.onclick=()=>openDetail(decodeURIComponent(x.dataset.name)));
+
+  // React 커스텀 그래프 대시보드 마운트 (P1 메인 화면 하단)
+  setTimeout(function() {
+    if (typeof window.__mountChartDashboard === 'function') {
+      window.__mountChartDashboard();
+    }
+  }, 50);
 }
 // 신앙 프로세스 섹션 상단 차트(지파별·대륙별 도넛 + 월별 추이) — mockup 04·05
 function renderSectionCharts(){
