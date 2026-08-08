@@ -2,10 +2,14 @@ package com.overseas.portal.controller;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.overseas.portal.domain.EvangelismWeeklyRecord;
 import com.overseas.portal.domain.FaithProcessRecord;
+import com.overseas.portal.domain.MembershipMonthlyRecord;
 import com.overseas.portal.domain.SystemConfig;
 import com.overseas.portal.domain.TelegramBotConfig;
 import com.overseas.portal.domain.User;
+import com.overseas.portal.repository.EvangelismWeeklyRecordRepository;
+import com.overseas.portal.repository.MembershipMonthlyRecordRepository;
 import com.overseas.portal.repository.SystemConfigRepository;
 import com.overseas.portal.service.AdminService;
 import lombok.Data;
@@ -25,6 +29,8 @@ public class AdminController {
 
     private final AdminService adminService;
     private final SystemConfigRepository configRepository;
+    private final EvangelismWeeklyRecordRepository evangelismWeeklyRecordRepository;
+    private final MembershipMonthlyRecordRepository membershipMonthlyRecordRepository;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @GetMapping("/dashboard")
@@ -194,5 +200,100 @@ public class AdminController {
         } catch (Exception e) {
             throw new RuntimeException("Failed to save bot configs", e);
         }
+    }
+
+    // =============================================
+    // 전도 가개강 데이터 전체 관리 (Admin Bulk)
+    // =============================================
+
+    @GetMapping("/evangelism/records")
+    public ResponseEntity<List<EvangelismWeeklyRecord>> getAllEvangelismRecords(
+            @RequestParam(name = "year", required = false) String year,
+            @RequestParam(name = "church", required = false) String church) {
+        if (church != null && year != null) {
+            return ResponseEntity.ok(evangelismWeeklyRecordRepository.findByChurchNameAndYearStr(church, year));
+        }
+        if (year != null) {
+            // filter by year
+            return ResponseEntity.ok(
+                evangelismWeeklyRecordRepository.findAll().stream()
+                    .filter(r -> year.equals(r.getYearStr()))
+                    .collect(Collectors.toList())
+            );
+        }
+        return ResponseEntity.ok(evangelismWeeklyRecordRepository.findAll());
+    }
+
+    @PutMapping("/evangelism/records/{recordId}")
+    public ResponseEntity<EvangelismWeeklyRecord> updateEvangelismRecord(
+            @PathVariable("recordId") Long recordId,
+            @RequestBody EvangelismWeeklyRecord data) {
+        return evangelismWeeklyRecordRepository.findById(recordId).map(r -> {
+            r.setRegCount(data.getRegCount());
+            r.setFindCount(data.getFindCount());
+            r.setFindDropCount(data.getFindDropCount());
+            r.setGospelCount(data.getGospelCount());
+            r.setGospelDropCount(data.getGospelDropCount());
+            r.setAdmitCount(data.getAdmitCount());
+            r.setAdmitDropCount(data.getAdmitDropCount());
+            r.setDynamicData(data.getDynamicData());
+            r.setUpdatedBy(data.getUpdatedBy() != null ? data.getUpdatedBy() : "admin");
+            return ResponseEntity.ok(evangelismWeeklyRecordRepository.save(r));
+        }).orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+    @DeleteMapping("/evangelism/records/{recordId}")
+    public ResponseEntity<Void> deleteEvangelismRecord(@PathVariable("recordId") Long recordId) {
+        if (!evangelismWeeklyRecordRepository.existsById(recordId)) {
+            return ResponseEntity.notFound().build();
+        }
+        evangelismWeeklyRecordRepository.deleteById(recordId);
+        return ResponseEntity.noContent().build();
+    }
+
+    // =============================================
+    // 내무 데이터 전체 관리 (Admin Bulk)
+    // =============================================
+
+    @GetMapping("/membership/records")
+    public ResponseEntity<List<MembershipMonthlyRecord>> getAllMembershipRecords(
+            @RequestParam(name = "year", required = false) String year,
+            @RequestParam(name = "church", required = false) String church) {
+        if (church != null && year != null) {
+            return ResponseEntity.ok(membershipMonthlyRecordRepository.findByChurchNameAndYearStr(church, year));
+        }
+        if (year != null) {
+            return ResponseEntity.ok(
+                membershipMonthlyRecordRepository.findAll().stream()
+                    .filter(r -> year.equals(r.getYearStr()))
+                    .collect(Collectors.toList())
+            );
+        }
+        return ResponseEntity.ok(membershipMonthlyRecordRepository.findAll());
+    }
+
+    @PutMapping("/membership/records/{recordId}")
+    public ResponseEntity<MembershipMonthlyRecord> updateMembershipRecord(
+            @PathVariable("recordId") Long recordId,
+            @RequestBody MembershipMonthlyRecord data) {
+        return membershipMonthlyRecordRepository.findById(recordId).map(r -> {
+            r.setAssemblyAdmit(data.getAssemblyAdmit());
+            r.setAssemblyAccident(data.getAssemblyAccident());
+            r.setEvangIncrease(data.getEvangIncrease());
+            r.setEvangDecrease(data.getEvangDecrease());
+            r.setAttendIncrease(data.getAttendIncrease());
+            r.setAttendDecrease(data.getAttendDecrease());
+            r.setUpdatedBy(data.getUpdatedBy() != null ? data.getUpdatedBy() : "admin");
+            return ResponseEntity.ok(membershipMonthlyRecordRepository.save(r));
+        }).orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+    @DeleteMapping("/membership/records/{recordId}")
+    public ResponseEntity<Void> deleteMembershipRecord(@PathVariable("recordId") Long recordId) {
+        if (!membershipMonthlyRecordRepository.existsById(recordId)) {
+            return ResponseEntity.notFound().build();
+        }
+        membershipMonthlyRecordRepository.deleteById(recordId);
+        return ResponseEntity.noContent().build();
     }
 }

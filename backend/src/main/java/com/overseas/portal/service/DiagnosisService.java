@@ -259,7 +259,10 @@ public class DiagnosisService {
     }
 
     public List<Church> getAllChurches() {
-        return churchRepository.findByIsActiveTrueOrderBySortOrderAscNameAsc();
+        // '본부' / '해선부' 노드는 조직도 전용 — 일반 목록에서 제외
+        return churchRepository.findByIsActiveTrueOrderBySortOrderAscNameAsc().stream()
+                .filter(c -> !"본부".equals(c.getContinent()) && !"본부".equals(c.getJipa()))
+                .collect(java.util.stream.Collectors.toList());
     }
 
     private RecordDTO mapToDTO(FaithProcessRecord r) {

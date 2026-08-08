@@ -25,6 +25,8 @@ import { AdminPlaceholderPage } from './pages/admin/AdminPlaceholderPage';
 import { AdminBotPage } from './pages/admin/AdminBotPage';
 import { AdminWeeklyWorshipPage } from './pages/admin/AdminWeeklyWorshipPage';
 import { AdminWeeklyWorshipHistoryPage } from './pages/admin/AdminWeeklyWorshipHistoryPage';
+import { AdminEvangelismBulkPage } from './pages/admin/AdminEvangelismBulkPage';
+import { AdminMembershipBulkPage } from './pages/admin/AdminMembershipBulkPage';
 
 import { roleService } from './services/roleService';
 import { TelegramLifecycleHandler } from './components/TelegramLifecycleHandler';
@@ -153,6 +155,8 @@ export const App: React.FC = () => {
             {/* 데이터 관리 */}
             <Route path="weekly-worship" element={<AdminWeeklyWorshipPage />} />
             <Route path="weekly-worship/history" element={<AdminWeeklyWorshipHistoryPage />} />
+            <Route path="evangelism-bulk" element={<AdminEvangelismBulkPage />} />
+            <Route path="membership-bulk" element={<AdminMembershipBulkPage />} />
 
             {/* 회원 및 권한 */}
             <Route path="users" element={<AdminUserPage />} />

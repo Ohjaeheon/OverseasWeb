@@ -63,6 +63,8 @@ export const DEFAULT_MENUS: { menuKey: string; menuName: string; category: strin
   { menuKey: 'admin_detail', menuName: '🔍 교회 상세 정밀 진단 [구현예정]', category: '⚙️ 관리자 전용 (adminsetting)', path: '/adminsetting/church-detail' },
   { menuKey: 'weekly_worship', menuName: '📅 주간예배 출결 - 취합 실행', category: '⚙️ 관리자 전용 (adminsetting)', path: '/adminsetting/weekly-worship' },
   { menuKey: 'weekly_worship_history', menuName: '   ㄴ 이전 데이터 확인', category: '⚙️ 관리자 전용 (adminsetting)', path: '/adminsetting/weekly-worship/history' },
+  { menuKey: 'evangelism_bulk', menuName: '📊 전도 가개강 데이터 전체관리', category: '⚙️ 관리자 전용 (adminsetting)', path: '/adminsetting/evangelism-bulk' },
+  { menuKey: 'membership_bulk', menuName: '👥 내무 데이터 전체관리', category: '⚙️ 관리자 전용 (adminsetting)', path: '/adminsetting/membership-bulk' },
   { menuKey: 'users', menuName: '🌍 회원 및 담당 범위 관리', category: '⚙️ 관리자 전용 (adminsetting)', path: '/adminsetting/users' },
   { menuKey: 'roles', menuName: '📈 권한 그룹 및 회원 할당', category: '⚙️ 관리자 전용 (adminsetting)', path: '/adminsetting/roles' },
   { menuKey: 'perm', menuName: '🔑 권한별 접근 메뉴 설정', category: '⚙️ 관리자 전용 (adminsetting)', path: '/adminsetting/permissions' },

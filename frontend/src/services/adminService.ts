@@ -155,5 +155,47 @@ export const adminService = {
 
   clearFileDownloadLogs: async (): Promise<void> => {
     await api.delete('/admin/logs/file-download');
-  }
+  },
+
+  // =============================================
+  // 전도 가개강 데이터 전체 관리
+  // =============================================
+
+  getAllEvangelismRecords: async (year?: string, church?: string): Promise<any[]> => {
+    const params: any = {};
+    if (year) params.year = year;
+    if (church) params.church = church;
+    const res = await api.get<any[]>('/admin/evangelism/records', { params });
+    return res.data;
+  },
+
+  updateEvangelismRecord: async (recordId: number, data: any): Promise<any> => {
+    const res = await api.put(`/admin/evangelism/records/${recordId}`, data);
+    return res.data;
+  },
+
+  deleteEvangelismRecord: async (recordId: number): Promise<void> => {
+    await api.delete(`/admin/evangelism/records/${recordId}`);
+  },
+
+  // =============================================
+  // 내무 데이터 전체 관리
+  // =============================================
+
+  getAllMembershipRecords: async (year?: string, church?: string): Promise<any[]> => {
+    const params: any = {};
+    if (year) params.year = year;
+    if (church) params.church = church;
+    const res = await api.get<any[]>('/admin/membership/records', { params });
+    return res.data;
+  },
+
+  updateMembershipRecord: async (recordId: number, data: any): Promise<any> => {
+    const res = await api.put(`/admin/membership/records/${recordId}`, data);
+    return res.data;
+  },
+
+  deleteMembershipRecord: async (recordId: number): Promise<void> => {
+    await api.delete(`/admin/membership/records/${recordId}`);
+  },
 };

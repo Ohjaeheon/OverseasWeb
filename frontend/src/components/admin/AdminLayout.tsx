@@ -77,6 +77,8 @@ export const AdminLayout: React.FC = () => {
         { label: "이전 데이터 확인", path: "/adminsetting/weekly-worship/history" }
       ]
     },
+    { s: "evangelism_bulk", ico: "📊", label: "전도 가개강 데이터 전체관리", path: "/adminsetting/evangelism-bulk" },
+    { s: "membership_bulk", ico: "👥", label: "내무 데이터 전체관리", path: "/adminsetting/membership-bulk" },
 
     { grp: "회원 및 권한" },
     { s: "users", ico: "🌍", label: "회원 관리", path: "/adminsetting/users" },

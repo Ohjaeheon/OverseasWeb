@@ -545,25 +545,31 @@ export const EvangelismModule: React.FC<EvangelismModuleProps> = ({ initialTab =
     // Build church options and load from database
     const loadAvailableChurches = async () => {
       let list: { id: string; name: string; jipa: string; country: string; sortOrder?: number }[] = [];
+      // 본부/해선부는 조직도 전용 — 제외 헬퍼
+      const isHq = (c: any) => c.continent === '본부' || c.jipa === '본부' || c.name === '해선부';
       try {
         const data = await diagnosisService.getChurches();
         if (data && data.length > 0) {
-          list = data.map((c: any) => ({
-            id: c.name,
-            name: c.name,
-            jipa: c.jipa || '맛디아',
-            country: c.country || '',
-            sortOrder: c.sortOrder
-          }));
+          list = data
+            .filter((c: any) => !isHq(c))
+            .map((c: any) => ({
+              id: c.name,
+              name: c.name,
+              jipa: c.jipa || '맛디아',
+              country: c.country || '',
+              sortOrder: c.sortOrder
+            }));
         }
       } catch (err) {
         console.warn("Failed to fetch churches from API, using default list:", err);
       }
 
       if (list.length === 0) {
-        defaultChurchesData.forEach((c: any) => {
-          list.push({ id: c.name, name: c.name, jipa: c.jipa || '맛디아', country: c.country || '', sortOrder: c.sortOrder });
-        });
+        defaultChurchesData
+          .filter((c: any) => !isHq(c))
+          .forEach((c: any) => {
+            list.push({ id: c.name, name: c.name, jipa: c.jipa || '맛디아', country: c.country || '', sortOrder: c.sortOrder });
+          });
       }
 
       // Sort by sortOrder ASC, name ASC

@@ -107,10 +107,12 @@ public class AdminService {
         return userRepository.save(user);
     }
 
-    // Church Management
     @Transactional(readOnly = true)
     public List<Church> getAllChurches() {
-        return churchRepository.findAllByOrderBySortOrderAscNameAsc();
+        // '본부' / '해선부' 노드는 조직도 전용 — 일반 목록에서 제외
+        return churchRepository.findAllByOrderBySortOrderAscNameAsc().stream()
+                .filter(c -> !"본부".equals(c.getContinent()) && !"본부".equals(c.getJipa()))
+                .collect(java.util.stream.Collectors.toList());
     }
 
     public Church createChurch(Church church) {
