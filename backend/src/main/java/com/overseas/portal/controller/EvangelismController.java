@@ -11,6 +11,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import org.springframework.transaction.annotation.Transactional;
+
 import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.Map;
@@ -45,14 +47,20 @@ public class EvangelismController {
     @GetMapping("/records")
     public ResponseEntity<Map<String, Object>> getRecords(
             @RequestParam(name = "church", required = false) String church,
-            @RequestParam(name = "year", required = false, defaultValue = "2026년") String year,
+            @RequestParam(name = "year", required = false) String year,
             @RequestParam(name = "week", required = false) String week) {
 
-        if (church != null && week != null) {
+        if (church != null && year != null && week != null) {
             return encryptResponse(evangelismWeeklyRecordRepository.findByChurchNameAndYearStrAndWeekKey(church, year, week));
         }
-        if (church != null) {
+        if (church != null && year != null) {
             return encryptResponse(evangelismWeeklyRecordRepository.findByChurchNameAndYearStr(church, year));
+        }
+        if (year != null && week != null) {
+            return encryptResponse(evangelismWeeklyRecordRepository.findByYearStrAndWeekKey(year, week));
+        }
+        if (year != null) {
+            return encryptResponse(evangelismWeeklyRecordRepository.findByYearStr(year));
         }
         return encryptResponse(evangelismWeeklyRecordRepository.findAll());
     }
@@ -74,6 +82,7 @@ public class EvangelismController {
     }
 
     @PostMapping("/config/items")
+    @Transactional
     public ResponseEntity<Map<String, Object>> saveItemsConfig(@RequestBody Map<String, Object> newConfig) {
         log.info("Saving new evangelism items configuration...");
         try {
@@ -94,7 +103,8 @@ public class EvangelismController {
     }
 
     @PostMapping("/records")
-    public ResponseEntity<List<EvangelismWeeklyRecord>> saveRecords(@RequestBody List<EvangelismWeeklyRecord> records) {
+    @Transactional
+    public ResponseEntity<Map<String, Object>> saveRecords(@RequestBody List<EvangelismWeeklyRecord> records) {
         log.info("Batch saving/updating {} evangelism weekly records into PostgreSQL DB...", records.size());
         for (EvangelismWeeklyRecord r : records) {
             List<EvangelismWeeklyRecord> existing = evangelismWeeklyRecordRepository.findByChurchNameAndYearStrAndWeekKey(
@@ -113,12 +123,12 @@ public class EvangelismController {
             } else {
                 target.setRegCount(r.getRegCount() != null ? r.getRegCount() : 0);
             }
-            target.setFindCount(r.getFindCount());
-            target.setFindDropCount(r.getFindDropCount());
-            target.setGospelCount(r.getGospelCount());
-            target.setGospelDropCount(r.getGospelDropCount());
-            target.setAdmitCount(r.getAdmitCount());
-            target.setAdmitDropCount(r.getAdmitDropCount());
+            target.setFindCount(r.getFindCount() != null ? r.getFindCount() : 0);
+            target.setFindDropCount(r.getFindDropCount() != null ? r.getFindDropCount() : 0);
+            target.setGospelCount(r.getGospelCount() != null ? r.getGospelCount() : 0);
+            target.setGospelDropCount(r.getGospelDropCount() != null ? r.getGospelDropCount() : 0);
+            target.setAdmitCount(r.getAdmitCount() != null ? r.getAdmitCount() : 0);
+            target.setAdmitDropCount(r.getAdmitDropCount() != null ? r.getAdmitDropCount() : 0);
             target.setDynamicData(r.getDynamicData());
             target.setUpdatedBy(r.getUpdatedBy() != null ? r.getUpdatedBy() : "system");
 
@@ -136,7 +146,7 @@ public class EvangelismController {
             }
         }
 
-        return ResponseEntity.ok(records);
+        return encryptResponse(records);
     }
 
     @PostMapping("/edit-requests")

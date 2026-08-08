@@ -212,12 +212,20 @@ export const AdminEvangelismBulkPage: React.FC = () => {
     if (!selectedWeek) return;
     setLoadingRecords(true);
     try {
-      const res = await api.get<any[]>(`/evangelism/records?year=${encodeURIComponent(selectedYear)}`);
-      // week 필터는 프론트에서
-      const filtered = (res.data || []).filter((r: any) => r.weekKey === selectedWeek);
+      const res = await api.get<any>(`/evangelism/records?year=${encodeURIComponent(selectedYear)}&week=${encodeURIComponent(selectedWeek)}`);
+      let list: any[] = [];
+      if (Array.isArray(res.data)) {
+        list = res.data;
+      } else if (res.data && Array.isArray((res.data as any).records)) {
+        list = (res.data as any).records;
+      }
+      const filtered = list.filter((r: any) =>
+        r.weekKey === selectedWeek ||
+        (r.weekKey && r.weekKey.replace(/\s+/g, '') === selectedWeek.replace(/\s+/g, ''))
+      );
       setDbRecords(filtered);
     } catch (e) {
-      console.error(e);
+      console.error('Failed to load evangelism records:', e);
       setDbRecords([]);
     } finally {
       setLoadingRecords(false);
