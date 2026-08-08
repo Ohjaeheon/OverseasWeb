@@ -622,6 +622,14 @@ export const AdminEvangelismBulkPage: React.FC = () => {
       <style>{`
         @keyframes spin { to { transform: rotate(360deg); } }
         @keyframes slideIn { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
+        .no-spin-input::-webkit-inner-spin-button,
+        .no-spin-input::-webkit-outer-spin-button {
+          -webkit-appearance: none;
+          margin: 0;
+        }
+        .no-spin-input {
+          -moz-appearance: textfield;
+        }
       `}</style>
     </div>
   );
@@ -662,16 +670,20 @@ const ChurchTable: React.FC<ChurchTableProps> = ({ church, editMode, editData, o
           <input
             type="number"
             min={0}
+            className="no-spin-input"
             value={val}
+            onFocus={e => e.currentTarget.select()}
+            onClick={e => e.currentTarget.select()}
             onChange={e => onChange(dept, field, parseInt(e.target.value) || 0)}
             style={{
-              width: '54px', padding: '5px 4px',
+              width: '56px', padding: '5px 4px',
               border: '1.5px solid #93c5fd',
               borderRadius: '6px',
               color, fontWeight: 700, fontSize: '0.85rem',
               textAlign: 'center', background: '#eff6ff',
               outline: 'none',
               margin: '3px',
+              MozAppearance: 'textfield',
             }}
           />
         </td>

@@ -13,5 +13,9 @@ public interface MembershipMonthlyRecordRepository extends JpaRepository<Members
 
     List<MembershipMonthlyRecord> findByChurchNameAndYearStr(String churchName, String yearStr);
 
+    List<MembershipMonthlyRecord> findByYearStr(String yearStr);
+
+    List<MembershipMonthlyRecord> findByYearStrAndMonthKey(String yearStr, String monthKey);
+
     List<MembershipMonthlyRecord> findByChurchName(String churchName);
 }

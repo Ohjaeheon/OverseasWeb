@@ -11,6 +11,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import org.springframework.transaction.annotation.Transactional;
+
 import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.Map;
@@ -46,23 +48,30 @@ public class MembershipController {
     @GetMapping("/records")
     public ResponseEntity<Map<String, Object>> getRecords(
             @RequestParam(name = "church", required = false) String church,
-            @RequestParam(name = "year", required = false, defaultValue = "2026년") String year,
+            @RequestParam(name = "year", required = false) String year,
             @RequestParam(name = "month", required = false) String month) {
 
         if (church != null) {
-            recalculateSubsequentMonths(church, year, "0월");
+            recalculateSubsequentMonths(church, year != null ? year : "2026년", "0월");
         }
 
-        if (church != null && month != null) {
+        if (church != null && year != null && month != null) {
             return encryptResponse(membershipMonthlyRecordRepository.findByChurchNameAndYearStrAndMonthKey(church, year, month));
         }
-        if (church != null) {
+        if (church != null && year != null) {
             return encryptResponse(membershipMonthlyRecordRepository.findByChurchNameAndYearStr(church, year));
+        }
+        if (year != null && month != null) {
+            return encryptResponse(membershipMonthlyRecordRepository.findByYearStrAndMonthKey(year, month));
+        }
+        if (year != null) {
+            return encryptResponse(membershipMonthlyRecordRepository.findByYearStr(year));
         }
         return encryptResponse(membershipMonthlyRecordRepository.findAll());
     }
 
     @DeleteMapping("/records/clear-all-danger-zone")
+    @Transactional
     public ResponseEntity<Map<String, String>> clearAllRecords() {
         log.warn("DANGER ZONE: Deleting all membership records and edit requests!");
         membershipMonthlyRecordRepository.deleteAll();
@@ -74,10 +83,11 @@ public class MembershipController {
     }
 
     @PostMapping("/records")
-    public ResponseEntity<List<MembershipMonthlyRecord>> saveRecords(@RequestBody List<MembershipMonthlyRecord> records) {
+    @Transactional
+    public ResponseEntity<Map<String, Object>> saveRecords(@RequestBody List<MembershipMonthlyRecord> records) {
         log.info("Batch saving/updating {} membership monthly records into PostgreSQL DB...", records.size());
         if (records.isEmpty()) {
-            return ResponseEntity.ok(records);
+            return encryptResponse(records);
         }
 
         String churchName = records.get(0).getChurchName();
@@ -132,7 +142,7 @@ public class MembershipController {
             membershipEditRequestRepository.save(req);
         }
 
-        return ResponseEntity.ok(records);
+        return encryptResponse(records);
     }
 
     private Map<String, Integer> getPreviousMonthRegs(String churchName, String yearStr, String monthKey, String department) {
