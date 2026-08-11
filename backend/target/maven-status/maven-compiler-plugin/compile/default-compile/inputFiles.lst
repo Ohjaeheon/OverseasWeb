@@ -1,11 +1,14 @@
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\domain\FileDownloadLog.java
+E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\service\WeeklyReportSchemaService.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\domain\Church.java
+E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\repository\WeeklyReportSchemaRepository.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\security\EncryptionUtil.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\controller\CalendarEventController.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\domain\LoginLog.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\service\I18nService.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\domain\BusinessBoardPost.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\repository\AuditLogRepository.java
+E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\service\WeeklyReportSubmissionService.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\domain\BusinessLedgerRecord.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\domain\OrganizationChart.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\config\DataInitializer.java
@@ -25,6 +28,7 @@ E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\service\AdminSer
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\controller\BusinessArchiveController.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\controller\EvangelismController.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\exception\GlobalExceptionHandler.java
+E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\repository\WeeklyReportSubmissionRepository.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\controller\MembershipController.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\controller\WeeklyWorshipController.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\repository\WeeklyWorshipHistoryRepository.java
@@ -46,6 +50,7 @@ E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\repository\Organ
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\repository\TelegramOtpLogRepository.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\domain\I18nDictionary.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\repository\LoginLogRepository.java
+E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\domain\WeeklyReportSubmission.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\repository\BusinessBoardAttachmentRepository.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\controller\OrganizationChartController.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\domain\EvangelismEditRequest.java
@@ -55,11 +60,13 @@ E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\security\JwtToke
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\domain\AccessLog.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\domain\TelegramBotConfig.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\controller\BackdoorController.java
+E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\controller\WeeklyReportSubmissionController.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\domain\MembershipMonthlyRecord.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\repository\I18nDictionaryRepository.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\repository\EvangelismWeeklyRecordRepository.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\repository\FaithProcessRecordRepository.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\service\AuthService.java
+E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\domain\WeeklyReportSchema.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\repository\SystemConfigRepository.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\domain\User.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\repository\BusinessBoardPostRepository.java
@@ -69,6 +76,7 @@ E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\domain\FaithProc
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\dto\LedgerSaveRequest.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\repository\UserRepository.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\controller\AdminController.java
+E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\controller\WeeklyReportSchemaController.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\controller\BusinessLedgerController.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\security\SessionManager.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\controller\DiagnosisController.java

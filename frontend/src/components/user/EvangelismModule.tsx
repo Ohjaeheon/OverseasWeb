@@ -4,7 +4,7 @@ import { logService } from '../../services/logService';
 import { adminService, UserItem } from '../../services/adminService';
 import { diagnosisService } from '../../services/diagnosisService';
 import defaultChurchesData from '../../assets/defaultChurches.json';
-import { Building2, Calendar, Lock, Send, CheckCircle2, BarChart3, Edit3, Sparkles, Filter, HelpCircle, Plus, Pencil, Trash2, PieChart, TrendingUp, Activity, LayoutDashboard, X } from 'lucide-react';
+import { Building2, Calendar, Lock, Send, CheckCircle2, BarChart3, Edit3, Filter, HelpCircle, Plus, Pencil, Trash2, PieChart, TrendingUp, Activity, LayoutDashboard, X } from 'lucide-react';
 
 import api from '../../services/api';
 
@@ -1447,7 +1447,7 @@ export const EvangelismModule: React.FC<EvangelismModuleProps> = ({ initialTab =
             <h2 style={{ fontSize: '1.2rem', fontWeight: 800, color: '#0f172a', margin: '0 0 16px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
               <span>📊 (1) 회별 전도 현황</span>
               <span style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: 600 }}>({selectedChurch} · {selectedYear} {selectedWeekCheck})</span>
-              <button 
+              <button
                 onClick={() => openHelpModal('DESC_EVANGELISM_STATUS_1', '(1) 회별 전도 현황 안내')}
                 style={{ background: 'none', border: 'none', padding: 0, display: 'inline-flex', alignItems: 'center', cursor: 'pointer', color: '#94a3b8', transition: 'color 0.15s' }}
                 onMouseEnter={(e) => e.currentTarget.style.color = '#2563eb'}
@@ -2494,7 +2494,6 @@ export const EvangelismModule: React.FC<EvangelismModuleProps> = ({ initialTab =
     </div>
   );
 };
-
 
 
 

@@ -37,6 +37,7 @@ public class SecurityConfig {
                     "/api/v1/diagnosis/**",
                     "/api/v1/i18n/**",
                     "/api/v1/logs/access",
+                    "/api/v1/weekly-report/**",
                     "/error"
                 ).permitAll()
                 .requestMatchers("/api/v1/admin/**").permitAll() // 관리자 기능도 토큰/권한 검증 가능

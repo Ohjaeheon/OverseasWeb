@@ -540,7 +540,6 @@ public class DataInitializer implements CommandLineRunner {
             log.info("Successfully seeded 21 churches with enriched metadata into PostgreSQL database!");
         }
 
-        // Bypassed seeding of demo data for faith process records and weekly records.
         log.info("Demo data seeding disabled as per clean startup requirements.");
     }
 }

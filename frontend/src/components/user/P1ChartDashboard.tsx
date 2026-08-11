@@ -1,6 +1,6 @@
 /**
- * P1ChartDashboard – /OverseasPortal/evangelism 메인 대시보드용 커스텀 그래프 컴포넌트
- * diagnosisEngine.js의 renderP1() 호출 후 window.__mountChartDashboard()를 통해 마운트됨
+ * P1ChartDashboard – /OverseasPortal/evangelism 메인 대시보드 및 ProcessCategoryPage(센터/예배)에서
+ * 직접 <P1ChartDashboard /> 로 렌더링되는 커스텀 그래프 컴포넌트
  */
 import React, { useState, useEffect, useCallback } from 'react';
 import api from '../../services/api';

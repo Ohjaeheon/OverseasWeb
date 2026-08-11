@@ -1,1 +1,0 @@
-// Deleted offline mock data - all data is loaded from the database on the web.

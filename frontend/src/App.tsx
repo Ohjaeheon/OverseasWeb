@@ -27,6 +27,9 @@ import { AdminWeeklyWorshipPage } from './pages/admin/AdminWeeklyWorshipPage';
 import { AdminWeeklyWorshipHistoryPage } from './pages/admin/AdminWeeklyWorshipHistoryPage';
 import { AdminEvangelismBulkPage } from './pages/admin/AdminEvangelismBulkPage';
 import { AdminMembershipBulkPage } from './pages/admin/AdminMembershipBulkPage';
+import { AdminWeeklyReportSchemaPage } from './pages/admin/AdminWeeklyReportSchemaPage';
+import { AdminWeeklyReportStatusPage } from './pages/admin/AdminWeeklyReportStatusPage';
+import { WeeklyReportPage } from './pages/user/WeeklyReportPage';
 
 import { roleService } from './services/roleService';
 import { TelegramLifecycleHandler } from './components/TelegramLifecycleHandler';
@@ -140,6 +143,7 @@ export const App: React.FC = () => {
         <Route path="/approvals/completed" element={<DiagnosisPage section="approvals/completed" />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/profile" element={<DiagnosisPage section="profile" />} />
+        <Route path="/weekly-report" element={<WeeklyReportPage />} />
         <Route path="/adminsetting" element={<AdminSettingRootRoute />} />
 
         {/* Protected Admin Routes (ROLE_ADMIN Only) */}
@@ -157,6 +161,8 @@ export const App: React.FC = () => {
             <Route path="weekly-worship/history" element={<AdminWeeklyWorshipHistoryPage />} />
             <Route path="evangelism-bulk" element={<AdminEvangelismBulkPage />} />
             <Route path="membership-bulk" element={<AdminMembershipBulkPage />} />
+            <Route path="weekly-report-status" element={<AdminWeeklyReportStatusPage />} />
+            <Route path="weekly-report-schema" element={<AdminWeeklyReportSchemaPage />} />
 
             {/* 회원 및 권한 */}
             <Route path="users" element={<AdminUserPage />} />

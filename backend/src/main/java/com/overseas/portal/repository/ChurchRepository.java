@@ -12,6 +12,7 @@ public interface ChurchRepository extends JpaRepository<Church, Long> {
     List<Church> findByIsActiveTrue();
     List<Church> findByIsActiveTrueOrderBySortOrderAscNameAsc();
     List<Church> findByContinentAndIsActiveTrue(String continent);
+    List<Church> findByCountryAndIsActiveTrue(String country);
     Optional<Church> findByName(String name);
     List<Church> findAllByOrderBySortOrderAscNameAsc();
 }

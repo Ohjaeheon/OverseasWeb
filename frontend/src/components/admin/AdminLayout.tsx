@@ -77,6 +77,13 @@ export const AdminLayout: React.FC = () => {
         { label: "이전 데이터 확인", path: "/adminsetting/weekly-worship/history" }
       ]
     },
+    {
+      s: "weekly_report_status", ico: "📋", label: "주간보고 취합현황", path: "/adminsetting/weekly-report-status",
+      children: [
+        { label: "제출 현황 확인", path: "/adminsetting/weekly-report-status" },
+        { label: "주차별 양식 관리", path: "/adminsetting/weekly-report-schema" }
+      ]
+    },
     { s: "evangelism_bulk", ico: "📊", label: "전도 가개강 데이터 전체관리", path: "/adminsetting/evangelism-bulk" },
     { s: "membership_bulk", ico: "👥", label: "내무 데이터 전체관리", path: "/adminsetting/membership-bulk" },
 

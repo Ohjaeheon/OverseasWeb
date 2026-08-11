@@ -24,3 +24,7 @@ jwt:
 telegram:
   bot-token: ${TELEGRAM_BOT_TOKEN:7894561230:AAExampleTokenForOverseasPortal}
   bot-username: ${TELEGRAM_BOT_USERNAME:OverseasPortal_Bot}
+
+app:
+  upload:
+    weekly-report-photos: ${UPLOAD_DIR:./uploads/weekly-report-photos}

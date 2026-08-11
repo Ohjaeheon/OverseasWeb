@@ -71,7 +71,7 @@ public class EvangelismController {
             String configVal = systemConfigRepository.findByConfigKey("evangelism_items_by_country")
                     .map(config -> config.getConfigValue())
                     .orElse("{\"default\":[{\"key\":\"find\",\"label\":\"찾\",\"color\":\"#2563eb\",\"isDrop\":false,\"groupName\":\"찾기 상세분석\",\"groupDesc\":\"주차별 찾기와 탈락수를 볼 수 있습니다.\"},{\"key\":\"findDrop\",\"label\":\"탈\",\"color\":\"#dc2626\",\"isDrop\":true,\"groupName\":\"찾기 상세분석\"},{\"key\":\"gospel\",\"label\":\"복\",\"color\":\"#7c3aed\",\"isDrop\":false,\"groupName\":\"복음방 상세분석\",\"groupDesc\":\"주차별 복음방과 탈락수를 볼 수 있습니다.\"},{\"key\":\"gospelDrop\",\"label\":\"탈\",\"color\":\"#dc2626\",\"isDrop\":true,\"groupName\":\"복음방 상세분석\"},{\"key\":\"admit\",\"label\":\"개\",\"color\":\"#16a34a\",\"isDrop\":false,\"groupName\":\"가개강 상세분석\",\"groupDesc\":\"주차별 가개강(등록)과 탈락수를 볼 수 있습니다.\"},{\"key\":\"admitDrop\",\"label\":\"탈\",\"color\":\"#dc2626\",\"isDrop\":true,\"groupName\":\"가개강 상세분석\"}]}");
-            
+
             Object parsed = objectMapper.readValue(configVal, Object.class);
             return encryptResponse(parsed);
         } catch (Exception e) {

@@ -56,6 +56,9 @@ export const DEFAULT_MENUS: { menuKey: string; menuName: string; category: strin
   { menuKey: 'business_mission_archive', menuName: '     ㄴ 품의서 및 회의록 보관', category: '🖥️ 일반 사용자 진단서 포탈', path: '/business/mission/archive' },
   { menuKey: 'approvals_pending', menuName: '📥 결재 대기중인 건', category: '🖥️ 일반 사용자 진단서 포탈', path: '/approvals/pending' },
   { menuKey: 'approvals_completed', menuName: '📋 결재 완료 건', category: '🖥️ 일반 사용자 진단서 포탈', path: '/approvals/completed' },
+  { menuKey: 'weekly_report_root', menuName: '📋 업무', category: '🖥️ 일반 사용자 진단서 포탈', path: '/weekly-report' },
+  { menuKey: 'weekly_report_sub', menuName: '   ㄴ 주간보고', category: '🖥️ 일반 사용자 진단서 포탈', path: '/weekly-report' },
+  { menuKey: 'weekly_report_input', menuName: '     ㄴ 주간보고 취합', category: '🖥️ 일반 사용자 진단서 포탈', path: '/weekly-report' },
 
   // Admin Portal Menus
   { menuKey: 'admin_dash', menuName: '📊 관리자 대시보드', category: '⚙️ 관리자 전용 (adminsetting)', path: '/adminsetting/dashboard' },
@@ -63,6 +66,8 @@ export const DEFAULT_MENUS: { menuKey: string; menuName: string; category: strin
   { menuKey: 'admin_detail', menuName: '🔍 교회 상세 정밀 진단 [구현예정]', category: '⚙️ 관리자 전용 (adminsetting)', path: '/adminsetting/church-detail' },
   { menuKey: 'weekly_worship', menuName: '📅 주간예배 출결 - 취합 실행', category: '⚙️ 관리자 전용 (adminsetting)', path: '/adminsetting/weekly-worship' },
   { menuKey: 'weekly_worship_history', menuName: '   ㄴ 이전 데이터 확인', category: '⚙️ 관리자 전용 (adminsetting)', path: '/adminsetting/weekly-worship/history' },
+  { menuKey: 'weekly_report_status', menuName: '📋 주간보고 취합현황', category: '⚙️ 관리자 전용 (adminsetting)', path: '/adminsetting/weekly-report-status' },
+  { menuKey: 'weekly_report_schema', menuName: '   ㄴ 주차별 양식 관리', category: '⚙️ 관리자 전용 (adminsetting)', path: '/adminsetting/weekly-report-schema' },
   { menuKey: 'evangelism_bulk', menuName: '📊 전도 가개강 데이터 전체관리', category: '⚙️ 관리자 전용 (adminsetting)', path: '/adminsetting/evangelism-bulk' },
   { menuKey: 'membership_bulk', menuName: '👥 내무 데이터 전체관리', category: '⚙️ 관리자 전용 (adminsetting)', path: '/adminsetting/membership-bulk' },
   { menuKey: 'users', menuName: '🌍 회원 및 담당 범위 관리', category: '⚙️ 관리자 전용 (adminsetting)', path: '/adminsetting/users' },

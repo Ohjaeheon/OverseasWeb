@@ -398,6 +398,50 @@ COMMENT ON COLUMN overseas.organization_charts.church_id IS '교회 고유 PK';
 COMMENT ON COLUMN overseas.organization_charts.chart_data IS '조직도 트리 및 하이라커 JSON 데이터';
 COMMENT ON COLUMN overseas.organization_charts.updated_at IS '수정 일시';
 
+-- 17. 주간보고 양식 스키마 테이블 (관리자 폼 빌더)
+CREATE TABLE IF NOT EXISTS overseas.weekly_report_schemas (
+    schema_id   BIGSERIAL PRIMARY KEY,
+    week_label  VARCHAR(100) NOT NULL,
+    year        INT NOT NULL,
+    week_number INT NOT NULL,
+    form_schema_json TEXT NOT NULL,
+    is_active   BOOLEAN DEFAULT FALSE,
+    created_by  VARCHAR(100),
+    created_at  TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at  TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
 
+COMMENT ON TABLE overseas.weekly_report_schemas IS '주간보고 주차별 동적 양식 스키마 (JSON)';
+COMMENT ON COLUMN overseas.weekly_report_schemas.schema_id IS '스키마 고유 PK';
+COMMENT ON COLUMN overseas.weekly_report_schemas.week_label IS '표시 주차명 (예: 2026년 8월 2주차)';
+COMMENT ON COLUMN overseas.weekly_report_schemas.year IS '해당 연도';
+COMMENT ON COLUMN overseas.weekly_report_schemas.week_number IS '연도 내 주차 번호';
+COMMENT ON COLUMN overseas.weekly_report_schemas.form_schema_json IS '양식 구조 JSON (Page별 섹션/필드 정의)';
+COMMENT ON COLUMN overseas.weekly_report_schemas.is_active IS '현재 활성 양식 여부 (1개만 active 권장)';
+COMMENT ON COLUMN overseas.weekly_report_schemas.created_by IS '양식 생성 관리자 username';
 
+-- 18. 주간보고 제출 데이터 테이블 (사용자 입력)
+CREATE TABLE IF NOT EXISTS overseas.weekly_report_submissions (
+    submission_id   BIGSERIAL PRIMARY KEY,
+    schema_id       BIGINT NOT NULL REFERENCES overseas.weekly_report_schemas(schema_id) ON DELETE RESTRICT,
+    church_id       BIGINT REFERENCES overseas.churches(church_id) ON DELETE SET NULL,
+    church_name     VARCHAR(150) NOT NULL,
+    submitted_by    VARCHAR(100),
+    submit_data_json TEXT NOT NULL,
+    photo_paths     TEXT,
+    status          VARCHAR(20) DEFAULT 'SUBMITTED',
+    submitted_at    TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at      TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT uq_schema_church UNIQUE (schema_id, church_id)
+);
+
+COMMENT ON TABLE overseas.weekly_report_submissions IS '주간보고 사용자 제출 데이터';
+COMMENT ON COLUMN overseas.weekly_report_submissions.submission_id IS '제출 고유 PK';
+COMMENT ON COLUMN overseas.weekly_report_submissions.schema_id IS '제출 당시 양식 스키마 FK (이력 보존)';
+COMMENT ON COLUMN overseas.weekly_report_submissions.church_id IS '교회 FK';
+COMMENT ON COLUMN overseas.weekly_report_submissions.church_name IS '교회명 (church 삭제 시에도 이력 보존용)';
+COMMENT ON COLUMN overseas.weekly_report_submissions.submitted_by IS '제출자 username';
+COMMENT ON COLUMN overseas.weekly_report_submissions.submit_data_json IS '실제 입력 데이터 JSON';
+COMMENT ON COLUMN overseas.weekly_report_submissions.photo_paths IS '첨부 이미지 경로 목록 (JSON 배열)';
+COMMENT ON COLUMN overseas.weekly_report_submissions.status IS '제출 상태 (SUBMITTED, REVISED)';
 
