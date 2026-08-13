@@ -125,6 +125,7 @@ export const App: React.FC = () => {
         <Route path="/evangelism/check" element={<DiagnosisPage section="evangelism/check" tab="check" />} />
         <Route path="/evangelism/aggregate" element={<DiagnosisPage section="evangelism/aggregate" tab="aggregate" />} />
         <Route path="/evangelism/plan" element={<DiagnosisPage section="evangelism/plan" tab="plan" />} />
+        <Route path="/evangelism/monthly" element={<DiagnosisPage section="evangelism/monthly" tab="monthly" />} />
         <Route path="/center" element={<DiagnosisPage section="center" />} />
         <Route path="/membership" element={<DiagnosisPage section="membership" tab="check" />} />
         <Route path="/membership/check" element={<DiagnosisPage section="membership/check" tab="check" />} />

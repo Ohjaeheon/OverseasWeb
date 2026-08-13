@@ -2,6 +2,7 @@ com\overseas\portal\domain\TelegramBotConfig$TelegramBotConfigBuilder.class
 com\overseas\portal\service\WeeklyWorshipService$1.class
 com\overseas\portal\domain\WeeklyReportSchema.class
 com\overseas\portal\config\DataInitializer.class
+com\overseas\portal\domain\EvangelismMonthlyActivity.class
 com\overseas\portal\service\AdminService$AdminDashboardSummary.class
 com\overseas\portal\domain\User$UserBuilder.class
 com\overseas\portal\OverseasPortalApplication.class
@@ -21,6 +22,7 @@ com\overseas\portal\controller\AuthController$LoginRequest.class
 com\overseas\portal\controller\AdminController$TelegramMapRequest.class
 com\overseas\portal\domain\CalendarEvent.class
 com\overseas\portal\controller\BackdoorController$1.class
+com\overseas\portal\domain\EvangelismMonthlyActivity$EvangelismMonthlyActivityBuilder.class
 com\overseas\portal\repository\MembershipEditRequestRepository.class
 com\overseas\portal\controller\CalendarEventController.class
 com\overseas\portal\service\WeeklyReportSubmissionService.class
@@ -36,6 +38,7 @@ com\overseas\portal\domain\I18nDictionary$I18nDictionaryBuilder.class
 com\overseas\portal\domain\SystemConfig.class
 com\overseas\portal\service\FileLogService.class
 com\overseas\portal\service\I18nService.class
+com\overseas\portal\controller\EvangelismMonthlyActivityController$SaveRequest.class
 com\overseas\portal\service\TelegramBotPollingService.class
 com\overseas\portal\controller\OrganizationChartController.class
 com\overseas\portal\domain\FaithProcessRecord.class
@@ -80,6 +83,7 @@ com\overseas\portal\domain\WeeklyWorshipHistory.class
 com\overseas\portal\domain\MembershipEditRequest.class
 com\overseas\portal\service\DiagnosisService$RecordDTO.class
 com\overseas\portal\service\TelegramBotPollingService$1.class
+com\overseas\portal\repository\EvangelismMonthlyActivityEditRequestRepository.class
 com\overseas\portal\service\WeeklyReportSchemaService.class
 com\overseas\portal\controller\BusinessBoardController.class
 com\overseas\portal\repository\OrganizationChartRepository.class
@@ -91,6 +95,7 @@ com\overseas\portal\security\SessionManager$UserSessionInfo.class
 com\overseas\portal\security\SessionManager.class
 com\overseas\portal\controller\AuthController.class
 com\overseas\portal\repository\ChurchRepository.class
+com\overseas\portal\repository\EvangelismMonthlyActivityRepository.class
 com\overseas\portal\repository\WeeklyWorshipHistoryRepository.class
 com\overseas\portal\service\AuthService$LoginResponse.class
 com\overseas\portal\controller\AdminController.class
@@ -124,6 +129,7 @@ com\overseas\portal\service\DiagnosisService$RecordDTO$RecordDTOBuilder.class
 com\overseas\portal\controller\BusinessLedgerController.class
 com\overseas\portal\repository\SystemConfigRepository.class
 com\overseas\portal\domain\EvangelismEditRequest$EvangelismEditRequestBuilder.class
+com\overseas\portal\controller\EvangelismMonthlyActivityController.class
 com\overseas\portal\controller\AdminController$ConfigUpdateRequest.class
 com\overseas\portal\security\EncryptionUtil.class
 com\overseas\portal\controller\EvangelismPlanController$DeleteRequest.class
@@ -140,6 +146,7 @@ com\overseas\portal\domain\CalendarEvent$CalendarEventBuilder.class
 com\overseas\portal\repository\BusinessBoardPostRepository.class
 com\overseas\portal\repository\AccessLogRepository.class
 com\overseas\portal\domain\BusinessBoardPost$BusinessBoardPostBuilder.class
+com\overseas\portal\domain\EvangelismMonthlyActivityEditRequest$EvangelismMonthlyActivityEditRequestBuilder.class
 com\overseas\portal\repository\EvangelismPlanItemRepository.class
 com\overseas\portal\controller\UserController$ProfileUpdateRequest.class
 com\overseas\portal\config\MenuPermissionInterceptor$PermEntry.class
@@ -149,7 +156,9 @@ com\overseas\portal\controller\SystemLogController.class
 com\overseas\portal\domain\MembershipMonthlyRecord$MembershipMonthlyRecordBuilder.class
 com\overseas\portal\repository\CalendarEventRepository.class
 com\overseas\portal\repository\LoginLogRepository.class
+com\overseas\portal\controller\EvangelismMonthlyActivityController$ItemPayload.class
 com\overseas\portal\domain\MembershipEditRequest$MembershipEditRequestBuilder.class
+com\overseas\portal\domain\EvangelismMonthlyActivityEditRequest.class
 com\overseas\portal\service\AuthService$2.class
 com\overseas\portal\controller\BackdoorController.class
 com\overseas\portal\repository\I18nDictionaryRepository.class

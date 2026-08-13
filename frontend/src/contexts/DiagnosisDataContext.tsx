@@ -25,7 +25,8 @@ interface MembershipMonthlyRow {
   yearStr?: string;
   monthKey: string;
   department: string;
-  calculatedEvangReg?: number;
+  evangIncrease?: number;
+  evangDecrease?: number;
 }
 
 function filterByAssignedLocation(records: DiagnosisRecord[]): DiagnosisRecord[] {
@@ -79,20 +80,49 @@ function getYearNum(str: string): number {
 async function syncEvangelismDbData(rawRecords: DiagnosisRecord[]): Promise<{ syncedRecords: DiagnosisRecord[]; weeklyRecords: WeeklyRecord[] }> {
   try {
     const [res, memRes] = await Promise.all([
-      api.get<WeeklyRecord[]>('/evangelism/records'),
+      api.get<WeeklyRecord[]>('/evangelism/records').catch(() => ({ data: [] as WeeklyRecord[] })),
       api.get<MembershipMonthlyRow[]>('/membership/records').catch(() => ({ data: [] as MembershipMonthlyRow[] })),
     ]);
     const weeklyRecords = res.data || [];
 
-    // 교회명 + 연도 -> 그 해 12월 calculatedEvangReg(부서 전체 합산). 다음 해 1~12월 전도재적의 고정 기준값으로 쓰인다.
-    const decEvangRegMap: Record<string, Record<number, number>> = {};
+    // DB의 calculatedEvangReg 필드는 저장 경로에 따라 갱신이 안 돼 있을 수 있어(내무 화면 자체도 이걸
+    // 그대로 믿지 않고 매번 원본 증가/감소값으로 다시 굴려서 보여준다 — MembershipModule.tsx의
+    // getMonthlyCumulativeData와 동일한 방식) 신뢰하지 않는다. 대신 교회·부서별로 1월~12월 순서대로
+    // (증가-감소, 0 미만 방지)를 직접 롤링 계산해 그 해 12월 말 값을 구한다.
+    const membershipByChurchYear: Record<string, Record<number, MembershipMonthlyRow[]>> = {};
     (memRes.data || []).forEach((r) => {
-      if (r.monthKey !== '12월' || !r.yearStr) return;
+      if (!r.yearStr) return;
       const year = parseInt(r.yearStr.replace(/[^0-9]/g, ''), 10);
-      if (!decEvangRegMap[r.churchName]) decEvangRegMap[r.churchName] = {};
-      decEvangRegMap[r.churchName][year] = (decEvangRegMap[r.churchName][year] || 0) + (r.calculatedEvangReg || 0);
+      if (!membershipByChurchYear[r.churchName]) membershipByChurchYear[r.churchName] = {};
+      if (!membershipByChurchYear[r.churchName][year]) membershipByChurchYear[r.churchName][year] = [];
+      membershipByChurchYear[r.churchName][year].push(r);
     });
-    const frozenEvangRegFor = (church: string, recordYear: number) => decEvangRegMap[church]?.[recordYear - 1] || 0;
+    const yearEndEvangRegCache: Record<string, number> = {};
+    const yearEndEvangReg = (church: string, year: number): number => {
+      const cacheKey = `${church}__${year}`;
+      if (cacheKey in yearEndEvangRegCache) return yearEndEvangRegCache[cacheKey];
+      const rows = membershipByChurchYear[church]?.[year] || [];
+      const byDept: Record<string, Record<number, MembershipMonthlyRow>> = {};
+      rows.forEach((r) => {
+        const m = getMonthNum(r.monthKey);
+        if (!m) return;
+        if (!byDept[r.department]) byDept[r.department] = {};
+        byDept[r.department][m] = r;
+      });
+      let total = 0;
+      Object.values(byDept).forEach((monthMap) => {
+        let bal = 0;
+        for (let m = 1; m <= 12; m++) {
+          const row = monthMap[m];
+          if (!row) continue;
+          bal = Math.max(0, bal + (row.evangIncrease || 0) - (row.evangDecrease || 0));
+        }
+        total += bal;
+      });
+      yearEndEvangRegCache[cacheKey] = total;
+      return total;
+    };
+    const frozenEvangRegFor = (church: string, recordYear: number) => yearEndEvangReg(church, recordYear - 1);
 
     if (weeklyRecords.length === 0) {
       const withFrozen = rawRecords.map((rec) => ({ ...rec, evangRegFrozen: frozenEvangRegFor(rec.name, getYearNum(rec.month)) }));

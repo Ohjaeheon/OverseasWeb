@@ -65,6 +65,16 @@ public class EvangelismController {
         return encryptResponse(evangelismWeeklyRecordRepository.findAll());
     }
 
+    @GetMapping("/config/monthly-report-notice")
+    public ResponseEntity<Map<String, Object>> getMonthlyReportNotice() {
+        String value = systemConfigRepository.findByConfigKey("DESC_EVANGELISM_MONTHLY_REPORT_NOTICE")
+                .map(config -> config.getConfigValue())
+                .orElse("");
+        Map<String, Object> result = new HashMap<>();
+        result.put("value", value);
+        return encryptResponse(result);
+    }
+
     @GetMapping("/config/items")
     public ResponseEntity<Map<String, Object>> getItemsConfig() {
         try {

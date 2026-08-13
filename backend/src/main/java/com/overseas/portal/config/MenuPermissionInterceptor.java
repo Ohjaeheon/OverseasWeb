@@ -41,7 +41,7 @@ public class MenuPermissionInterceptor implements HandlerInterceptor {
     private static final Map<String, List<String>> PATH_MENU_GROUPS = new LinkedHashMap<>();
     static {
         PATH_MENU_GROUPS.put("/api/v1/admin", ADMINSETTING_MENU_KEYS);
-        PATH_MENU_GROUPS.put("/api/v1/evangelism", List.of("p1", "p1_check", "p1_agg", "p1_plan"));
+        PATH_MENU_GROUPS.put("/api/v1/evangelism", List.of("p1", "p1_check", "p1_agg", "p1_plan", "p1_monthly"));
         PATH_MENU_GROUPS.put("/api/v1/membership", List.of("p3", "p3_check", "p3_input"));
         PATH_MENU_GROUPS.put("/api/v1/business", List.of(
                 "business", "business_ledger", "business_ledger_archive", "business_ledger_report",
@@ -59,16 +59,43 @@ public class MenuPermissionInterceptor implements HandlerInterceptor {
 
     private record PermEntry(boolean read, boolean write) {}
 
+    // 진단서(홈/①전도 등 여러 화면)가 페이지 자체 권한과 무관하게 다른 모듈의 최신 데이터를 교차
+    // 참조해야 하는 조회 전용 엔드포인트. 예: ①전도 표의 "전도재적(전년도 12월 고정값)"은 p1 권한만
+    // 있어도 p3(내무) 원본 데이터를 읽어야 계산된다. 쓰기(POST 등)는 그대로 p1/p3 권한으로 막는다.
+    private static final Set<String> CROSS_MODULE_READ_PATHS = Set.of(
+            "/api/v1/evangelism/records",
+            "/api/v1/membership/records"
+    );
+
+    // 결재(승인/반려) 목록·처리 엔드포인트는 evangelism/membership/monthly-activity 등 소속 모듈 경로
+    // 아래에 있지만, 실제로는 "approvals_pending"/"approvals_completed" 메뉴 권한자(결재자)가 다루는
+    // 기능이라 그 모듈 자체의 p1/p3 권한과는 무관하다 — 결재자가 전도/내무 데이터 입력 권한은 없어도
+    // 승인 화면(/approvals/pending)에는 접근할 수 있어야 한다. /edit-requests 요청 생성과 /check
+    // 조회는 각 모듈의 정상 사용자 액션이라 예외 없이 원래 그룹(p1/p3)을 그대로 따른다.
+    private static final List<String> APPROVAL_MENU_KEYS = List.of("approvals_pending", "approvals_completed");
+
+    private boolean isApprovalActionPath(String path) {
+        if (!path.contains("/edit-requests/")) return false;
+        return path.endsWith("/pending") || path.endsWith("/completed") || path.endsWith("/approve") || path.endsWith("/reject");
+    }
+
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
         if ("OPTIONS".equalsIgnoreCase(request.getMethod())) return true;
 
         String path = request.getRequestURI();
-        List<String> menuKeys = null;
-        for (Map.Entry<String, List<String>> e : PATH_MENU_GROUPS.entrySet()) {
-            if (path.startsWith(e.getKey())) {
-                menuKeys = e.getValue();
-                break;
+        if ("GET".equalsIgnoreCase(request.getMethod()) && CROSS_MODULE_READ_PATHS.contains(path)) return true;
+
+        List<String> menuKeys;
+        if (isApprovalActionPath(path)) {
+            menuKeys = APPROVAL_MENU_KEYS;
+        } else {
+            menuKeys = null;
+            for (Map.Entry<String, List<String>> e : PATH_MENU_GROUPS.entrySet()) {
+                if (path.startsWith(e.getKey())) {
+                    menuKeys = e.getValue();
+                    break;
+                }
             }
         }
         // 매핑표에 없는 경로는 인증만 요구(SecurityConfig가 이미 처리) — 인터셉터는 통과시킨다.

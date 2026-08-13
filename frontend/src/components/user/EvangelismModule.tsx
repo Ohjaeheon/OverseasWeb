@@ -4,8 +4,9 @@ import { logService } from '../../services/logService';
 import { adminService, UserItem } from '../../services/adminService';
 import { diagnosisService } from '../../services/diagnosisService';
 import defaultChurchesData from '../../assets/defaultChurches.json';
-import { Building2, Calendar, Lock, Send, CheckCircle2, BarChart3, Edit3, Filter, HelpCircle, Plus, Pencil, Trash2, PieChart, TrendingUp, Activity, LayoutDashboard, X, ClipboardList } from 'lucide-react';
+import { Building2, Calendar, Lock, Send, CheckCircle2, BarChart3, Edit3, Filter, HelpCircle, Plus, Pencil, Trash2, PieChart, TrendingUp, Activity, LayoutDashboard, X, ClipboardList, FileBarChart } from 'lucide-react';
 import { EvangelismPlanTab } from './EvangelismPlanTab';
+import { EvangelismMonthlyReportTab } from './EvangelismMonthlyReportTab';
 
 import api from '../../services/api';
 
@@ -43,7 +44,7 @@ interface ConfigItem {
 }
 
 interface EvangelismModuleProps {
-  initialTab?: 'check' | 'aggregate' | 'plan';
+  initialTab?: 'check' | 'aggregate' | 'plan' | 'monthly';
 }
 
 const DEPARTMENTS = ['교역자', '자문회', '장년회', '부녀회', '청년회'];
@@ -133,7 +134,7 @@ const getDynamicWeekConfig = (selectedYearStr: string) => {
 export const EvangelismModule: React.FC<EvangelismModuleProps> = ({ initialTab = 'check' }) => {
   const navigate = useNavigate();
   // 1. Navigation Sub-tab ('check': 교회별 데이터 확인, 'aggregate': 취합, 'plan': 계획)
-  const [activeTab, setActiveTab] = useState<'check' | 'aggregate' | 'plan'>(initialTab);
+  const [activeTab, setActiveTab] = useState<'check' | 'aggregate' | 'plan' | 'monthly'>(initialTab);
 
   useEffect(() => {
     if (initialTab) {
@@ -480,7 +481,7 @@ export const EvangelismModule: React.FC<EvangelismModuleProps> = ({ initialTab =
       const [res, memRes, prevMemRes] = await Promise.all([
         api.get<any[]>(`/evangelism/records?church=${encodeURIComponent(selectedChurch)}&year=${selectedYear}`),
         api.get<any[]>(`/membership/records?church=${encodeURIComponent(selectedChurch)}&year=${selectedYear}`).catch(() => ({ data: [] })),
-        api.get<any[]>(`/membership/records?church=${encodeURIComponent(selectedChurch)}&year=${prevYearStr}&month=12월`).catch(() => ({ data: [] }))
+        api.get<any[]>(`/membership/records?church=${encodeURIComponent(selectedChurch)}&year=${prevYearStr}`).catch(() => ({ data: [] }))
       ]);
 
       const map: Record<string, Record<string, DeptData>> = {};
@@ -519,10 +520,26 @@ export const EvangelismModule: React.FC<EvangelismModuleProps> = ({ initialTab =
         });
       }
 
+      // 전년도 12월 말 전도재적(부서별) — DB의 calculatedEvangReg는 저장 경로에 따라 갱신이 안 돼 있을
+      // 수 있어 신뢰하지 않고, 원본 증가/감소값으로 1월~12월 순서대로 직접 롤링 계산한다(내무 화면의
+      // getMonthlyCumulativeData와 동일 방식). 어떤 주차를 선택하든 이 값은 그대로 고정된다.
       const prevYearDecMap: Record<string, number> = {};
       if (Array.isArray(prevMemRes.data)) {
+        const byDeptMonth: Record<string, Record<number, any>> = {};
         prevMemRes.data.forEach((r: any) => {
-          prevYearDecMap[r.department] = r.calculatedEvangReg || 0;
+          const m = parseInt(String(r.monthKey).replace('월', ''), 10);
+          if (!m) return;
+          if (!byDeptMonth[r.department]) byDeptMonth[r.department] = {};
+          byDeptMonth[r.department][m] = r;
+        });
+        DEPARTMENTS.forEach(dept => {
+          let bal = 0;
+          for (let m = 1; m <= 12; m++) {
+            const r = byDeptMonth[dept]?.[m];
+            if (!r) continue;
+            bal = Math.max(0, bal + (r.evangIncrease || 0) - (r.evangDecrease || 0));
+          }
+          prevYearDecMap[dept] = bal;
         });
       }
 
@@ -1299,6 +1316,28 @@ export const EvangelismModule: React.FC<EvangelismModuleProps> = ({ initialTab =
             <ClipboardList size={18} color={activeTab === 'plan' ? '#7c3aed' : '#cbd5e1'} />
             3. 계획
           </button>
+
+          <button
+            onClick={() => navigate('/evangelism/monthly')}
+            style={{
+              padding: '10px 22px',
+              borderRadius: '10px',
+              border: 'none',
+              fontSize: '0.92rem',
+              fontWeight: 800,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              transition: 'all 0.2s ease',
+              background: activeTab === 'monthly' ? '#ffffff' : 'transparent',
+              color: activeTab === 'monthly' ? '#0f172a' : '#cbd5e1',
+              boxShadow: activeTab === 'monthly' ? '0 4px 14px rgba(0,0,0,0.2)' : 'none'
+            }}
+          >
+            <FileBarChart size={18} color={activeTab === 'monthly' ? '#0891b2' : '#cbd5e1'} />
+            4. 월간보고
+          </button>
         </div>
       </div>
 
@@ -1355,8 +1394,8 @@ export const EvangelismModule: React.FC<EvangelismModuleProps> = ({ initialTab =
           )}
         </div>
 
-        {/* Right: Year & Week Filters (계획 탭은 연/주차 개념이 없어 숨김) */}
-        {activeTab !== 'plan' && (
+        {/* Right: Year & Week Filters (계획/월간보고 탭은 자체 연/월 선택을 쓰거나 개념이 없어 숨김) */}
+        {activeTab !== 'plan' && activeTab !== 'monthly' && (
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
             {/* Year Dropdown */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#f8fafc', border: '1px solid #e2e8f0', padding: '6px 12px', borderRadius: '10px' }}>
@@ -1407,9 +1446,11 @@ export const EvangelismModule: React.FC<EvangelismModuleProps> = ({ initialTab =
         )}
       </div>
 
-      {activeTab !== 'plan' && renderProcessChevrons()}
+      {activeTab !== 'plan' && activeTab !== 'monthly' && renderProcessChevrons()}
 
       {activeTab === 'plan' && <EvangelismPlanTab selectedChurch={selectedChurch} />}
+
+      {activeTab === 'monthly' && <EvangelismMonthlyReportTab selectedChurch={selectedChurch} evangRegByDept={membershipRegMap['1월'] || {}} />}
 
       {/* ========================================================================= */}
       {/* TAB 1: 교회별 데이터 확인 (Church Data Verification)                      */}
@@ -1525,15 +1566,11 @@ export const EvangelismModule: React.FC<EvangelismModuleProps> = ({ initialTab =
                     mainItems.forEach(item => {
                       sums[item.key] = 0;
                     });
-                    const displayWeek = (selectedWeekCheck === '전체 ')
-                      ? (filteredWeeks[filteredWeeks.length - 1] || '1월1주차')
-                      : (filteredWeeks[0] || '1월1주차');
-                    const targetWeekData = getWeeklyData(displayWeek, dept);
-
                     return (
                       <tr key={dept} style={{ borderBottom: '1px solid #f1f5f9' }}>
                         <td style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 700, color: '#0f172a' }}>{dept}</td>
-                        <td style={{ padding: '12px 14px', fontWeight: 700, background: '#f8fafc', color: '#475569' }}>{targetWeekData.reg}명</td>
+                        {/* 전도재적 = 전년도 12월 말 값(고정) — 선택한 주차와 무관하게 항상 같은 값. */}
+                        <td style={{ padding: '12px 14px', fontWeight: 700, background: '#f8fafc', color: '#475569' }}>{membershipRegMap['1월']?.[dept] || 0}명</td>
                         {filteredWeeks.map(w => {
                           const d = getWeeklyData(w, dept);
                           return (
@@ -1562,12 +1599,7 @@ export const EvangelismModule: React.FC<EvangelismModuleProps> = ({ initialTab =
                   <tr style={{ background: '#f8fafc', borderTop: '2px solid #cbd5e1', fontWeight: 900, color: '#0f172a' }}>
                     <td style={{ padding: '14px 16px', textAlign: 'left' }}>합계</td>
                     <td style={{ padding: '14px' }}>
-                      {DEPARTMENTS.reduce((acc, dept) => {
-                        const displayWeek = (selectedWeekCheck === '전체')
-                          ? (filteredWeeks[filteredWeeks.length - 1] || '1월1주차')
-                          : (filteredWeeks[0] || '1월1주차');
-                        return acc + getWeeklyData(displayWeek, dept).reg;
-                      }, 0)}명
+                      {DEPARTMENTS.reduce((acc, dept) => acc + (membershipRegMap['1월']?.[dept] || 0), 0)}명
                     </td>
                     {filteredWeeks.map(w => {
                       return (
@@ -1618,7 +1650,8 @@ export const EvangelismModule: React.FC<EvangelismModuleProps> = ({ initialTab =
                 group.items,
                 filteredWeeks,
                 getWeeklyData,
-                openHelpModal
+                openHelpModal,
+                membershipRegMap['1월'] || {}
               );
             });
           })()}
@@ -2535,7 +2568,8 @@ function renderDetailAnalysisTable(
   items: ConfigItem[],
   weeks: string[],
   getDataFn: (w: string, dept: string) => DeptData,
-  onHelpClick?: (key: string, title: string, customText?: string) => void
+  onHelpClick: ((key: string, title: string, customText?: string) => void) | undefined,
+  evangRegByDept: Record<string, number>
 ) {
   const hasHelp = !!desc && !!onHelpClick;
 
@@ -2596,12 +2630,11 @@ function renderDetailAnalysisTable(
               items.forEach(item => {
                 sums[item.key] = 0;
               });
-              const firstWeekData = getDataFn(weeks[0] || '1월1주차', dept);
-
               return (
                 <tr key={dept} style={{ borderBottom: '1px solid #f1f5f9' }}>
                   <td style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 700, color: '#0f172a' }}>{dept}</td>
-                  <td style={{ padding: '12px 14px', fontWeight: 700, background: '#f8fafc', color: '#475569' }}>{firstWeekData.reg}명</td>
+                  {/* 전도재적 = 전년도 12월 말 값(고정) */}
+                  <td style={{ padding: '12px 14px', fontWeight: 700, background: '#f8fafc', color: '#475569' }}>{evangRegByDept[dept] || 0}명</td>
                   {weeks.map(w => {
                     const d = getDataFn(w, dept);
                     return (
@@ -2629,7 +2662,7 @@ function renderDetailAnalysisTable(
             {/* Totals Row */}
             <tr style={{ background: '#f8fafc', borderTop: '2px solid #cbd5e1', fontWeight: 900, color: '#0f172a' }}>
               <td style={{ padding: '14px 16px', textAlign: 'left' }}>합계</td>
-              <td style={{ padding: '14px' }}>{DEPARTMENTS.reduce((acc, dept) => acc + getDataFn(weeks[0] || '1월1주차', dept).reg, 0)}명</td>
+              <td style={{ padding: '14px' }}>{DEPARTMENTS.reduce((acc, dept) => acc + (evangRegByDept[dept] || 0), 0)}명</td>
               {weeks.map(w => {
                 return (
                   <React.Fragment key={w}>

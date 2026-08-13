@@ -27,7 +27,7 @@ import { ProcessCategoryPage } from '../../components/user/diagnosis/ProcessCate
 
 interface DiagnosisPageProps {
   section?: string;
-  tab?: 'check' | 'aggregate' | 'plan' | 'input' | 'ledger' | 'ledger_archive' | 'ledger_report' | 'fruit' | 'fruit_archive' | 'transport' | 'transport_archive' | 'mission' | 'mission_archive' | 'business_calendar';
+  tab?: 'check' | 'aggregate' | 'plan' | 'monthly' | 'input' | 'ledger' | 'ledger_archive' | 'ledger_report' | 'fruit' | 'fruit_archive' | 'transport' | 'transport_archive' | 'mission' | 'mission_archive' | 'business_calendar';
 }
 
 function normalizeRole(role: string): string {
@@ -41,7 +41,7 @@ function normalizeRole(role: string): string {
 const SECTION_TO_MENU_KEY: Record<string, string> = {
   'home': 'home', 'calendar': 'calendar', 'diag': 'diag', 'inspect': 'inspect', 'funnel': 'funnel',
   'trend': 'trend', 'map': 'map', 'globe': 'globe',
-  'evangelism': 'p1', 'evangelism/check': 'p1_check', 'evangelism/aggregate': 'p1_agg', 'evangelism/plan': 'p1_plan',
+  'evangelism': 'p1', 'evangelism/check': 'p1_check', 'evangelism/aggregate': 'p1_agg', 'evangelism/plan': 'p1_plan', 'evangelism/monthly': 'p1_monthly',
   'center': 'p2',
   'membership': 'p3', 'membership/check': 'p3_check', 'membership/input': 'p3_input',
   'worship': 'p4',
@@ -218,8 +218,8 @@ export const DiagnosisPage: React.FC<DiagnosisPageProps> = ({ section = 'home', 
     if (section === 'calendar') return <CalendarPage mode="MAIN" />;
     if (section === 'organization') return <OrganizationPage />;
     if (section === 'business' && tab === 'business_calendar') return <CalendarPage mode="BUSINESS" />;
-    if (section === 'evangelism/check' || section === 'evangelism/aggregate' || section === 'evangelism/plan') {
-      const evangelismTab = section === 'evangelism/aggregate' ? 'aggregate' : section === 'evangelism/plan' ? 'plan' : 'check';
+    if (section === 'evangelism/check' || section === 'evangelism/aggregate' || section === 'evangelism/plan' || section === 'evangelism/monthly') {
+      const evangelismTab = section === 'evangelism/aggregate' ? 'aggregate' : section === 'evangelism/plan' ? 'plan' : section === 'evangelism/monthly' ? 'monthly' : 'check';
       return <EvangelismModule initialTab={evangelismTab} />;
     }
     if (section === 'membership' || section === 'membership/check' || section === 'membership/input') return <MembershipModule initialTab={section === 'membership/input' ? 'input' : 'check'} />;

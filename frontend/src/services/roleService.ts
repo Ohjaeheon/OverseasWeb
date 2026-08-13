@@ -40,6 +40,7 @@ export const DEFAULT_MENUS: { menuKey: string; menuName: string; category: strin
   { menuKey: 'p1_check', menuName: '   ㄴ ①-1. 교회별 데이터 확인', category: '🖥️ 일반 사용자 진단서 포탈', path: '/evangelism/check' },
   { menuKey: 'p1_agg', menuName: '   ㄴ ①-2. 취합 및 실적 입력', category: '🖥️ 일반 사용자 진단서 포탈', path: '/evangelism/aggregate' },
   { menuKey: 'p1_plan', menuName: '   ㄴ ①-3. 계획', category: '🖥️ 일반 사용자 진단서 포탈', path: '/evangelism/plan' },
+  { menuKey: 'p1_monthly', menuName: '   ㄴ ①-4. 월간보고', category: '🖥️ 일반 사용자 진단서 포탈', path: '/evangelism/monthly' },
   { menuKey: 'p2', menuName: '② 센터', category: '🖥️ 일반 사용자 진단서 포탈', path: '/center' },
   { menuKey: 'p3', menuName: '③ 내무 (전체)', category: '🖥️ 일반 사용자 진단서 포탈', path: '/membership' },
   { menuKey: 'p3_check', menuName: '   ㄴ ③-1. 교회별 데이터 확인', category: '🖥️ 일반 사용자 진단서 포탈', path: '/membership/check' },
@@ -273,6 +274,7 @@ export const roleService = {
     if (menuKey === 'evangelism/check') normKey = 'p1_check';
     if (menuKey === 'evangelism/aggregate') normKey = 'p1_agg';
     if (menuKey === 'evangelism/plan') normKey = 'p1_plan';
+    if (menuKey === 'evangelism/monthly') normKey = 'p1_monthly';
     if (menuKey === 'evangelism') normKey = 'p1';
     if (menuKey === 'membership/check') normKey = 'p3_check';
     if (menuKey === 'membership/input') normKey = 'p3_input';

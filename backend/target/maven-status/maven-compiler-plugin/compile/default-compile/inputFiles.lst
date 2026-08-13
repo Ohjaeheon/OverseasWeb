@@ -8,6 +8,7 @@ E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\domain\LoginLog.
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\service\I18nService.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\domain\BusinessBoardPost.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\repository\AuditLogRepository.java
+E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\controller\EvangelismMonthlyActivityController.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\service\WeeklyReportSubmissionService.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\domain\BusinessLedgerRecord.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\domain\OrganizationChart.java
@@ -28,6 +29,7 @@ E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\repository\FileU
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\OverseasPortalApplication.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\controller\UserController.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\service\AdminService.java
+E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\domain\EvangelismMonthlyActivityEditRequest.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\controller\BusinessArchiveController.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\config\WebMvcConfig.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\controller\EvangelismController.java
@@ -69,6 +71,8 @@ E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\domain\Membershi
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\repository\I18nDictionaryRepository.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\repository\EvangelismWeeklyRecordRepository.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\config\MenuPermissionInterceptor.java
+E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\domain\EvangelismMonthlyActivity.java
+E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\repository\EvangelismMonthlyActivityEditRequestRepository.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\repository\FaithProcessRecordRepository.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\service\AuthService.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\domain\WeeklyReportSchema.java
@@ -76,6 +80,7 @@ E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\repository\Syste
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\domain\User.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\repository\BusinessBoardPostRepository.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\repository\MembershipMonthlyRecordRepository.java
+E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\repository\EvangelismMonthlyActivityRepository.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\repository\FileDownloadLogRepository.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\domain\FaithProcessRecord.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\dto\LedgerSaveRequest.java

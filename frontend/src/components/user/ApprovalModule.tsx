@@ -15,8 +15,20 @@ interface EditRequest {
   requestedAt: string;
   approvedAt?: string;
   approverComment?: string;
-  type: 'evangelism' | 'membership';
+  type: 'evangelism' | 'membership' | 'monthlyActivity';
 }
+
+const TYPE_LABELS: Record<EditRequest['type'], string> = {
+  evangelism: '전도', membership: '내무', monthlyActivity: '전도(월간보고)',
+};
+const TYPE_API_PATHS: Record<EditRequest['type'], string> = {
+  evangelism: 'evangelism', membership: 'membership', monthlyActivity: 'evangelism/monthly-activity',
+};
+const TYPE_BADGE_COLORS: Record<EditRequest['type'], { bg: string; fg: string }> = {
+  evangelism: { bg: '#dbeafe', fg: '#1e40af' },
+  membership: { bg: '#f3e8ff', fg: '#6d28d9' },
+  monthlyActivity: { bg: '#cffafe', fg: '#0e7490' },
+};
 
 interface ApprovalModuleProps {
   mode: 'pending' | 'completed';
@@ -41,20 +53,20 @@ export const ApprovalModule: React.FC<ApprovalModuleProps> = ({ mode }) => {
         return;
       }
       const u = JSON.parse(userStr);
-      const evangUrl = mode === 'pending' ? '/evangelism/edit-requests/pending' : '/evangelism/edit-requests/completed';
-      const memberUrl = mode === 'pending' ? '/membership/edit-requests/pending' : '/membership/edit-requests/completed';
-      
+      const suffix = mode === 'pending' ? 'pending' : 'completed';
       const queryParams = `?username=${u.username}&role=${u.role}&name=${encodeURIComponent(u.name)}`;
-      
-      const [evangRes, memberRes] = await Promise.all([
-        api.get<any>(`${evangUrl}${queryParams}`),
-        api.get<any>(`${memberUrl}${queryParams}`)
+
+      const [evangRes, memberRes, monthlyRes] = await Promise.all([
+        api.get<any>(`/evangelism/edit-requests/${suffix}${queryParams}`),
+        api.get<any>(`/membership/edit-requests/${suffix}${queryParams}`),
+        api.get<any>(`/evangelism/monthly-activity/edit-requests/${suffix}${queryParams}`),
       ]);
-      
+
       const evangList = (evangRes.data || []).map((r: any) => ({ ...r, type: 'evangelism' }));
       const memberList = (memberRes.data || []).map((r: any) => ({ ...r, type: 'membership' }));
-      
-      const combined = [...evangList, ...memberList].sort((a, b) => b.requestedAt.localeCompare(a.requestedAt));
+      const monthlyList = (monthlyRes.data || []).map((r: any) => ({ ...r, type: 'monthlyActivity' }));
+
+      const combined = [...evangList, ...memberList, ...monthlyList].sort((a, b) => b.requestedAt.localeCompare(a.requestedAt));
       setRequests(combined);
     } catch (e: any) {
       console.error('Failed to fetch approval requests', e);
@@ -73,10 +85,10 @@ export const ApprovalModule: React.FC<ApprovalModuleProps> = ({ mode }) => {
     setOpinion('');
   }, [selectedRequest]);
 
-  const handleApprove = async (id: number, type: 'evangelism' | 'membership', comment: string) => {
+  const handleApprove = async (id: number, type: EditRequest['type'], comment: string) => {
     setActionLoadingId(id);
     try {
-      const path = type === 'evangelism' ? 'evangelism' : 'membership';
+      const path = TYPE_API_PATHS[type];
       await api.post(`/${path}/edit-requests/${id}/approve?comment=${encodeURIComponent(comment)}`);
       alert('성공적으로 승인되었습니다.');
       window.dispatchEvent(new Event('refreshEditRequests'));
@@ -89,10 +101,10 @@ export const ApprovalModule: React.FC<ApprovalModuleProps> = ({ mode }) => {
     }
   };
 
-  const handleReject = async (id: number, type: 'evangelism' | 'membership', comment: string) => {
+  const handleReject = async (id: number, type: EditRequest['type'], comment: string) => {
     setActionLoadingId(id);
     try {
-      const path = type === 'evangelism' ? 'evangelism' : 'membership';
+      const path = TYPE_API_PATHS[type];
       await api.post(`/${path}/edit-requests/${id}/reject?comment=${encodeURIComponent(comment)}`);
       alert('요청이 반려되었습니다.');
       window.dispatchEvent(new Event('refreshEditRequests'));
@@ -234,8 +246,8 @@ export const ApprovalModule: React.FC<ApprovalModuleProps> = ({ mode }) => {
                 >
                   <td style={{ padding: '14px', fontWeight: 700, color: '#0f172a' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <span style={{ fontSize: '0.7rem', fontWeight: 800, background: req.type === 'evangelism' ? '#dbeafe' : '#f3e8ff', color: req.type === 'evangelism' ? '#1e40af' : '#6d28d9', padding: '2px 6px', borderRadius: '4px' }}>
-                        {req.type === 'evangelism' ? '전도' : '내무'}
+                      <span style={{ fontSize: '0.7rem', fontWeight: 800, background: TYPE_BADGE_COLORS[req.type].bg, color: TYPE_BADGE_COLORS[req.type].fg, padding: '2px 6px', borderRadius: '4px' }}>
+                        {TYPE_LABELS[req.type]}
                       </span>
                       <MapPin size={14} style={{ color: '#3b82f6' }} />
                       {req.churchName}
@@ -411,7 +423,7 @@ export const ApprovalModule: React.FC<ApprovalModuleProps> = ({ mode }) => {
                 <div>
                   <span style={{ display: 'block', fontSize: '0.75rem', color: '#64748b', fontWeight: 700, marginBottom: '4px' }}>결재 구분</span>
                   <span style={{ fontSize: '0.9rem', fontWeight: 800, color: '#0f172a', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <Info size={14} style={{ color: '#3b82f6' }} /> {selectedRequest.type === 'evangelism' ? '전도 실적 수정 허용 요청' : '내무 실적 수정 허용 요청'}
+                    <Info size={14} style={{ color: '#3b82f6' }} /> {TYPE_LABELS[selectedRequest.type]} 실적 수정 허용 요청
                   </span>
                 </div>
                 <div>
