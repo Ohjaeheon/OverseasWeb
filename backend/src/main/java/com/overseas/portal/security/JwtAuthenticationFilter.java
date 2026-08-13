@@ -35,8 +35,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             if ("ACCESS".equals(tokenType)) {
                 if (sessionManager.validateAndTouchSession(token)) {
                     String username = tokenProvider.getUsernameFromToken(token);
+                    String role = tokenProvider.getRoleFromToken(token);
+                    if (role == null || role.isBlank()) role = "ROLE_USER";
                     UsernamePasswordAuthenticationToken authentication =
-                            new UsernamePasswordAuthenticationToken(username, null, Collections.singletonList(new SimpleGrantedAuthority("ROLE_USER")));
+                            new UsernamePasswordAuthenticationToken(username, null, Collections.singletonList(new SimpleGrantedAuthority(role)));
                     SecurityContextHolder.getContext().setAuthentication(authentication);
                 } else {
                     response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);

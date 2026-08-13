@@ -80,8 +80,19 @@ export const DEFAULT_MENUS: { menuKey: string; menuName: string; category: strin
   { menuKey: 'file_download_logs', menuName: '📥 파일 다운로드 로그 관리', category: '⚙️ 관리자 전용 (adminsetting)', path: '/adminsetting/file-download-logs' },
   { menuKey: 'i18n', menuName: '🌐 다국어 사전 관리', category: '⚙️ 관리자 전용 (adminsetting)', path: '/adminsetting/i18n' },
   { menuKey: 'sys', menuName: '⚙️ 시스템 설정', category: '⚙️ 관리자 전용 (adminsetting)', path: '/adminsetting/settings' },
-  { menuKey: 'admin_bot', menuName: '🤖 봇 연결 관리', category: '⚙️ 관리자 전용 (adminsetting)', path: '/adminsetting/bot' }
+  { menuKey: 'admin_bot', menuName: '🤖 봇 연결 관리', category: '⚙️ 관리자 전용 (adminsetting)', path: '/adminsetting/bot' },
+  { menuKey: 'backdoor_ips', menuName: '🚪 백도어 IP 관리', category: '⚙️ 관리자 전용 (adminsetting)', path: '/adminsetting/backdoor-ips' },
+  { menuKey: 'admin_messages', menuName: '💬 메시지 관리', category: '⚙️ 관리자 전용 (adminsetting)', path: '/adminsetting/messages' }
 ];
+
+// 관리자가 /adminsetting/permissions에서 아직 명시적으로 저장하지 않은 메뉴×역할 조합의 기본값.
+// ROLE_ADMIN은 항상 전체 허용, 그 외 모든 역할(ROLE_USER 포함)은 이 목록만 기본 허용하고 나머지는 기본 차단한다
+// — "명시적으로 허용하기 전까지는 차단"이 원칙. getMenuPermissions()/canRoleAccessMenu() 양쪽에서 공유.
+const DEFAULT_ALLOWED_MENU_KEYS = ['home', 'diag', 'calendar', 'organization'];
+function defaultPermFor(roleId: string, menuKey: string): { read: boolean; write: boolean } {
+  if (roleId === 'ROLE_ADMIN') return { read: true, write: true };
+  return { read: DEFAULT_ALLOWED_MENU_KEYS.includes(menuKey), write: false };
+}
 
 export const roleService = {
   getRoles: (): RoleDefinition[] => {
@@ -199,18 +210,7 @@ export const roleService = {
         if (storedMatrix[m.menuKey] && storedMatrix[m.menuKey][r.roleId]) {
           permObj[r.roleId] = storedMatrix[m.menuKey][r.roleId];
         } else {
-          // Default fallbacks
-          if (r.roleId === 'ROLE_ADMIN') {
-            permObj[r.roleId] = { read: true, write: true };
-          } else if (r.roleId === 'ROLE_USER') {
-            const isRestricted = ['users', 'roles', 'perm', 'sys', 'admin_bot', 'business', 'business_ledger', 'business_ledger_report', 'business_fruit', 'business_transport', 'business_mission', 'approvals_pending', 'approvals_completed'].includes(m.menuKey);
-            permObj[r.roleId] = { read: !isRestricted, write: !isRestricted };
-          } else if (r.roleId === 'ROLE_GUEST') {
-            permObj[r.roleId] = { read: ['home', 'diag', 'inspect', 'funnel', 'map', 'calendar', 'organization'].includes(m.menuKey), write: false };
-          } else {
-            // Custom roles default read access
-            permObj[r.roleId] = { read: ['home', 'diag', 'calendar', 'organization'].includes(m.menuKey), write: false };
-          }
+          permObj[r.roleId] = defaultPermFor(r.roleId, m.menuKey);
         }
       });
 
@@ -300,14 +300,8 @@ export const roleService = {
       }
     }
 
-    // Default fallbacks if permissions matrix is uninitialized
-    if (cleanRoleId === 'ROLE_USER') {
-      const isRestricted = ['users', 'roles', 'perm', 'sys', 'admin_bot', 'login_logs', 'access_logs', 'file_upload_logs', 'file_download_logs', 'business', 'business_ledger', 'business_ledger_report', 'business_fruit', 'business_transport', 'business_mission', 'approvals_pending', 'approvals_completed'].includes(normKey);
-      return { read: !isRestricted, write: !isRestricted };
-    } else if (cleanRoleId === 'ROLE_GUEST') {
-      return { read: ['home', 'diag', 'inspect', 'funnel', 'map', 'calendar', 'organization'].includes(normKey), write: false };
-    }
-    return { read: ['home', 'diag', 'calendar', 'organization'].includes(normKey), write: false };
+    // Default fallback if permissions matrix is uninitialized — same "명시 허용 전까지 차단" 규칙을 getMenuPermissions()와 공유
+    return defaultPermFor(cleanRoleId, normKey);
   },
 
   getLoginRedirectPath: (role: string): string => {
@@ -335,6 +329,22 @@ export const roleService = {
     }
 
     return '/';
+  },
+
+  /** "⚙️ 관리자 시스템" 버튼이 이동할 경로 — 무조건 /adminsetting/dashboard로 보내면 그 메뉴 권한이
+   * 없는 사용자는 AdminGuard에 바로 튕겨나가므로, 실제로 read 권한이 있는 첫 관리자 메뉴로 보낸다. */
+  getAdminEntryPath: (role: string): string => {
+    const cleanRole = (role || '').toUpperCase();
+    const roleId = cleanRole.startsWith('ROLE_') ? cleanRole : `ROLE_${cleanRole}`;
+    if (roleId === 'ROLE_ADMIN' || roleId === 'ADMIN' || roleId === '관리자' || roleId === 'ROLE_관리자') {
+      return '/adminsetting/dashboard';
+    }
+    const permissions = roleService.getMenuPermissions();
+    const accessible = permissions.find(m => {
+      const isAdminMenu = m.category.includes('adminsetting') || m.path.startsWith('/adminsetting');
+      return isAdminMenu && roleService.canRoleAccessMenu(role, m.menuKey).read;
+    });
+    return accessible ? accessible.path : '/adminsetting/dashboard';
   }
 };
 

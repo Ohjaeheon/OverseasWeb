@@ -87,9 +87,7 @@ export const DiagnosisSidebar: React.FC<DiagnosisSidebarProps> = ({ isOpen, onCl
   const hasChildAccess = (ch: SidebarChild, parentKey: string) => {
     const chKey = ch.cat || ch.tab;
     if (!chKey) return hasAccess(parentKey);
-    const permissions = roleService.getMenuPermissions();
-    const hasKeyInMenus = permissions.some((m) => m.menuKey === chKey);
-    return hasKeyInMenus ? hasAccess(chKey) : hasAccess(parentKey);
+    return hasAccess(chKey);
   };
   const canShowItem = (it: SidebarItem) => {
     if (!it.children) return hasAccess(it.s);
@@ -173,7 +171,7 @@ export const DiagnosisSidebar: React.FC<DiagnosisSidebarProps> = ({ isOpen, onCl
             <button className="repbtn" style={{ width: '100%', justifyContent: 'center', background: 'rgba(255,255,255,0.1)', color: '#fff', border: '1px solid rgba(255,255,255,0.2)' }} onClick={onShowIntro}>🏠 인트로</button>
             <button className="repbtn" style={{ width: '100%', justifyContent: 'center', background: 'rgba(255,255,255,0.1)', color: '#fff', border: '1px solid rgba(255,255,255,0.2)' }} onClick={() => go('/profile')}>👤 회원관리</button>
             {showAdminBtn && (
-              <button className="repbtn" style={{ width: '100%', justifyContent: 'center', background: '#2563eb', color: '#fff', border: 'none', fontWeight: 700 }} onClick={() => go('/adminsetting/dashboard')}>⚙️ 관리자 시스템</button>
+              <button className="repbtn" style={{ width: '100%', justifyContent: 'center', background: '#2563eb', color: '#fff', border: 'none', fontWeight: 700 }} onClick={() => go(roleService.getAdminEntryPath(userRole))}>⚙️ 관리자 시스템</button>
             )}
             {showBackdoorBtn && (
               <button className="repbtn" style={{ width: '100%', justifyContent: 'center', background: '#7c3aed', color: '#fff', border: 'none', fontWeight: 700 }} onClick={() => { sessionService.clearSession(); window.location.href = '/OverseasPortal/login?mode=backdoor'; }}>🚪 백도어 설정</button>

@@ -29,6 +29,7 @@ E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\OverseasPortalAp
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\controller\UserController.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\service\AdminService.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\controller\BusinessArchiveController.java
+E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\config\WebMvcConfig.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\controller\EvangelismController.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\exception\GlobalExceptionHandler.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\repository\WeeklyReportSubmissionRepository.java
@@ -67,6 +68,7 @@ E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\controller\Weekl
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\domain\MembershipMonthlyRecord.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\repository\I18nDictionaryRepository.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\repository\EvangelismWeeklyRecordRepository.java
+E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\config\MenuPermissionInterceptor.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\repository\FaithProcessRecordRepository.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\service\AuthService.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\domain\WeeklyReportSchema.java

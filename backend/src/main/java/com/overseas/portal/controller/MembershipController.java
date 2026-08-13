@@ -71,6 +71,7 @@ public class MembershipController {
     }
 
     @DeleteMapping("/records/clear-all-danger-zone")
+    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN')")
     @Transactional
     public ResponseEntity<Map<String, String>> clearAllRecords() {
         log.warn("DANGER ZONE: Deleting all membership records and edit requests!");
@@ -252,14 +253,19 @@ public class MembershipController {
         return encryptResponse(saved);
     }
 
+    private boolean isAdminRequest() {
+        org.springframework.security.core.Authentication auth =
+                org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+        return auth != null && auth.getAuthorities().stream().anyMatch(a -> a.getAuthority().contains("ADMIN"));
+    }
+
     @GetMapping("/edit-requests/pending")
     public ResponseEntity<Map<String, Object>> getPendingRequests(
             @RequestParam(name = "username", required = false) String username,
-            @RequestParam(name = "role", required = false) String role,
             @RequestParam(name = "name", required = false) String name) {
-        log.info("Fetching pending membership edit requests for name: {}, role: {}", name, role);
+        log.info("Fetching pending membership edit requests for name: {}", name);
         List<MembershipEditRequest> list;
-        if (role != null && (role.equals("ROLE_ADMIN") || role.equals("ADMIN"))) {
+        if (isAdminRequest()) {
             list = membershipEditRequestRepository.findByStatus("PENDING");
         } else {
             list = membershipEditRequestRepository.findByRequestedToAndStatus(name != null ? name : "", "PENDING");
@@ -270,12 +276,11 @@ public class MembershipController {
     @GetMapping("/edit-requests/completed")
     public ResponseEntity<Map<String, Object>> getCompletedRequests(
             @RequestParam(name = "username", required = false) String username,
-            @RequestParam(name = "role", required = false) String role,
             @RequestParam(name = "name", required = false) String name) {
-        log.info("Fetching completed membership edit requests for name: {}, role: {}", name, role);
+        log.info("Fetching completed membership edit requests for name: {}", name);
         List<MembershipEditRequest> list;
         List<String> completedStatuses = List.of("APPROVED", "REJECTED", "USED");
-        if (role != null && (role.equals("ROLE_ADMIN") || role.equals("ADMIN"))) {
+        if (isAdminRequest()) {
             list = membershipEditRequestRepository.findByStatusIn(completedStatuses);
         } else {
             list = membershipEditRequestRepository.findByRequestedToAndStatusIn(name != null ? name : "", completedStatuses);

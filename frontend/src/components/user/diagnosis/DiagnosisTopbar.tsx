@@ -2,7 +2,14 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { sessionService } from '../../../services/sessionService';
 import { telegramService } from '../../../services/telegramService';
+import { roleService } from '../../../services/roleService';
 import { useDiagnosisData } from '../../../contexts/DiagnosisDataContext';
+
+function getCurrentUserRole(): string {
+  const userStr = localStorage.getItem('user');
+  if (!userStr) return 'ROLE_USER';
+  try { return JSON.parse(userStr).role || 'ROLE_USER'; } catch { return 'ROLE_USER'; }
+}
 
 interface DiagnosisTopbarProps {
   onToggleSidebar: () => void;
@@ -37,7 +44,7 @@ export const DiagnosisTopbar: React.FC<DiagnosisTopbarProps> = ({ onToggleSideba
       {showAdminBtn && (
         <button
           className="repbtn"
-          onClick={() => navigate('/adminsetting/dashboard')}
+          onClick={() => navigate(roleService.getAdminEntryPath(getCurrentUserRole()))}
           style={{ background: '#2563eb', color: 'white', border: 'none', fontWeight: 700 }}
           title="관리자 시스템으로 이동"
         >

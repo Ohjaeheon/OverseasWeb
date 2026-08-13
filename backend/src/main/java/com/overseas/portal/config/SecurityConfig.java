@@ -4,6 +4,8 @@ import com.overseas.portal.security.JwtAuthenticationFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -20,6 +22,7 @@ import java.util.List;
 
 @Configuration
 @EnableWebSecurity
+@EnableMethodSecurity
 @RequiredArgsConstructor
 public class SecurityConfig {
 
@@ -32,16 +35,15 @@ public class SecurityConfig {
             .csrf(AbstractHttpConfigurer::disable)
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
+                .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 .requestMatchers(
                     "/api/v1/auth/**",
-                    "/api/v1/diagnosis/**",
                     "/api/v1/i18n/**",
                     "/api/v1/logs/access",
-                    "/api/v1/weekly-report/**",
                     "/error"
                 ).permitAll()
-                .requestMatchers("/api/v1/admin/**").permitAll() // 관리자 기능도 토큰/권한 검증 가능
-                .anyRequest().permitAll()
+                // 그 외 전부 로그인(인증)은 필수 — 메뉴별 세부 조회/수정 권한은 MenuPermissionInterceptor가 판단
+                .anyRequest().authenticated()
             )
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 

@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Navigate } from 'react-router-dom';
 import { logService } from '../../services/logService';
 import { sessionService } from '../../services/sessionService';
 import { telegramService } from '../../services/telegramService';
@@ -30,9 +30,112 @@ interface DiagnosisPageProps {
   tab?: 'check' | 'aggregate' | 'plan' | 'input' | 'ledger' | 'ledger_archive' | 'ledger_report' | 'fruit' | 'fruit_archive' | 'transport' | 'transport_archive' | 'mission' | 'mission_archive' | 'business_calendar';
 }
 
+function normalizeRole(role: string): string {
+  const cleanRole = role.toUpperCase().startsWith('ROLE_') ? role.toUpperCase() : `ROLE_${role.toUpperCase()}`;
+  if (cleanRole === 'ROLE_해외선교부 담당자' || cleanRole === 'ROLE_USER') return 'ROLE_USER';
+  if (cleanRole === 'ROLE_지파 담당자' || cleanRole === 'ROLE_JIPA') return 'ROLE_JIPA';
+  if (cleanRole === 'ROLE_일반 회원' || cleanRole === 'ROLE_GUEST') return 'ROLE_GUEST';
+  return cleanRole;
+}
+
+const SECTION_TO_MENU_KEY: Record<string, string> = {
+  'home': 'home', 'calendar': 'calendar', 'diag': 'diag', 'inspect': 'inspect', 'funnel': 'funnel',
+  'trend': 'trend', 'map': 'map', 'globe': 'globe',
+  'evangelism': 'p1', 'evangelism/check': 'p1_check', 'evangelism/aggregate': 'p1_agg', 'evangelism/plan': 'p1_plan',
+  'center': 'p2',
+  'membership': 'p3', 'membership/check': 'p3_check', 'membership/input': 'p3_input',
+  'worship': 'p4',
+  'business': 'business',
+  'business/ledger': 'business_ledger', 'business/ledger/archive': 'business_ledger_archive', 'business/ledger/report': 'business_ledger_report',
+  'business/fruit': 'business_fruit', 'business/fruit/archive': 'business_fruit_archive',
+  'business/transport': 'business_transport', 'business/transport/archive': 'business_transport_archive',
+  'business/mission': 'business_mission', 'business/mission/archive': 'business_mission_archive',
+  'approvals/pending': 'approvals_pending', 'approvals/completed': 'approvals_completed',
+  'weekly-report': 'weekly_report_input',
+};
+
+interface AccessDecision {
+  ok: boolean;
+  /** ok가 false일 때 같은 앱 내 라우트로 즉시 이동(React Router <Navigate>). 연관 하위 페이지로 조용히
+   * 보내는 경우와, 접근 가능한 메뉴가 전혀 없어 대체 화면으로 보내는 경우 모두 여기로 통일한다. */
+  redirectTo?: string;
+  /** ok가 false이고 redirectTo도 없을 때만 사용 — adminsetting처럼 완전한 페이지 이동이 필요한 드문
+   * 경우로, useEffect에서 window.location으로만 처리 가능하다. */
+  externalUrl?: string;
+  /** ok가 false이고 redirectTo/externalUrl도 없을 때 — 접근 가능한 메뉴가 전혀 없어 세션을 정리하고
+   * 로그인 화면으로 보내야 하는 경우. */
+  forceLogout?: boolean;
+  /** true면 이동 전에 "권한 없음" 경고를 보여준다(연관 하위 페이지로 조용히 보내는 경우는 false). */
+  showDeniedAlert?: boolean;
+}
+
+/** 접근 가능한 메뉴가 전혀 없을 때 갈 곳을 찾는다 — 완전 차단 시 이 결과를 그대로 쓴다. */
+function resolveFallback(userRole: string): AccessDecision {
+  const permissions = roleService.getMenuPermissions();
+  const accessible = permissions.find(m => roleService.canRoleAccessMenu(userRole, m.menuKey).read);
+  if (accessible) {
+    if (accessible.path.startsWith('/adminsetting')) {
+      return { ok: false, externalUrl: '/OverseasPortal' + accessible.path, showDeniedAlert: true };
+    }
+    return { ok: false, redirectTo: accessible.path, showDeniedAlert: true };
+  }
+  return { ok: false, forceLogout: true, showDeniedAlert: true };
+}
+
+/** 현재 section을 그릴 수 있는지 순수 계산 — 렌더 경로(콘텐츠를 그릴지 결정, 필요하면 그 자리에서
+ * <Navigate>로 즉시 이동)와 useEffect(경고 표시라는 side effect) 양쪽에서 동일하게 호출해, 차단 대상
+ * 콘텐츠는 물론 전체 화면 셸조차 한 프레임도 그려지지 않도록 한다. */
+function resolveAccess(section: string): AccessDecision {
+  const userStr = localStorage.getItem('user');
+  let userRole = 'ROLE_USER';
+  if (userStr) {
+    try { userRole = JSON.parse(userStr).role || 'ROLE_USER'; } catch { /* ignore */ }
+  }
+  const normRole = normalizeRole(userRole);
+  const isAdmin = normRole === 'ROLE_ADMIN' || normRole === 'ADMIN' || normRole === 'ROLE_관리자';
+  if (isAdmin) return { ok: true };
+
+  if (section === 'evangelism') {
+    if (!roleService.canRoleAccessMenu(userRole, 'p1').read) {
+      if (roleService.canRoleAccessMenu(userRole, 'p1_check').read) return { ok: false, redirectTo: '/evangelism/check' };
+      if (roleService.canRoleAccessMenu(userRole, 'p1_agg').read) return { ok: false, redirectTo: '/evangelism/aggregate' };
+      return resolveFallback(userRole);
+    }
+    return { ok: true };
+  }
+
+  if (section === 'membership') {
+    if (!roleService.canRoleAccessMenu(userRole, 'p3').read) {
+      if (roleService.canRoleAccessMenu(userRole, 'p3_check').read) return { ok: false, redirectTo: '/membership/check' };
+      if (roleService.canRoleAccessMenu(userRole, 'p3_input').read) return { ok: false, redirectTo: '/membership/input' };
+      return resolveFallback(userRole);
+    }
+    return { ok: true };
+  }
+
+  if (section === 'business') {
+    if (!roleService.canRoleAccessMenu(userRole, 'business').read) {
+      if (roleService.canRoleAccessMenu(userRole, 'business_ledger').read) return { ok: false, redirectTo: '/business/ledger' };
+      if (roleService.canRoleAccessMenu(userRole, 'business_ledger_report').read) return { ok: false, redirectTo: '/business/ledger/report' };
+      if (roleService.canRoleAccessMenu(userRole, 'business_fruit').read) return { ok: false, redirectTo: '/business/fruit' };
+      if (roleService.canRoleAccessMenu(userRole, 'business_transport').read) return { ok: false, redirectTo: '/business/transport' };
+      if (roleService.canRoleAccessMenu(userRole, 'business_mission').read) return { ok: false, redirectTo: '/business/mission' };
+      return resolveFallback(userRole);
+    }
+    return { ok: true };
+  }
+
+  const targetKey = SECTION_TO_MENU_KEY[section] || section;
+  if (targetKey === 'profile') return { ok: true };
+  if (!roleService.canRoleAccessMenu(userRole, targetKey).read) return resolveFallback(userRole);
+  return { ok: true };
+}
+
 export const DiagnosisPage: React.FC<DiagnosisPageProps> = ({ section = 'home', tab = 'check' }) => {
   const navigate = useNavigate();
   const [showBackdoorBtn, setShowBackdoorBtn] = React.useState(false);
+  // 렌더 시점에 동기적으로 판정 — access.ok가 아니면 아래 return에서 renderContent()를 아예 호출하지 않는다.
+  const access = resolveAccess(section);
 
   const userStrForBtn = localStorage.getItem('user');
   const showAdminBtn = React.useMemo(() => {
@@ -73,107 +176,15 @@ export const DiagnosisPage: React.FC<DiagnosisPageProps> = ({ section = 'home', 
       } catch (e) { /* ignore */ }
     }
 
-    let userRole = 'ROLE_USER';
-    if (userStr) {
-      try {
-        const u = JSON.parse(userStr);
-        userRole = u.role || 'ROLE_USER';
-      } catch (e) { /* ignore */ }
-    }
-
-    const normalizeRole = (role: string) => {
-      const cleanRole = role.toUpperCase().startsWith('ROLE_') ? role.toUpperCase() : `ROLE_${role.toUpperCase()}`;
-      if (cleanRole === 'ROLE_해외선교부 담당자' || cleanRole === 'ROLE_USER') return 'ROLE_USER';
-      if (cleanRole === 'ROLE_지파 담당자' || cleanRole === 'ROLE_JIPA') return 'ROLE_JIPA';
-      if (cleanRole === 'ROLE_일반 회원' || cleanRole === 'ROLE_GUEST') return 'ROLE_GUEST';
-      return cleanRole;
-    };
-
-    // Redirect /evangelism to /evangelism/check or /evangelism/aggregate ONLY IF user lacks access to the main p1 dashboard
-    if (section === 'evangelism') {
-      const normRole = normalizeRole(userRole);
-      const isAdmin = normRole === 'ROLE_ADMIN' || normRole === 'ADMIN' || normRole === 'ROLE_관리자';
-      const hasMainAccess = isAdmin || roleService.canRoleAccessMenu(userRole, 'p1').read;
-      if (!hasMainAccess) {
-        const canCheck = roleService.canRoleAccessMenu(userRole, 'p1_check').read;
-        const canAgg = roleService.canRoleAccessMenu(userRole, 'p1_agg').read;
-        if (canCheck) navigate('/evangelism/check', { replace: true });
-        else if (canAgg) navigate('/evangelism/aggregate', { replace: true });
-        else { alert("해당 메뉴에 대한 접근 권한이 없습니다."); navigate('/', { replace: true }); }
-        return;
-      }
-    }
-
-    // Redirect /membership to /membership/check or /membership/input ONLY IF user lacks access to the main p3 dashboard
-    if (section === 'membership') {
-      const normRole = normalizeRole(userRole);
-      const isAdmin = normRole === 'ROLE_ADMIN' || normRole === 'ADMIN' || normRole === 'ROLE_관리자';
-      const hasMainAccess = isAdmin || roleService.canRoleAccessMenu(userRole, 'p3').read;
-      if (!hasMainAccess) {
-        const canCheck = roleService.canRoleAccessMenu(userRole, 'p3_check').read;
-        const canInput = roleService.canRoleAccessMenu(userRole, 'p3_input').read;
-        if (canCheck) navigate('/membership/check', { replace: true });
-        else if (canInput) navigate('/membership/input', { replace: true });
-        else { alert("해당 메뉴에 대한 접근 권한이 없습니다."); navigate('/', { replace: true }); }
-        return;
-      }
-    }
-
-    // Redirect /business to /business/ledger ... ONLY IF user lacks access to the main business dashboard
-    if (section === 'business') {
-      const normRole = normalizeRole(userRole);
-      const isAdmin = normRole === 'ROLE_ADMIN' || normRole === 'ADMIN' || normRole === 'ROLE_관리자';
-      const hasMainAccess = isAdmin || roleService.canRoleAccessMenu(userRole, 'business').read;
-      if (!hasMainAccess) {
-        const canLedger = roleService.canRoleAccessMenu(userRole, 'business_ledger').read;
-        const canLedgerReport = roleService.canRoleAccessMenu(userRole, 'business_ledger_report').read;
-        const canFruit = roleService.canRoleAccessMenu(userRole, 'business_fruit').read;
-        const canTransport = roleService.canRoleAccessMenu(userRole, 'business_transport').read;
-        const canMission = roleService.canRoleAccessMenu(userRole, 'business_mission').read;
-        if (canLedger) navigate('/business/ledger', { replace: true });
-        else if (canLedgerReport) navigate('/business/ledger/report', { replace: true });
-        else if (canFruit) navigate('/business/fruit', { replace: true });
-        else if (canTransport) navigate('/business/transport', { replace: true });
-        else if (canMission) navigate('/business/mission', { replace: true });
-        else { alert("해당 메뉴에 대한 접근 권한이 없습니다."); navigate('/', { replace: true }); }
-        return;
-      }
-    }
-
-    const sectionToMenuKey: Record<string, string> = {
-      'home': 'home', 'calendar': 'calendar', 'diag': 'diag', 'inspect': 'inspect', 'funnel': 'funnel',
-      'trend': 'trend', 'map': 'map', 'globe': 'globe',
-      'evangelism': 'p1', 'evangelism/check': 'p1_check', 'evangelism/aggregate': 'p1_agg',
-      'center': 'p2',
-      'membership': 'p3', 'membership/check': 'p3_check', 'membership/input': 'p3_input',
-      'worship': 'p4',
-      'business': 'business',
-      'business/ledger': 'business_ledger', 'business/ledger/archive': 'business_ledger_archive', 'business/ledger/report': 'business_ledger_report',
-      'business/fruit': 'business_fruit', 'business/fruit/archive': 'business_fruit_archive',
-      'business/transport': 'business_transport', 'business/transport/archive': 'business_transport_archive',
-      'business/mission': 'business_mission', 'business/mission/archive': 'business_mission_archive',
-      'approvals/pending': 'approvals_pending', 'approvals/completed': 'approvals_completed',
-      'weekly-report': 'weekly_report_input',
-    };
-
-    const targetKey = sectionToMenuKey[section] || section;
-    const normRole = normalizeRole(userRole);
-
-    if (normRole !== 'ROLE_ADMIN' && normRole !== 'ADMIN' && normRole !== 'ROLE_관리자' && targetKey !== 'profile') {
-      const access = roleService.canRoleAccessMenu(userRole, targetKey);
-      if (!access.read) {
-        alert("해당 메뉴에 대한 접근 권한이 없습니다.");
-        const permissions = roleService.getMenuPermissions();
-        const accessible = permissions.find(m => roleService.canRoleAccessMenu(userRole, m.menuKey).read);
-        if (accessible) {
-          if (accessible.path.startsWith('/adminsetting')) window.location.href = '/OverseasPortal' + accessible.path;
-          else navigate(accessible.path, { replace: true });
-        } else {
-          sessionService.clearSession();
-          navigate('/login', { replace: true });
-        }
-        return;
-      }
+    // 권한 판정은 resolveAccess()가 렌더 시점에 이미 동기적으로 수행했다. redirectTo가 있는 경우는
+    // 렌더 경로에서 <Navigate>로 이미 즉시 이동 처리되므로, 여기서는 그걸로 처리 안 되는 나머지
+    // (경고 표시, adminsetting 전체 페이지 이동, 완전 차단 시 세션 정리)만 side effect로 수행한다.
+    const decision = resolveAccess(section);
+    if (!decision.ok) {
+      if (decision.showDeniedAlert) alert("해당 메뉴에 대한 접근 권한이 없습니다.");
+      if (decision.externalUrl) { window.location.href = decision.externalUrl; return; }
+      if (decision.forceLogout) { sessionService.clearSession(); navigate('/login', { replace: true }); return; }
+      return;
     }
 
     // Record Access Log for User Diagnosis Portal Section Page
@@ -230,11 +241,21 @@ export const DiagnosisPage: React.FC<DiagnosisPageProps> = ({ section = 'home', 
     return <HomePage />;
   };
 
+  // 접근 가능한 같은 앱 내 경로가 정해져 있으면(연관 하위 페이지 또는 대체 화면) 그 자리에서 즉시
+  // <Navigate>로 바꿔치기한다 — DiagnosisShell/사이드바조차 잘못된 콘텐츠로 마운트되지 않고, URL도
+  // 곧바로 바뀐다(예전엔 useEffect의 navigate() 호출을 기다려야 해서, 그 사이에 빈 화면인 채로
+  // 원래 URL에 그대로 "접속된" 것처럼 보였다).
+  if (!access.ok && access.redirectTo) {
+    return <Navigate to={access.redirectTo} replace />;
+  }
+
   // 사이드바/탑바(검색·월선택 등)가 모든 화면에서 진단 데이터를 공유해야 하므로 항상 Provider로 감싼다.
+  // access.ok가 아니면 renderContent()를 아예 호출하지 않는다 — externalUrl/forceLogout 같은 드문
+  // 경우만 위 useEffect가 곧이어 처리한다.
   return (
     <DiagnosisDataProvider section={section}>
       <DiagnosisShell showAdminBtn={showAdminBtn} showBackdoorBtn={showBackdoorBtn}>
-        {renderContent()}
+        {access.ok ? renderContent() : null}
       </DiagnosisShell>
     </DiagnosisDataProvider>
   );

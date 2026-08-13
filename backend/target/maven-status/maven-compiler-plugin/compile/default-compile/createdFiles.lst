@@ -24,6 +24,7 @@ com\overseas\portal\controller\BackdoorController$1.class
 com\overseas\portal\repository\MembershipEditRequestRepository.class
 com\overseas\portal\controller\CalendarEventController.class
 com\overseas\portal\service\WeeklyReportSubmissionService.class
+com\overseas\portal\config\MenuPermissionInterceptor.class
 com\overseas\portal\controller\BusinessArchiveController.class
 com\overseas\portal\domain\WeeklyReportSubmission.class
 com\overseas\portal\domain\TelegramBotConfig.class
@@ -64,6 +65,7 @@ com\overseas\portal\service\WeeklyWorshipService$WorshipJobResult$WorshipJobResu
 com\overseas\portal\repository\EvangelismWeeklyRecordRepository.class
 com\overseas\portal\controller\EvangelismController.class
 com\overseas\portal\repository\WeeklyReportSchemaRepository.class
+com\overseas\portal\config\WebMvcConfig.class
 com\overseas\portal\controller\AuthController$VerifyOtpRequest.class
 com\overseas\portal\domain\FileUploadLog.class
 com\overseas\portal\controller\UserController$ProfileBotTestRequest.class
@@ -140,6 +142,7 @@ com\overseas\portal\repository\AccessLogRepository.class
 com\overseas\portal\domain\BusinessBoardPost$BusinessBoardPostBuilder.class
 com\overseas\portal\repository\EvangelismPlanItemRepository.class
 com\overseas\portal\controller\UserController$ProfileUpdateRequest.class
+com\overseas\portal\config\MenuPermissionInterceptor$PermEntry.class
 com\overseas\portal\controller\WeeklyWorshipController.class
 com\overseas\portal\service\DiagnosisService.class
 com\overseas\portal\controller\SystemLogController.class

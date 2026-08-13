@@ -158,14 +158,19 @@ public class EvangelismController {
         return encryptResponse(saved);
     }
 
+    private boolean isAdminRequest() {
+        org.springframework.security.core.Authentication auth =
+                org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+        return auth != null && auth.getAuthorities().stream().anyMatch(a -> a.getAuthority().contains("ADMIN"));
+    }
+
     @GetMapping("/edit-requests/pending")
     public ResponseEntity<Map<String, Object>> getPendingRequests(
             @RequestParam(name = "username", required = false) String username,
-            @RequestParam(name = "role", required = false) String role,
             @RequestParam(name = "name", required = false) String name) {
-        log.info("Fetching pending edit requests for name: {}, role: {}", name, role);
+        log.info("Fetching pending edit requests for name: {}", name);
         List<EvangelismEditRequest> list;
-        if (role != null && (role.equals("ROLE_ADMIN") || role.equals("ADMIN"))) {
+        if (isAdminRequest()) {
             list = evangelismEditRequestRepository.findByStatus("PENDING");
         } else {
             list = evangelismEditRequestRepository.findByRequestedToAndStatus(name != null ? name : "", "PENDING");
@@ -176,12 +181,11 @@ public class EvangelismController {
     @GetMapping("/edit-requests/completed")
     public ResponseEntity<Map<String, Object>> getCompletedRequests(
             @RequestParam(name = "username", required = false) String username,
-            @RequestParam(name = "role", required = false) String role,
             @RequestParam(name = "name", required = false) String name) {
-        log.info("Fetching completed edit requests for name: {}, role: {}", name, role);
+        log.info("Fetching completed edit requests for name: {}", name);
         List<EvangelismEditRequest> list;
         List<String> completedStatuses = List.of("APPROVED", "REJECTED", "USED");
-        if (role != null && (role.equals("ROLE_ADMIN") || role.equals("ADMIN"))) {
+        if (isAdminRequest()) {
             list = evangelismEditRequestRepository.findByStatusIn(completedStatuses);
         } else {
             list = evangelismEditRequestRepository.findByRequestedToAndStatusIn(name != null ? name : "", completedStatuses);
