@@ -39,12 +39,35 @@ function pctLabel(numerator: number, denominator: number): string {
   return `${((numerator / denominator) * 100).toFixed(1)}%`;
 }
 
-export const EvangelismMonthlyReportTab: React.FC<{ selectedChurch: string; evangRegByDept: Record<string, number> }> = ({ selectedChurch, evangRegByDept }) => {
+interface EvangelismMonthlyReportTabProps {
+  selectedChurch: string;
+  evangRegByDept: Record<string, number>;
+  selectedYear?: string;
+  setSelectedYear?: (y: string) => void;
+  selectedMonth?: string;
+  setSelectedMonth?: (m: string) => void;
+}
+
+export const EvangelismMonthlyReportTab: React.FC<EvangelismMonthlyReportTabProps> = ({
+  selectedChurch,
+  evangRegByDept,
+  selectedYear: propSelectedYear,
+  setSelectedYear: propSetSelectedYear,
+  selectedMonth: propSelectedMonth,
+  setSelectedMonth: propSetSelectedMonth,
+}) => {
   const nowYear = new Date().getFullYear();
   const nowMonth = new Date().getMonth() + 1;
 
-  const [selectedYear, setSelectedYear] = useState(`${nowYear}년`);
-  const [selectedMonth, setSelectedMonth] = useState(`${nowMonth}월`);
+  const [internalYear, setInternalYear] = useState(`${nowYear}년`);
+  const [internalMonth, setInternalMonth] = useState(`${nowMonth}월`);
+
+  const selectedYear = propSelectedYear !== undefined ? propSelectedYear : internalYear;
+  const setSelectedYear = propSetSelectedYear || setInternalYear;
+
+  const selectedMonth = propSelectedMonth !== undefined ? propSelectedMonth : internalMonth;
+  const setSelectedMonth = propSetSelectedMonth || setInternalMonth;
+
   const [yearRows, setYearRows] = useState<ActivityRow[]>([]);
   const [prevYearRows, setPrevYearRows] = useState<ActivityRow[]>([]);
   const [notice, setNotice] = useState('');
@@ -169,6 +192,37 @@ export const EvangelismMonthlyReportTab: React.FC<{ selectedChurch: string; evan
     return { activeMemberCount: 0, teacherCount: 0 };
   };
 
+  // 지난달 표시값 (증감 계산용)
+  const prevMonthDisplayFor = (dept: string): DeptValues => {
+    if (selectedMonthNum > 1) {
+      for (let m = selectedMonthNum - 1; m >= 1; m--) {
+        const row = findRow(yearRows, `${m}월`, dept);
+        if (row) return { activeMemberCount: row.activeMemberCount || 0, teacherCount: row.teacherCount || 0 };
+      }
+      for (let m = 12; m >= 1; m--) {
+        const row = findRow(prevYearRows, `${m}월`, dept);
+        if (row) return { activeMemberCount: row.activeMemberCount || 0, teacherCount: row.teacherCount || 0 };
+      }
+    } else {
+      for (let m = 12; m >= 1; m--) {
+        const row = findRow(prevYearRows, `${m}월`, dept);
+        if (row) return { activeMemberCount: row.activeMemberCount || 0, teacherCount: row.teacherCount || 0 };
+      }
+    }
+    return { activeMemberCount: 0, teacherCount: 0 };
+  };
+
+  const renderDiffBadge = (curr: number, prev: number) => {
+    const diff = curr - prev;
+    if (diff > 0) {
+      return <span style={{ fontSize: '0.78rem', fontWeight: 800, marginLeft: '4px', color: '#16a34a' }}>(▲{diff})</span>;
+    }
+    if (diff < 0) {
+      return <span style={{ fontSize: '0.78rem', fontWeight: 800, marginLeft: '4px', color: '#dc2626' }}>(▼{Math.abs(diff)})</span>;
+    }
+    return <span style={{ fontSize: '0.78rem', fontWeight: 700, marginLeft: '4px', color: '#64748b' }}>(-)</span>;
+  };
+
   const enterEditMode = () => {
     const draft: Record<string, DeptValues> = {};
     DEPARTMENTS.forEach((dept) => { draft[dept] = displayFor(dept); });
@@ -215,11 +269,14 @@ export const EvangelismMonthlyReportTab: React.FC<{ selectedChurch: string; evan
 
   const totals = DEPARTMENTS.reduce((acc, dept) => {
     const v = isEditMode ? (draftValues[dept] || { activeMemberCount: 0, teacherCount: 0 }) : displayFor(dept);
+    const p = prevMonthDisplayFor(dept);
     acc.evangReg += evangRegByDept[dept] || 0;
     acc.activeMemberCount += v.activeMemberCount || 0;
     acc.teacherCount += v.teacherCount || 0;
+    acc.prevActiveMemberCount += p.activeMemberCount || 0;
+    acc.prevTeacherCount += p.teacherCount || 0;
     return acc;
-  }, { evangReg: 0, activeMemberCount: 0, teacherCount: 0 });
+  }, { evangReg: 0, activeMemberCount: 0, teacherCount: 0, prevActiveMemberCount: 0, prevTeacherCount: 0 });
 
   return (
     <div>
@@ -231,23 +288,11 @@ export const EvangelismMonthlyReportTab: React.FC<{ selectedChurch: string; evan
         </div>
       </div>
 
-      {/* 연/월 선택 + 수정 컨트롤 */}
+      {/* 상태 안내 + 수정 컨트롤 */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px', flexWrap: 'wrap', gap: '12px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#f8fafc', border: '1px solid #e2e8f0', padding: '6px 12px', borderRadius: '10px' }}>
-            <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#475569' }}>연도</span>
-            <select value={selectedYear} onChange={(e) => setSelectedYear(e.target.value)} style={selectStyle}>
-              {years.map((y) => <option key={y} value={y}>{y}</option>)}
-            </select>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#f0fdf4', border: '1px solid #bbf7d0', padding: '6px 14px', borderRadius: '10px' }}>
-            <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#166534' }}>월</span>
-            <select value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)} style={{ ...selectStyle, color: '#16a34a' }}>
-              {months.map((m) => <option key={m} value={m}>{m}</option>)}
-            </select>
-          </div>
+        <div>
           {!isCurrentMonth && (
-            <span style={{ fontSize: '0.8rem', color: hasEditPermission ? '#16a34a' : '#94a3b8', fontWeight: 600 }}>
+            <span style={{ fontSize: '0.85rem', color: hasEditPermission ? '#16a34a' : '#64748b', fontWeight: 600 }}>
               {hasEditPermission
                 ? '✅ 수정 요청이 승인되어 이 달만 임시로 수정할 수 있습니다.'
                 : `이전 달 데이터는 조회만 가능합니다 · 이번 달(${nowYear}년 ${nowMonth}월)만 수정 가능`}
@@ -310,6 +355,7 @@ export const EvangelismMonthlyReportTab: React.FC<{ selectedChurch: string; evan
                 {DEPARTMENTS.map((dept) => {
                   const evangReg = evangRegByDept[dept] || 0;
                   const v = isEditMode ? (draftValues[dept] || { activeMemberCount: 0, teacherCount: 0 }) : displayFor(dept);
+                  const p = prevMonthDisplayFor(dept);
                   return (
                     <tr key={dept} style={{ borderBottom: '1px solid #f1f5f9' }}>
                       <td style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 700, color: '#0f172a' }}>{dept}</td>
@@ -324,7 +370,10 @@ export const EvangelismMonthlyReportTab: React.FC<{ selectedChurch: string; evan
                             style={numberInputStyle}
                           />
                         ) : (
-                          <span style={{ fontWeight: 700, color: '#16a34a' }}>{v.activeMemberCount}명</span>
+                          <>
+                            <span style={{ fontWeight: 700, color: '#16a34a' }}>{v.activeMemberCount}명</span>
+                            {renderDiffBadge(v.activeMemberCount, p.activeMemberCount)}
+                          </>
                         )}
                       </td>
                       <td style={{ padding: '10px 14px', background: '#f7fefb', fontWeight: 700, color: '#166534' }}>{pctLabel(v.activeMemberCount, evangReg)}</td>
@@ -338,7 +387,10 @@ export const EvangelismMonthlyReportTab: React.FC<{ selectedChurch: string; evan
                             style={numberInputStyle}
                           />
                         ) : (
-                          <span style={{ fontWeight: 700, color: '#b45309' }}>{v.teacherCount}명</span>
+                          <>
+                            <span style={{ fontWeight: 700, color: '#b45309' }}>{v.teacherCount}명</span>
+                            {renderDiffBadge(v.teacherCount, p.teacherCount)}
+                          </>
                         )}
                       </td>
                       <td style={{ padding: '10px 14px', background: '#fffdf5', fontWeight: 700, color: '#92400e' }}>{pctLabel(v.teacherCount, evangReg)}</td>
@@ -348,9 +400,15 @@ export const EvangelismMonthlyReportTab: React.FC<{ selectedChurch: string; evan
                 <tr style={{ background: '#f8fafc', borderTop: '2px solid #cbd5e1', fontWeight: 900, color: '#0f172a' }}>
                   <td style={{ padding: '14px 16px', textAlign: 'left' }}>합계</td>
                   <td style={{ padding: '14px' }}>{totals.evangReg}명</td>
-                  <td style={{ padding: '14px', background: '#eefdf6', color: '#16a34a' }}>{totals.activeMemberCount}명</td>
+                  <td style={{ padding: '14px', background: '#eefdf6' }}>
+                    <span style={{ color: '#16a34a' }}>{totals.activeMemberCount}명</span>
+                    {!isEditMode && renderDiffBadge(totals.activeMemberCount, totals.prevActiveMemberCount)}
+                  </td>
                   <td style={{ padding: '14px', background: '#eefdf6', color: '#166534' }}>{pctLabel(totals.activeMemberCount, totals.evangReg)}</td>
-                  <td style={{ padding: '14px', background: '#fffaf0', color: '#b45309' }}>{totals.teacherCount}명</td>
+                  <td style={{ padding: '14px', background: '#fffaf0' }}>
+                    <span style={{ color: '#b45309' }}>{totals.teacherCount}명</span>
+                    {!isEditMode && renderDiffBadge(totals.teacherCount, totals.prevTeacherCount)}
+                  </td>
                   <td style={{ padding: '14px', background: '#fffaf0', color: '#92400e' }}>{pctLabel(totals.teacherCount, totals.evangReg)}</td>
                 </tr>
               </tbody>

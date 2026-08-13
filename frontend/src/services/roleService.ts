@@ -38,7 +38,7 @@ export const DEFAULT_MENUS: { menuKey: string; menuName: string; category: strin
   { menuKey: 'globe', menuName: '🌐 3D 지구본', category: '🖥️ 일반 사용자 진단서 포탈', path: '/globe' },
   { menuKey: 'p1', menuName: '① 전도 · 가개강 (전체)', category: '🖥️ 일반 사용자 진단서 포탈', path: '/evangelism' },
   { menuKey: 'p1_check', menuName: '   ㄴ ①-1. 교회별 데이터 확인', category: '🖥️ 일반 사용자 진단서 포탈', path: '/evangelism/check' },
-  { menuKey: 'p1_agg', menuName: '   ㄴ ①-2. 취합 및 실적 입력', category: '🖥️ 일반 사용자 진단서 포탈', path: '/evangelism/aggregate' },
+  { menuKey: 'p1_agg', menuName: '   ㄴ ①-2. 주간보고', category: '🖥️ 일반 사용자 진단서 포탈', path: '/evangelism/aggregate' },
   { menuKey: 'p1_plan', menuName: '   ㄴ ①-3. 계획', category: '🖥️ 일반 사용자 진단서 포탈', path: '/evangelism/plan' },
   { menuKey: 'p1_monthly', menuName: '   ㄴ ①-4. 월간보고', category: '🖥️ 일반 사용자 진단서 포탈', path: '/evangelism/monthly' },
   { menuKey: 'p2', menuName: '② 센터', category: '🖥️ 일반 사용자 진단서 포탈', path: '/center' },

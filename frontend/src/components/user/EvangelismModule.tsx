@@ -150,7 +150,9 @@ export const EvangelismModule: React.FC<EvangelismModuleProps> = ({ initialTab =
 
   // 3. Date & Week Filters
   const currentYearNum = new Date().getFullYear();
+  const currentMonthNum = new Date().getMonth() + 1;
   const [selectedYear, setSelectedYear] = useState<string>(() => `${currentYearNum}년`);
+  const [selectedMonth, setSelectedMonth] = useState<string>(() => `${currentMonthNum}월`);
   const [selectedWeekCheck, setSelectedWeekCheck] = useState<string>('전체'); // For Tab 1
   const [selectedWeekAgg, setSelectedWeekAgg] = useState<string>(() => getDynamicWeekConfig(`${currentYearNum}년`).currentWeekKey);   // For Tab 2
 
@@ -158,6 +160,16 @@ export const EvangelismModule: React.FC<EvangelismModuleProps> = ({ initialTab =
   for (let y = currentYearNum; y >= 2025; y--) {
     dynamicYears.push(`${y}년`);
   }
+
+  const selectedYearNumForMonthly = parseInt(selectedYear.replace(/[^0-9]/g, ''), 10) || currentYearNum;
+  const monthsLimit = selectedYearNumForMonthly < currentYearNum ? 12 : currentMonthNum;
+  const monthlyOptions = Array.from({ length: monthsLimit }, (_, i) => `${i + 1}월`);
+
+  useEffect(() => {
+    if (!monthlyOptions.includes(selectedMonth)) {
+      setSelectedMonth(monthlyOptions[monthlyOptions.length - 1] || '1월');
+    }
+  }, [selectedYear]);
 
   // 3-1. Current Week Data State for Aggregation Tab
   const [currentWeekInputs, setCurrentWeekInputs] = useState<Record<string, DeptData>>({
@@ -1292,7 +1304,7 @@ export const EvangelismModule: React.FC<EvangelismModuleProps> = ({ initialTab =
             }}
           >
             <Edit3 size={18} color={activeTab === 'aggregate' ? '#16a34a' : '#cbd5e1'} />
-            2. 취합 및 실적 입력
+            2. 주간보고
           </button>
 
           <button
@@ -1356,7 +1368,7 @@ export const EvangelismModule: React.FC<EvangelismModuleProps> = ({ initialTab =
         boxShadow: '0 4px 14px rgba(0,0,0,0.03)'
       }}>
         {/* Left: Church Selection Dropdown */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 800, color: '#1e293b', fontSize: '0.95rem' }}>
             <Building2 size={20} color="#2563eb" /> 교회 선택
           </div>
@@ -1394,7 +1406,41 @@ export const EvangelismModule: React.FC<EvangelismModuleProps> = ({ initialTab =
           )}
         </div>
 
-        {/* Right: Year & Week Filters (계획/월간보고 탭은 자체 연/월 선택을 쓰거나 개념이 없어 숨김) */}
+        {/* Right: Year & Month Filters for Monthly Tab */}
+        {activeTab === 'monthly' && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+            {/* Year Dropdown */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#f8fafc', border: '1px solid #e2e8f0', padding: '6px 12px', borderRadius: '10px' }}>
+              <Calendar size={16} color="#64748b" />
+              <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#475569' }}>연도</span>
+              <select
+                value={selectedYear}
+                onChange={(e) => setSelectedYear(e.target.value)}
+                style={{ border: 'none', background: 'transparent', fontWeight: 800, color: '#2563eb', fontSize: '0.9rem', outline: 'none', cursor: 'pointer' }}
+              >
+                {dynamicYears.map(y => (
+                  <option key={y} value={y}>{y}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Month Dropdown */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#f0fdf4', border: '1px solid #bbf7d0', padding: '6px 14px', borderRadius: '10px' }}>
+              <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#166534' }}>월</span>
+              <select
+                value={selectedMonth}
+                onChange={(e) => setSelectedMonth(e.target.value)}
+                style={{ border: 'none', background: 'transparent', fontWeight: 800, color: '#16a34a', fontSize: '0.9rem', outline: 'none', cursor: 'pointer' }}
+              >
+                {monthlyOptions.map(m => (
+                  <option key={m} value={m}>{m}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+        )}
+
+        {/* Right: Year & Week Filters for Check/Aggregate Tabs */}
         {activeTab !== 'plan' && activeTab !== 'monthly' && (
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
             {/* Year Dropdown */}
@@ -1450,7 +1496,16 @@ export const EvangelismModule: React.FC<EvangelismModuleProps> = ({ initialTab =
 
       {activeTab === 'plan' && <EvangelismPlanTab selectedChurch={selectedChurch} />}
 
-      {activeTab === 'monthly' && <EvangelismMonthlyReportTab selectedChurch={selectedChurch} evangRegByDept={membershipRegMap['1월'] || {}} />}
+      {activeTab === 'monthly' && (
+        <EvangelismMonthlyReportTab
+          selectedChurch={selectedChurch}
+          evangRegByDept={membershipRegMap['1월'] || {}}
+          selectedYear={selectedYear}
+          setSelectedYear={setSelectedYear}
+          selectedMonth={selectedMonth}
+          setSelectedMonth={setSelectedMonth}
+        />
+      )}
 
       {/* ========================================================================= */}
       {/* TAB 1: 교회별 데이터 확인 (Church Data Verification)                      */}
@@ -1661,7 +1716,7 @@ export const EvangelismModule: React.FC<EvangelismModuleProps> = ({ initialTab =
       )}
 
       {/* ========================================================================= */}
-      {/* TAB 2: 취합 및 실적 입력 (Aggregation & Input)                             */}
+      {/* TAB 2: 주간보고 입력 (Aggregation & Input)                             */}
       {/* ========================================================================= */}
       {activeTab === 'aggregate' && (() => {
         const config = getDynamicWeekConfig(selectedYear);
@@ -1744,16 +1799,14 @@ export const EvangelismModule: React.FC<EvangelismModuleProps> = ({ initialTab =
                 </div>
               )}
             </div>
-
-            {/* Table Container - Desktop view */}
             <div className="desktop-table-view" style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem', textAlign: 'center' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.88rem', textAlign: 'center' }}>
                 <thead>
                   <tr style={{ background: '#f8fafc', borderBottom: '2px solid #cbd5e1' }}>
-                    <th style={{ padding: '14px', textAlign: 'left', fontWeight: 800, color: '#334155' }}>구분</th>
+                    <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 800, color: '#334155' }}>구분</th>
 
                     {/* Previous Week Header (Locked + Unlock Request Button) */}
-                    <th colSpan={activeItems.length} style={{ padding: '12px', background: hasPrevEditPermission ? '#f0fdf4' : '#fef2f2', borderLeft: '2px solid ' + (hasPrevEditPermission ? '#bbf7d0' : '#fecaca'), color: hasPrevEditPermission ? '#166534' : '#991b1b', fontWeight: 800 }}>
+                    <th colSpan={activeItems.length} style={{ padding: '12px 14px', background: hasPrevEditPermission ? '#f0fdf4' : '#f8fafc', borderLeft: '2px solid ' + (hasPrevEditPermission ? '#bbf7d0' : '#e2e8f0'), color: hasPrevEditPermission ? '#166534' : '#475569', fontWeight: 800 }}>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
                         <span>{prevWeekKey} {hasPrevEditPermission ? '(이전 주차 · 🔓 허용됨)' : '(이전 주차 · 🔒 잠금)'}</span>
                         {!hasPrevEditPermission && (
@@ -1784,7 +1837,7 @@ export const EvangelismModule: React.FC<EvangelismModuleProps> = ({ initialTab =
                     </th>
 
                     {/* Current Week Header (Active Editable or Locked) */}
-                    <th colSpan={activeItems.length} style={{ padding: '12px', background: isEditable ? '#f0fdf4' : '#fef2f2', borderLeft: '2px solid ' + (isEditable ? '#bbf7d0' : '#fecaca'), color: isEditable ? '#166534' : '#991b1b', fontWeight: 800 }}>
+                    <th colSpan={activeItems.length} style={{ padding: '12px 14px', background: isEditable ? '#f0fdf4' : '#fef2f2', borderLeft: '2px solid ' + (isEditable ? '#bbf7d0' : '#fecaca'), color: isEditable ? '#166534' : '#991b1b', fontWeight: 800 }}>
                       {isEditable ? (
                         selectedWeekAgg === REAL_CURRENT_WEEK ? (
                           `✨ ${selectedWeekAgg} (현재 주차 · ✏️ 편집 가능)`
@@ -1822,17 +1875,18 @@ export const EvangelismModule: React.FC<EvangelismModuleProps> = ({ initialTab =
                   </tr>
 
                   {/* Sub Headers */}
-                  <tr style={{ background: '#f1f5f9', borderBottom: '1px solid #cbd5e1', fontSize: '0.78rem', color: '#475569' }}>
+                  <tr style={{ background: '#f8fafc', borderBottom: '2px solid #cbd5e1', fontSize: '0.82rem', color: '#475569' }}>
                     <th></th>
                     {/* Previous Week Sub Headers */}
                     {activeItems.map((item, idx) => (
                       <th
                         key={'prev-hdr-' + idx}
                         style={{
-                          padding: '6px',
-                          borderLeft: idx === 0 ? '2px solid #fecaca' : undefined,
-                          background: '#fff5f5',
-                          color: item.isDrop ? '#dc2626' : item.color
+                          padding: '8px 10px',
+                          borderLeft: idx === 0 ? '2px solid #e2e8f0' : undefined,
+                          background: '#f8fafc',
+                          color: item.isDrop ? '#dc2626' : item.color,
+                          fontWeight: 800
                         }}
                       >
                         {item.label}
@@ -1844,10 +1898,11 @@ export const EvangelismModule: React.FC<EvangelismModuleProps> = ({ initialTab =
                       <th
                         key={'curr-hdr-' + idx}
                         style={{
-                          padding: '6px',
+                          padding: '8px 10px',
                           borderLeft: idx === 0 ? '2px solid ' + (isEditable ? '#bbf7d0' : '#fecaca') : undefined,
                           background: isEditable ? '#f0fdf4' : '#fff5f5',
-                          color: item.isDrop ? '#dc2626' : item.color
+                          color: item.isDrop ? '#dc2626' : item.color,
+                          fontWeight: 800
                         }}
                       >
                         {item.label}
@@ -1862,7 +1917,7 @@ export const EvangelismModule: React.FC<EvangelismModuleProps> = ({ initialTab =
 
                     return (
                       <tr key={dept} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                        <td style={{ padding: '12px 14px', textAlign: 'left', fontWeight: 700, color: '#0f172a' }}>{dept}</td>
+                        <td style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 700, color: '#0f172a' }}>{dept}</td>
 
                         {/* Readonly Previous Week Cells */}
                         {activeItems.map((item, idx) => {
@@ -1871,10 +1926,11 @@ export const EvangelismModule: React.FC<EvangelismModuleProps> = ({ initialTab =
                             <td
                               key={'prev-cell-' + idx}
                               style={{
-                                padding: '10px 4px',
-                                borderLeft: idx === 0 ? '2px solid #fecaca' : undefined,
-                                background: '#fafafa',
-                                color: item.isDrop ? '#94a3b8' : '#64748b'
+                                padding: '10px 12px',
+                                borderLeft: idx === 0 ? '2px solid #e2e8f0' : undefined,
+                                background: '#fafcff',
+                                color: item.isDrop ? '#94a3b8' : '#475569',
+                                fontWeight: 700
                               }}
                             >
                               {val}
@@ -1890,23 +1946,26 @@ export const EvangelismModule: React.FC<EvangelismModuleProps> = ({ initialTab =
                               <td
                                 key={'curr-cell-edit-' + idx}
                                 style={{
-                                  padding: '8px 4px',
+                                  padding: '8px 6px',
                                   borderLeft: idx === 0 ? '2px solid #bbf7d0' : undefined,
-                                  background: '#f8fafc'
+                                  background: '#f7fefb'
                                 }}
                               >
                                 <input
                                   type="number"
+                                  min={0}
                                   value={val}
                                   onChange={(e) => handleInputChange(dept, item.key, parseInt(e.target.value) || 0)}
                                   onFocus={(e) => e.target.select()}
                                   style={{
-                                    width: '50px',
-                                    padding: '6px',
+                                    width: '70px',
+                                    padding: '6px 8px',
                                     textAlign: 'center',
                                     border: '1px solid #cbd5e1',
-                                    borderRadius: '6px',
+                                    borderRadius: '8px',
+                                    fontSize: '0.88rem',
                                     fontWeight: 800,
+                                    outline: 'none',
                                     color: item.isDrop ? '#dc2626' : item.color
                                   }}
                                 />
@@ -1920,7 +1979,7 @@ export const EvangelismModule: React.FC<EvangelismModuleProps> = ({ initialTab =
                               <td
                                 key={'curr-cell-readonly-' + idx}
                                 style={{
-                                  padding: '10px 4px',
+                                  padding: '10px 12px',
                                   borderLeft: idx === 0 ? '2px solid #cbd5e1' : undefined,
                                   background: '#fafafa',
                                   color: item.isDrop ? '#dc2626' : item.color,
@@ -1937,8 +1996,8 @@ export const EvangelismModule: React.FC<EvangelismModuleProps> = ({ initialTab =
                   })}
 
                   {/* Total Row */}
-                  <tr style={{ background: '#f8fafc', borderTop: '2px solid #cbd5e1', fontWeight: 900 }}>
-                    <td style={{ padding: '12px 14px', textAlign: 'left' }}>합계</td>
+                  <tr style={{ background: '#f8fafc', borderTop: '2px solid #cbd5e1', fontWeight: 900, color: '#0f172a' }}>
+                    <td style={{ padding: '14px 16px', textAlign: 'left' }}>합계</td>
 
                     {/* Previous Totals */}
                     {activeItems.map((item, idx) => {
@@ -1947,8 +2006,11 @@ export const EvangelismModule: React.FC<EvangelismModuleProps> = ({ initialTab =
                         <td
                           key={'prev-tot-' + idx}
                           style={{
-                            padding: '10px 4px',
-                            borderLeft: idx === 0 ? '2px solid #fecaca' : undefined
+                            padding: '14px 12px',
+                            borderLeft: idx === 0 ? '2px solid #e2e8f0' : undefined,
+                            background: '#f1f5f9',
+                            color: '#334155',
+                            fontWeight: 800
                           }}
                         >
                           {totalVal}
@@ -1963,9 +2025,11 @@ export const EvangelismModule: React.FC<EvangelismModuleProps> = ({ initialTab =
                         <td
                           key={'curr-tot-' + idx}
                           style={{
-                            padding: '10px 4px',
+                            padding: '14px 12px',
                             borderLeft: idx === 0 ? '2px solid ' + (isEditable ? '#bbf7d0' : '#fecaca') : undefined,
-                            color: item.isDrop ? '#dc2626' : item.color
+                            background: '#eefdf6',
+                            color: item.isDrop ? '#dc2626' : item.color,
+                            fontWeight: 900
                           }}
                         >
                           {totalVal}
@@ -1978,10 +2042,9 @@ export const EvangelismModule: React.FC<EvangelismModuleProps> = ({ initialTab =
             </div>
 
             {/* Table Container - Mobile stacked view */}
-            {/* Table Container - Mobile stacked view */}
             <div className="mobile-table-view">
               {/* Table 1: Previous Week (전주 실적) */}
-              <div style={{ marginBottom: '24px', background: '#f8fafc', padding: '16px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+              <div style={{ marginBottom: '24px', background: '#ffffff', padding: '20px', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 4px 14px rgba(0,0,0,0.03)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px', flexWrap: 'wrap', gap: '8px' }}>
                   <h3 style={{ fontSize: '0.92rem', fontWeight: 800, color: hasPrevEditPermission ? '#166534' : '#991b1b', margin: 0 }}>
                     이전 주차 ({prevWeekKey}) 실적 {hasPrevEditPermission ? '🔓' : '🔒'}
@@ -2012,12 +2075,12 @@ export const EvangelismModule: React.FC<EvangelismModuleProps> = ({ initialTab =
                   )}
                 </div>
                 <div style={{ overflowX: 'auto' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem', textAlign: 'center', minWidth: '320px' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.88rem', textAlign: 'center', minWidth: '320px' }}>
                     <thead>
-                      <tr style={{ background: '#f1f5f9', borderBottom: '2px solid #cbd5e1' }}>
-                        <th style={{ padding: '8px', textAlign: 'left', fontWeight: 800 }}>구분</th>
+                      <tr style={{ background: '#f8fafc', borderBottom: '2px solid #cbd5e1' }}>
+                        <th style={{ padding: '10px 12px', textAlign: 'left', fontWeight: 800 }}>구분</th>
                         {activeItems.map((item, idx) => (
-                          <th key={idx} style={{ padding: '6px', color: item.isDrop ? '#dc2626' : item.color }}>
+                          <th key={idx} style={{ padding: '8px 10px', color: item.isDrop ? '#dc2626' : item.color, fontWeight: 800 }}>
                             {item.label}
                           </th>
                         ))}
@@ -2027,22 +2090,22 @@ export const EvangelismModule: React.FC<EvangelismModuleProps> = ({ initialTab =
                       {DEPARTMENTS.map((dept) => {
                         const prev = getWeeklyData(prevWeekKey, dept);
                         return (
-                          <tr key={dept} style={{ borderBottom: '1px solid #cbd5e1' }}>
-                            <td style={{ padding: '8px', textAlign: 'left', fontWeight: 700 }}>{dept}</td>
+                          <tr key={dept} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                            <td style={{ padding: '10px 12px', textAlign: 'left', fontWeight: 700 }}>{dept}</td>
                             {activeItems.map((item, idx) => (
-                              <td key={idx} style={{ padding: '6px 4px', color: item.isDrop ? '#94a3b8' : '#64748b' }}>
+                              <td key={idx} style={{ padding: '10px 8px', color: item.isDrop ? '#94a3b8' : '#475569', fontWeight: 600 }}>
                                 {prev[item.key] || 0}
                               </td>
                             ))}
                           </tr>
                         );
                       })}
-                      <tr style={{ background: '#f1f5f9', fontWeight: 900 }}>
-                        <td style={{ padding: '8px', textAlign: 'left' }}>합계</td>
+                      <tr style={{ background: '#f8fafc', borderTop: '2px solid #cbd5e1', fontWeight: 900, color: '#0f172a' }}>
+                        <td style={{ padding: '12px 14px', textAlign: 'left' }}>합계</td>
                         {activeItems.map((item, idx) => {
                           const totalVal = DEPARTMENTS.reduce((sum, d) => sum + (getWeeklyData(prevWeekKey, d)[item.key] || 0), 0);
                           return (
-                            <td key={idx} style={{ padding: '6px 4px' }}>
+                            <td key={idx} style={{ padding: '12px 8px', color: '#334155', fontWeight: 800 }}>
                               {totalVal}
                             </td>
                           );
@@ -2054,7 +2117,7 @@ export const EvangelismModule: React.FC<EvangelismModuleProps> = ({ initialTab =
               </div>
 
               {/* Table 2: Active/Selected Week (이번주/선택주 실적) */}
-              <div style={{ background: isEditable ? '#f0fdf4' : '#fef2f2', padding: '16px', borderRadius: '12px', border: '1px solid ' + (isEditable ? '#bbf7d0' : '#fecaca') }}>
+              <div style={{ background: '#ffffff', padding: '20px', borderRadius: '16px', border: '1px solid ' + (isEditable ? '#bbf7d0' : '#fecaca'), boxShadow: '0 4px 14px rgba(0,0,0,0.03)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px', flexWrap: 'wrap', gap: '8px' }}>
                   <h3 style={{ fontSize: '0.92rem', fontWeight: 800, color: isEditable ? '#166534' : '#991b1b', margin: 0 }}>
                     이번 주차 ({selectedWeekAgg}) 실적 {isEditable ? '✏️' : '🔒'}
@@ -2085,12 +2148,12 @@ export const EvangelismModule: React.FC<EvangelismModuleProps> = ({ initialTab =
                   )}
                 </div>
                 <div style={{ overflowX: 'auto' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem', textAlign: 'center', minWidth: '320px' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.88rem', textAlign: 'center', minWidth: '320px' }}>
                     <thead>
-                      <tr style={{ background: '#f1f5f9', borderBottom: '2px solid #cbd5e1' }}>
-                        <th style={{ padding: '8px', textAlign: 'left', fontWeight: 800 }}>구분</th>
+                      <tr style={{ background: isEditable ? '#f0fdf4' : '#fef2f2', borderBottom: '2px solid ' + (isEditable ? '#bbf7d0' : '#fecaca') }}>
+                        <th style={{ padding: '10px 12px', textAlign: 'left', fontWeight: 800 }}>구분</th>
                         {activeItems.map((item, idx) => (
-                          <th key={idx} style={{ padding: '6px', color: item.isDrop ? '#dc2626' : item.color }}>
+                          <th key={idx} style={{ padding: '8px 10px', color: item.isDrop ? '#dc2626' : item.color, fontWeight: 800 }}>
                             {item.label}
                           </th>
                         ))}
@@ -2100,19 +2163,20 @@ export const EvangelismModule: React.FC<EvangelismModuleProps> = ({ initialTab =
                       {DEPARTMENTS.map((dept) => {
                         const curr = currentWeekInputs[dept] || { reg: 20 };
                         return (
-                          <tr key={dept} style={{ borderBottom: '1px solid #cbd5e1' }}>
-                            <td style={{ padding: '8px', textAlign: 'left', fontWeight: 700 }}>{dept}</td>
+                          <tr key={dept} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                            <td style={{ padding: '10px 12px', textAlign: 'left', fontWeight: 700 }}>{dept}</td>
                             {isEditable ? (
                               activeItems.map((item, idx) => {
                                 const val = curr[item.key] || 0;
                                 return (
-                                  <td key={idx} style={{ padding: '4px 2px' }}>
+                                  <td key={idx} style={{ padding: '6px 4px' }}>
                                     <input
                                       type="number"
+                                      min={0}
                                       value={val}
                                       onChange={(e) => handleInputChange(dept, item.key, parseInt(e.target.value) || 0)}
                                       onFocus={(e) => e.target.select()}
-                                      style={{ width: '40px', padding: '4px', textAlign: 'center', border: '1px solid #cbd5e1', borderRadius: '6px', fontWeight: 800, color: item.isDrop ? '#dc2626' : item.color }}
+                                      style={{ width: '64px', padding: '6px 8px', textAlign: 'center', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '0.88rem', fontWeight: 800, outline: 'none', color: item.isDrop ? '#dc2626' : item.color }}
                                     />
                                   </td>
                                 );
@@ -2121,7 +2185,7 @@ export const EvangelismModule: React.FC<EvangelismModuleProps> = ({ initialTab =
                               activeItems.map((item, idx) => {
                                 const val = curr[item.key] || 0;
                                 return (
-                                  <td key={idx} style={{ padding: '6px 4px', color: item.isDrop ? '#dc2626' : item.color, fontWeight: 700 }}>
+                                  <td key={idx} style={{ padding: '10px 8px', color: item.isDrop ? '#dc2626' : item.color, fontWeight: 700 }}>
                                     {val}
                                   </td>
                                 );
@@ -2130,12 +2194,12 @@ export const EvangelismModule: React.FC<EvangelismModuleProps> = ({ initialTab =
                           </tr>
                         );
                       })}
-                      <tr style={{ background: '#f1f5f9', fontWeight: 900 }}>
-                        <td style={{ padding: '8px', textAlign: 'left' }}>합계</td>
+                      <tr style={{ background: '#f8fafc', borderTop: '2px solid #cbd5e1', fontWeight: 900 }}>
+                        <td style={{ padding: '12px 14px', textAlign: 'left' }}>합계</td>
                         {activeItems.map((item, idx) => {
                           const totalVal = DEPARTMENTS.reduce((sum, d) => sum + (currentWeekInputs[d]?.[item.key] || 0), 0);
                           return (
-                            <td key={idx} style={{ padding: '6px 4px', color: item.isDrop ? '#dc2626' : item.color }}>
+                            <td key={idx} style={{ padding: '12px 8px', color: item.isDrop ? '#dc2626' : item.color, fontWeight: 900 }}>
                               {totalVal}
                             </td>
                           );

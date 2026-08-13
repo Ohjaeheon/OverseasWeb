@@ -25,7 +25,7 @@ const SIDEBAR: SidebarEntry[] = [
   {
     s: 'p1', ico: '①', label: '전도·가개강', path: '/evangelism', children: [
       { cat: 'p1_check', label: '①-1. 교회별 데이터 확인', path: '/evangelism/check' },
-      { cat: 'p1_agg', label: '①-2. 취합 및 실적 입력', path: '/evangelism/aggregate' },
+      { cat: 'p1_agg', label: '①-2. 주간보고', path: '/evangelism/aggregate' },
       { cat: 'p1_plan', label: '①-3. 계획', path: '/evangelism/plan' },
       { cat: 'p1_monthly', label: '①-4. 월간보고', path: '/evangelism/monthly' },
     ],
