@@ -284,7 +284,7 @@ export const EvangelismMonthlyReportTab: React.FC<EvangelismMonthlyReportTabProp
       <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '14px', padding: '16px 20px', marginBottom: '20px', display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
         <Info size={18} color="#2563eb" style={{ flexShrink: 0, marginTop: '2px' }} />
         <div style={{ fontSize: '0.88rem', color: '#1e3a8a', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
-          {notice || '월간보고 작성 안내가 아직 등록되지 않았습니다. (관리자: /adminsetting/messages에서 DESC_EVANGELISM_MONTHLY_REPORT_NOTICE 키로 등록)'}
+          {notice || '월간보고 작성 안내가 아직 등록되지 않았습니다.'}
         </div>
       </div>
 
