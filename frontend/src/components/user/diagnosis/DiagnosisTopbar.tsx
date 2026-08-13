@@ -1,10 +1,8 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { sessionService } from '../../../services/sessionService';
 import { telegramService } from '../../../services/telegramService';
 import { useDiagnosisData } from '../../../contexts/DiagnosisDataContext';
-import { fmt } from '../../../utils/diagnosisMetrics';
-import { ExportModal } from './ExportModal';
 
 interface DiagnosisTopbarProps {
   onToggleSidebar: () => void;
@@ -13,23 +11,9 @@ interface DiagnosisTopbarProps {
   showBackdoorBtn: boolean;
 }
 
-export const DiagnosisTopbar: React.FC<DiagnosisTopbarProps> = ({ onToggleSidebar, onShowIntro, showAdminBtn, showBackdoorBtn }) => {
+export const DiagnosisTopbar: React.FC<DiagnosisTopbarProps> = ({ onToggleSidebar, showAdminBtn, showBackdoorBtn }) => {
   const navigate = useNavigate();
-  const { months, month, setMonth, records, lang, setLang } = useDiagnosisData();
-  const [query, setQuery] = useState('');
-  const [showSug, setShowSug] = useState(false);
-
-  const results = query.trim()
-    ? records
-      .filter((r) => r.month === month)
-      .filter((r) => (r.name || '').includes(query) || (r.country || '').includes(query))
-      .slice(0, 10)
-    : [];
-
-  const pickResult = (name: string) => {
-    setQuery(''); setShowSug(false);
-    navigate(`/diag?entity=${encodeURIComponent(name)}`);
-  };
+  const { lang, setLang } = useDiagnosisData();
 
   return (
     <div className="topbar">
@@ -41,36 +25,6 @@ export const DiagnosisTopbar: React.FC<DiagnosisTopbarProps> = ({ onToggleSideba
       </div>
       <span className="spacer" />
 
-      <div className="months">
-        <span style={{ fontSize: 13, color: 'var(--muted)', fontWeight: 600 }}>📅 기준월</span>
-        <select value={month} onChange={(e) => setMonth(e.target.value)}>
-          {months.map((m) => <option key={m} value={m}>{m}</option>)}
-        </select>
-      </div>
-
-      <div className="searchwrap">
-        <span className="si">🔍</span>
-        <input
-          className="searchin"
-          placeholder="교회명 검색…"
-          autoComplete="off"
-          value={query}
-          onChange={(e) => { setQuery(e.target.value); setShowSug(true); }}
-          onFocus={() => setShowSug(true)}
-          onBlur={() => setTimeout(() => setShowSug(false), 150)}
-        />
-        {showSug && (
-          <div className="searchsug on">
-            {results.length ? results.map((r) => (
-              <div className="row" key={r.recordId} onClick={() => pickResult(r.name)}>
-                <span className="nm">{r.name}</span>
-                <span className="mt">{r.jipa || ''} · {fmt(r.registered)}명</span>
-              </div>
-            )) : query.trim() ? <div className="row" style={{ color: 'var(--muted)' }}>검색 결과가 없습니다</div> : null}
-          </div>
-        )}
-      </div>
-
       <select className="langSel tb-langsel" value={lang} onChange={(e) => setLang(e.target.value as any)} title="Language / 语言 / 言語">
         <option value="ko">한국어</option>
         <option value="en">English</option>
@@ -78,8 +32,6 @@ export const DiagnosisTopbar: React.FC<DiagnosisTopbarProps> = ({ onToggleSideba
         <option value="ja">日本語</option>
       </select>
 
-      <ExportModal />
-      <button className="repbtn" onClick={onShowIntro}>🏠 <span className="btn-txt-label">인트로</span></button>
       <button className="repbtn" onClick={() => navigate('/profile')} title="회원 정보 및 텔레그램 연동을 관리합니다">👤 <span className="btn-txt-label">회원관리</span></button>
 
       {showAdminBtn && (

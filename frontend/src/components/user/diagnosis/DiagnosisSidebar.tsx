@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { roleService } from '../../../services/roleService';
+import { sessionService } from '../../../services/sessionService';
+import { telegramService } from '../../../services/telegramService';
 
 interface SidebarChild { cat?: string; tab?: string; label: string; path: string; }
 interface SidebarItem { s: string; ico: string; label: string; path: string; tag?: string; children?: SidebarChild[]; }
@@ -68,9 +70,11 @@ interface DiagnosisSidebarProps {
   onShowIntro: () => void;
   lang: string;
   onLangChange: (l: string) => void;
+  showAdminBtn: boolean;
+  showBackdoorBtn: boolean;
 }
 
-export const DiagnosisSidebar: React.FC<DiagnosisSidebarProps> = ({ isOpen, onClose, onShowIntro, lang, onLangChange }) => {
+export const DiagnosisSidebar: React.FC<DiagnosisSidebarProps> = ({ isOpen, onClose, onShowIntro, lang, onLangChange, showAdminBtn, showBackdoorBtn }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const [openMenu, setOpenMenu] = useState<string | null>(null);
@@ -166,7 +170,29 @@ export const DiagnosisSidebar: React.FC<DiagnosisSidebarProps> = ({ isOpen, onCl
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: '0 10px' }}>
             <button className="repbtn" style={{ width: '100%', justifyContent: 'center', background: 'rgba(255,255,255,0.1)', color: '#fff', border: '1px solid rgba(255,255,255,0.2)' }} onClick={onShowIntro}>🏠 인트로</button>
+            <button className="repbtn" style={{ width: '100%', justifyContent: 'center', background: 'rgba(255,255,255,0.1)', color: '#fff', border: '1px solid rgba(255,255,255,0.2)' }} onClick={() => go('/profile')}>👤 회원관리</button>
+            {showAdminBtn && (
+              <button className="repbtn" style={{ width: '100%', justifyContent: 'center', background: '#2563eb', color: '#fff', border: 'none', fontWeight: 700 }} onClick={() => go('/adminsetting/dashboard')}>⚙️ 관리자 시스템</button>
+            )}
+            {showBackdoorBtn && (
+              <button className="repbtn" style={{ width: '100%', justifyContent: 'center', background: '#7c3aed', color: '#fff', border: 'none', fontWeight: 700 }} onClick={() => { sessionService.clearSession(); window.location.href = '/OverseasPortal/login?mode=backdoor'; }}>🚪 백도어 설정</button>
+            )}
             <button className="repbtn" style={{ width: '100%', justifyContent: 'center', background: 'rgba(255,255,255,0.1)', color: '#fff', border: '1px solid rgba(255,255,255,0.2)' }} onClick={() => window.print()}>📄 출력 · PDF 저장</button>
+            {!telegramService.isTelegramWebApp() && (
+              <button
+                className="repbtn"
+                style={{ width: '100%', justifyContent: 'center', background: '#ef4444', color: '#fff', border: 'none', fontWeight: 700 }}
+                onClick={() => {
+                  if (window.confirm('정말 로그아웃 하시겠습니까?')) {
+                    onClose();
+                    sessionService.clearSession();
+                    navigate('/login', { replace: true });
+                  }
+                }}
+              >
+                🔒 로그아웃
+              </button>
+            )}
           </div>
         </div>
       </nav>

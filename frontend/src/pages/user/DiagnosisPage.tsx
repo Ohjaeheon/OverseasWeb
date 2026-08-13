@@ -207,8 +207,8 @@ export const DiagnosisPage: React.FC<DiagnosisPageProps> = ({ section = 'home', 
     if (section === 'calendar') return <CalendarPage mode="MAIN" />;
     if (section === 'organization') return <OrganizationPage />;
     if (section === 'business' && tab === 'business_calendar') return <CalendarPage mode="BUSINESS" />;
-    if (section === 'evangelism/check' || section === 'evangelism/aggregate') return <EvangelismModule initialTab={section === 'evangelism/check' ? 'check' : 'aggregate'} />;
-    if (section === 'membership/check' || section === 'membership/input') return <MembershipModule initialTab={section === 'membership/check' ? 'check' : 'input'} />;
+    if (section === 'evangelism/check' || section === 'evangelism/aggregate') return <EvangelismModule initialTab={section === 'evangelism/aggregate' ? 'aggregate' : 'check'} />;
+    if (section === 'membership' || section === 'membership/check' || section === 'membership/input') return <MembershipModule initialTab={section === 'membership/input' ? 'input' : 'check'} />;
     if (section === 'business' || section.startsWith('business/')) return <BusinessModule initialTab={tab as any} />;
     if (section === 'weekly-report') return <WeeklyReportPage />;
     if (section === 'approvals/pending' || section === 'approvals/completed') return <ApprovalModule mode={section === 'approvals/pending' ? 'pending' : 'completed'} />;
@@ -220,8 +220,9 @@ export const DiagnosisPage: React.FC<DiagnosisPageProps> = ({ section = 'home', 
     if (section === 'trend') return <TrendPage />;
     if (section === 'map') return <MapPage />;
     if (section === 'globe') return <GlobePage />;
-    if (section === 'center') return <ProcessCategoryPage categories={['②센터']} />;
-    if (section === 'worship') return <ProcessCategoryPage categories={['④예배·전월입교자', '④예배·전성도', '④예배·결석']} />;
+    if (section === 'evangelism') return <ProcessCategoryPage categories={['①전도']} sectionKey="p1" />;
+    if (section === 'center') return <ProcessCategoryPage categories={['②센터']} sectionKey="p2" />;
+    if (section === 'worship') return <ProcessCategoryPage categories={['④예배·전월입교자', '④예배·전성도', '④예배·결석']} sectionKey="p4" />;
 
     return <HomePage />;
   };

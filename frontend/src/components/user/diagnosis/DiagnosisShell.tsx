@@ -44,6 +44,8 @@ export const DiagnosisShell: React.FC<DiagnosisShellProps> = ({ showAdminBtn, sh
           onShowIntro={() => setIntroVisible(true)}
           lang={lang}
           onLangChange={(l) => setLang(l as any)}
+          showAdminBtn={showAdminBtn}
+          showBackdoorBtn={showBackdoorBtn}
         />
         <main className="main">
           {loading ? (

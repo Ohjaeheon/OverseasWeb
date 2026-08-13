@@ -119,7 +119,7 @@ export const InspectPage: React.FC = () => {
             {sub95.map((c) => {
               const r = c.q.qNew, w = Math.max(2, Math.min(100, (r || 0) * 100));
               return (
-                <div key={c.name} className="brow" style={{ gridTemplateColumns: '160px 1fr 122px', marginBottom: 6, cursor: 'pointer' }} onClick={() => openChurch(c.name)}>
+                <div key={c.name} className="brow" style={{ gridTemplateColumns: 'minmax(70px,160px) minmax(40px,1fr) minmax(70px,122px)', marginBottom: 6, cursor: 'pointer' }} onClick={() => openChurch(c.name)}>
                   <div className="bname"><span className="dot" style={{ background: c.color }} />{c.name}</div>
                   <div className="btrack"><div className="bfill" style={{ width: `${w.toFixed(1)}%`, background: '#e11d48' }} /></div>
                   <div className="bval" style={{ color: '#e11d48' }}>{pct(r)}<span style={{ display: 'block', fontSize: 10, color: '#8aa0c4', fontWeight: 600 }}>출석 {fmt(c.agg.newAttTotal)}/{fmt(c.agg.prevNewAdmitCnt)}명</span></div>

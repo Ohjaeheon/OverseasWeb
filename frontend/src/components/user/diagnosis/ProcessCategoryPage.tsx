@@ -1,14 +1,14 @@
 import React, { useState } from 'react';
 import { useDiagnosisData } from '../../../contexts/DiagnosisDataContext';
 import {
-  CATS, buildRows, recordsFor, aggregate, metricVal, fmtVal, rate, fmt, pct, contOf, MetricDef, AggregateResult,
+  CATS, buildRows, recordsFor, aggregate, metricVal, fmtVal, rate, fmt, pct, MetricDef, AggregateResult,
   getMonthNumFromStr,
 } from '../../../utils/diagnosisMetrics';
-import { CONT_COLORS } from '../../../utils/diagnosisI18n';
-import { DonutChart, DonutChartDatum } from '../../charts/DonutChart';
-import { LineChart } from '../../charts/LineChart';
 import { P1ChartDashboard } from '../P1ChartDashboard';
 import { EntityDetailModal, DetailTarget } from './EntityDetailPanel';
+import { GubunChips } from './GubunChips';
+import { ProcessKpiCards } from './ProcessKpiCards';
+import { SectionMonthPicker } from './SectionMonthPicker';
 
 /** 재적 예측(내무 카테고리 하단). Ported 1:1 from forecastCardHTML(). */
 const ForecastCard: React.FC = () => {
@@ -101,13 +101,23 @@ const RiskCard: React.FC<{ onOpen: (name: string) => void }> = ({ onOpen }) => {
   );
 };
 
+const SEC_INFO: Record<string, [string, string]> = {
+  p1: ['① 전도 · 가개강', '찾기 → 복음방 → 가개강'],
+  p2: ['② 센터 (개강·출석·종강)', '센터등록 → 초·중·고 출석 → 종강'],
+  p4: ['④ 예배 (출석)', '전월 입교자 · 전 성도 예배 출석 — 질의 최종 증거'],
+};
+const CAT_HEAD: Record<string, string> = { '④예배·결석': '④ 예배 (결석)' };
+const CAT_SUB: Record<string, string> = { '④예배·전월입교자': '예배 출석 · 전월 입교자', '④예배·전성도': '예배 출석 · 전 성도', '④예배·결석': '' };
+
 interface ProcessCategoryPageProps {
   /** 이 화면이 다루는 카테고리 목록(탭으로 전환). /center=["②센터"], /worship=예배 3종 */
   categories: string[];
+  /** 상단 KPI 카드/헤더 문구 선택 키. p1=전도, p2=센터, p4=예배 */
+  sectionKey: 'p1' | 'p2' | 'p4';
 }
 
-/** 신앙 프로세스 카테고리(센터/예배) 대시보드. Ported 1:1 from renderP1(). */
-export const ProcessCategoryPage: React.FC<ProcessCategoryPageProps> = ({ categories }) => {
+/** 신앙 프로세스 카테고리(전도/센터/예배) 대시보드. Ported 1:1 from renderP1() + renderKPI()/buildUI()의 구분칩. */
+export const ProcessCategoryPage: React.FC<ProcessCategoryPageProps> = ({ categories, sectionKey }) => {
   const { records, months, month, gubun, jipaOrder, jipaColors, countryContMap } = useDiagnosisData();
   const [cat, setCat] = useState(categories[0]);
   const [group, setGroup] = useState<'개별' | '지파별' | '대륙별'>('지파별');
@@ -143,37 +153,36 @@ export const ProcessCategoryPage: React.FC<ProcessCategoryPageProps> = ({ catego
 
   const totAgg = aggregate(recs);
   const cpm = si > 0 ? pm : (catDef.find((m) => m.primary) || catDef[0]);
-  const cIsPct = cpm?.t === 'pct';
-  const jvals: DonutChartDatum[] = jipaOrder.map((j) => ({ label: j, value: metricVal(aggregate(recs.filter((r) => r.jipa === j)), cpm) || 0, color: jipaColors[j] || '#888' })).filter((d) => d.value != null);
-  const cmap: Record<string, typeof recs> = {};
-  recs.forEach((r) => { const k = contOf(r, countryContMap); (cmap[k] = cmap[k] || []).push(r); });
-  const cvals: DonutChartDatum[] = Object.entries(cmap).map(([k, rs]) => ({ label: k, value: metricVal(aggregate(rs), cpm) || 0, color: CONT_COLORS[k] || '#9aa8c4' })).filter((d) => d.value != null);
-  const mo = months, lv = mo.map((m) => { const v = metricVal(aggregate(recordsFor(records, m, gubun)), cpm); return v == null ? 0 : (cIsPct ? +(v * 100).toFixed(1) : v); });
-
-  const chData = rows.map((g) => ({ ...g, val: metricVal(g.agg, cpm) })).filter((g) => g.val != null);
-  if (group === '개별') {
-    chData.sort((a, b) => { const oa = (a.rec as any)?.sortOrder ?? 999999, ob = (b.rec as any)?.sortOrder ?? 999999; if (oa !== ob) return oa - ob; return a.name.localeCompare(b.name, 'ko'); });
-  } else {
-    chData.sort((a, b) => (b.val || 0) - (a.val || 0));
-  }
-  const chMax = Math.max(0.0001, ...chData.map((d) => Math.abs(d.val || 0)));
 
   const onSortClick = (i: number) => { if (sortIdx === i) setSortDir((d) => d * -1); else { setSortIdx(i); setSortDir(i === 0 ? 1 : -1); } };
   const cols: { l: string; name?: boolean; m?: MetricDef }[] = [{ l: gl, name: true }, ...catDef.map((m) => ({ l: m.l, m }))];
 
+  const head = CAT_HEAD[cat] ?? SEC_INFO[sectionKey][0];
+  const sub = CAT_SUB[cat] ?? SEC_INFO[sectionKey][1];
+
   return (
     <div>
+      <GubunChips />
+      <ProcessKpiCards variant={sectionKey === 'p1' ? 'p1' : 'generic'} />
+
       {categories.length > 1 && (
-        <div className="grouptoggle" style={{ marginBottom: 12 }}>
-          {categories.map((cc) => <button key={cc} className={cat === cc ? 'on' : ''} onClick={() => { setCat(cc); setSortIdx(null); }}>{cc.replace('④예배·', '')}</button>)}
+        <div className="chips" style={{ marginBottom: 12 }}>
+          {categories.map((cc) => <div key={cc} className={`chip ${cat === cc ? 'on' : ''}`} onClick={() => { setCat(cc); setSortIdx(null); }}>{cc.replace('④예배·', '')}</div>)}
         </div>
       )}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 4 }}>
         <span style={{ fontSize: 12, color: 'var(--muted)', fontWeight: 700 }}>묶어보기</span>
-        <div className="grouptoggle">
-          {(['개별', '지파별', '대륙별'] as const).map((g) => <button key={g} className={group === g ? 'on' : ''} onClick={() => { setGroup(g); setSortIdx(null); }}>{g}</button>)}
+        <div className="chips" style={{ margin: 0 }}>
+          {(['개별', '지파별', '대륙별'] as const).map((g) => <div key={g} className={`chip ${group === g ? 'on' : ''}`} onClick={() => { setGroup(g); setSortIdx(null); }}>{g}</div>)}
         </div>
+        <SectionMonthPicker />
       </div>
+      {head && (
+        <div>
+          <div className="sechead">{head}</div>
+          {sub && <div className="secsub">{sub}</div>}
+        </div>
+      )}
 
       <div className="homerow" style={{ marginTop: 16 }}>
         <div className="card" style={{ gridColumn: '1/-1', minWidth: 0 }}>
@@ -207,23 +216,6 @@ export const ProcessCategoryPage: React.FC<ProcessCategoryPageProps> = ({ catego
             </table>
           </div>
         </div>
-        <div className="card"><h3>지파별 {cpm?.l}</h3>{jvals.length ? <DonutChart data={jvals} /> : <div style={{ padding: '28px 0', textAlign: 'center', color: 'var(--muted)', fontSize: 13 }}>데이터 없음</div>}</div>
-        <div className="card">
-          <h3>{gl}별 {cpm?.l} 순위</h3>
-          {chData.length ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 520, overflowY: 'auto', paddingRight: 6, marginTop: 6 }}>
-              {chData.map((d) => (
-                <div key={d.name} className="brow" style={{ cursor: 'pointer' }} onClick={() => setTarget({ name: d.name, kind: d.kind === 'entity' ? 'entity' : (d.kind === 'jipa' ? 'jipa' : 'continent') })}>
-                  <div className="bname" title={d.name}><span className="dot" style={{ background: d.color }} />{d.name}</div>
-                  <div className="btrack"><div className="bfill" style={{ width: `${Math.max(2, Math.abs(d.val || 0) / chMax * 100)}%`, background: d.color }} /></div>
-                  <div className="bval">{fmtVal(d.val, cpm)}</div>
-                </div>
-              ))}
-            </div>
-          ) : <div style={{ padding: '28px 0', textAlign: 'center', color: 'var(--muted)', fontSize: 13 }}>데이터 없음</div>}
-        </div>
-        <div className="card"><h3>대륙별 {cpm?.l}</h3>{cvals.length ? <DonutChart data={cvals} /> : <div style={{ padding: '28px 0', textAlign: 'center', color: 'var(--muted)', fontSize: 13 }}>데이터 없음</div>}</div>
-        <div className="card"><h3>월별 {cpm?.l} 추이</h3><LineChart labels={mo} series={[{ name: cpm?.l || '', color: '#2563eb', values: lv }]} /></div>
         {cat === '③내무' && <ForecastCard />}
         {cat === '④예배·결석' && <RiskCard onOpen={(name) => setTarget({ name, kind: 'entity' })} />}
         <div style={{ gridColumn: '1/-1' }}><P1ChartDashboard /></div>
