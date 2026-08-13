@@ -59,7 +59,7 @@ export const MembershipModule: React.FC<MembershipModuleProps> = ({ initialTab =
   }); // For Tab 2 (input)
 
   const dynamicYears: string[] = [];
-  for (let y = currentYearNum; y >= 2026; y--) {
+  for (let y = currentYearNum; y >= 2025; y--) {
     dynamicYears.push(`${y}년`);
   }
 
@@ -777,7 +777,7 @@ export const MembershipModule: React.FC<MembershipModuleProps> = ({ initialTab =
                     gap: '8px'
                   }}
                 >
-                  <CheckCircle2 size={18} /> 실적 저장하기
+                  <CheckCircle2 size={18} /> 저장하기
                 </button>
               ) : (
                 <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', color: '#64748b', padding: '10px 18px', borderRadius: '10px', fontSize: '0.85rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>

@@ -38,10 +38,13 @@ interface DeptValues {
 
 export const AdminMembershipBulkPage: React.FC = () => {
   const currentYear = new Date().getFullYear();
-  const years = Array.from({ length: 3 }, (_, i) => `${currentYear - i}년`);
+  const years = Array.from({ length: Math.max(1, currentYear - 2025 + 1) }, (_, i) => `${currentYear - i}년`);
   const [selectedYear, setSelectedYear] = useState(`${currentYear}년`);
   const currentMonthNum = new Date().getMonth() + 1;
   const [selectedMonth, setSelectedMonth] = useState(`${currentMonthNum}월`);
+  const selectedYearNum = parseInt(selectedYear.replace(/[^0-9]/g, ''), 10) || currentYear;
+  // 선택한 연도가 올해면 이번 달까지만, 과거 연도면 12개월 전부 노출 (미래 월 선택 방지)
+  const availableMonths = ALL_MONTHS.slice(0, selectedYearNum < currentYear ? 12 : currentMonthNum);
 
   const [allChurches, setAllChurches] = useState<ChurchInfo[]>([]);
   const [dbRecords, setDbRecords] = useState<any[]>([]);
@@ -344,7 +347,7 @@ export const AdminMembershipBulkPage: React.FC = () => {
             onChange={e => setSelectedMonth(e.target.value)}
             style={{ ...selectStyle, minWidth: '100px', fontWeight: 700, color: '#10b981' }}
           >
-            {ALL_MONTHS.map(m => (
+            {availableMonths.map(m => (
               <option key={m} value={m}>{m}</option>
             ))}
           </select>

@@ -122,11 +122,11 @@ const emptyDept = (): DeptValues => ({
 // ─── 컴포넌트 ─────────────────────────────────────────────────────────────────
 export const AdminEvangelismBulkPage: React.FC = () => {
   const currentYear = new Date().getFullYear();
-  // 2026년부터 2999년까지 지원하도록 연도 목록 구성
+  // 2025년부터 2999년까지 지원하도록 연도 목록 구성
   const years = useMemo(() => {
     const arr: string[] = [];
-    const maxVal = Math.min(2999, Math.max(currentYear, 2026));
-    for (let y = maxVal; y >= 2026; y--) {
+    const maxVal = Math.min(2999, Math.max(currentYear, 2025));
+    for (let y = maxVal; y >= 2025; y--) {
       arr.push(`${y}년`);
     }
     return arr;

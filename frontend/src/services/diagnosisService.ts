@@ -17,6 +17,13 @@ export interface DiagnosisRecord {
   bibleCumReg: number;
   bibleCurAtt: number;
 
+  // ①전도 표 전용 — DiagnosisDataContext의 syncEvangelismDbData()에서만 채워짐(백엔드 응답엔 없음)
+  findMonth?: number;
+  findCum?: number;
+  gospelMonth?: number;
+  gospelCum?: number;
+  evangRegFrozen?: number;
+
   centerMonthOn: number;
   centerMonthOff: number;
   centerMonthTotal: number;

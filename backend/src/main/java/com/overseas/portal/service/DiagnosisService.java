@@ -106,7 +106,7 @@ public class DiagnosisService {
 
     public List<String> getAvailableMonths() {
         List<String> months = new ArrayList<>();
-        int startYear = 2026;
+        int startYear = 2025;
         int startMonth = 1;
 
         java.time.LocalDate now = java.time.LocalDate.now();

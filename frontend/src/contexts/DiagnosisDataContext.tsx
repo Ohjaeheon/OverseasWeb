@@ -17,6 +17,15 @@ interface WeeklyRecord {
   regCount?: number;
   admitCount?: number;
   gospelCount?: number;
+  findCount?: number;
+}
+
+interface MembershipMonthlyRow {
+  churchName: string;
+  yearStr?: string;
+  monthKey: string;
+  department: string;
+  calculatedEvangReg?: number;
 }
 
 function filterByAssignedLocation(records: DiagnosisRecord[]): DiagnosisRecord[] {
@@ -64,13 +73,30 @@ function getYearNum(str: string): number {
  * 전도 주간보고서(/evangelism/records)의 최신 실적을 진단 레코드의 4개 전도 지표
  * (evangReg/bibleMonthReg/bibleCumReg/bibleCurAtt)에 덮어써서 병합한다.
  * Ported 1:1 from DiagnosisPage.tsx의 syncEvangelismDbData().
+ * 추가로 ①전도 표 전용 지표(찾기/누적찾기/복음방/누적복음방 월·연 합계, 전년도 12월 고정
+ * 전도재적)를 계산해 각각 findMonth/findCum/gospelMonth/gospelCum/evangRegFrozen에 채운다.
  */
 async function syncEvangelismDbData(rawRecords: DiagnosisRecord[]): Promise<{ syncedRecords: DiagnosisRecord[]; weeklyRecords: WeeklyRecord[] }> {
   try {
-    const res = await api.get<WeeklyRecord[]>('/evangelism/records');
+    const [res, memRes] = await Promise.all([
+      api.get<WeeklyRecord[]>('/evangelism/records'),
+      api.get<MembershipMonthlyRow[]>('/membership/records').catch(() => ({ data: [] as MembershipMonthlyRow[] })),
+    ]);
     const weeklyRecords = res.data || [];
+
+    // 교회명 + 연도 -> 그 해 12월 calculatedEvangReg(부서 전체 합산). 다음 해 1~12월 전도재적의 고정 기준값으로 쓰인다.
+    const decEvangRegMap: Record<string, Record<number, number>> = {};
+    (memRes.data || []).forEach((r) => {
+      if (r.monthKey !== '12월' || !r.yearStr) return;
+      const year = parseInt(r.yearStr.replace(/[^0-9]/g, ''), 10);
+      if (!decEvangRegMap[r.churchName]) decEvangRegMap[r.churchName] = {};
+      decEvangRegMap[r.churchName][year] = (decEvangRegMap[r.churchName][year] || 0) + (r.calculatedEvangReg || 0);
+    });
+    const frozenEvangRegFor = (church: string, recordYear: number) => decEvangRegMap[church]?.[recordYear - 1] || 0;
+
     if (weeklyRecords.length === 0) {
-      return { syncedRecords: rawRecords, weeklyRecords };
+      const withFrozen = rawRecords.map((rec) => ({ ...rec, evangRegFrozen: frozenEvangRegFor(rec.name, getYearNum(rec.month)) }));
+      return { syncedRecords: withFrozen, weeklyRecords };
     }
 
     const grouped: Record<string, Record<string, WeeklyRecord[]>> = {};
@@ -89,11 +115,12 @@ async function syncEvangelismDbData(rawRecords: DiagnosisRecord[]): Promise<{ sy
       const church = rec.name;
       const m = rec.month;
       const currentYear = getYearNum(m);
+      const evangRegFrozen = frozenEvangRegFor(church, currentYear);
       const churchGroup = grouped[church];
-      if (!churchGroup) return rec;
+      if (!churchGroup) return { ...rec, evangRegFrozen };
 
       const matchedMonthKey = Object.keys(churchGroup).find((k) => k === m || k.replace(/\s+/g, '') === m.replace(/\s+/g, ''));
-      if (!matchedMonthKey) return rec;
+      if (!matchedMonthKey) return { ...rec, evangRegFrozen };
 
       const weeksInMonth = churchGroup[matchedMonthKey];
       const sortedWeeks = [...new Set(weeksInMonth.map((w) => w.weekKey))].sort((a, b) => b.localeCompare(a));
@@ -103,6 +130,8 @@ async function syncEvangelismDbData(rawRecords: DiagnosisRecord[]): Promise<{ sy
       const evangRegSum = lastWeekRecs.reduce((sum, w) => sum + (w.regCount || 0), 0);
       const bibleMonthRegSum = weeksInMonth.reduce((sum, w) => sum + (w.admitCount || 0), 0);
       const bibleCurAttSum = lastWeekRecs.reduce((sum, w) => sum + (w.gospelCount || 0), 0);
+      const findMonthSum = weeksInMonth.reduce((sum, w) => sum + (w.findCount || 0), 0);
+      const gospelMonthSum = weeksInMonth.reduce((sum, w) => sum + (w.gospelCount || 0), 0);
 
       const allChurchWeeklyRecs = weeklyRecords.filter((w) => w.churchName === church);
       const limitMonthNum = getMonthNum(matchedMonthKey);
@@ -113,8 +142,25 @@ async function syncEvangelismDbData(rawRecords: DiagnosisRecord[]): Promise<{ sy
         if (getMonthNum(wMonth) <= limitMonthNum) return sum + (w.admitCount || 0);
         return sum;
       }, 0);
+      const findCumSum = allChurchWeeklyRecs.reduce((sum, w) => {
+        const wYear = w.yearStr ? parseInt(w.yearStr.replace(/[^0-9]/g, ''), 10) : 2026;
+        if (wYear !== currentYear) return sum;
+        const wMonth = getMonthFromWeekKey(w.weekKey);
+        if (getMonthNum(wMonth) <= limitMonthNum) return sum + (w.findCount || 0);
+        return sum;
+      }, 0);
+      const gospelCumSum = allChurchWeeklyRecs.reduce((sum, w) => {
+        const wYear = w.yearStr ? parseInt(w.yearStr.replace(/[^0-9]/g, ''), 10) : 2026;
+        if (wYear !== currentYear) return sum;
+        const wMonth = getMonthFromWeekKey(w.weekKey);
+        if (getMonthNum(wMonth) <= limitMonthNum) return sum + (w.gospelCount || 0);
+        return sum;
+      }, 0);
 
-      return { ...rec, evangReg: evangRegSum, bibleMonthReg: bibleMonthRegSum, bibleCumReg: bibleCumRegSum, bibleCurAtt: bibleCurAttSum };
+      return {
+        ...rec, evangReg: evangRegSum, bibleMonthReg: bibleMonthRegSum, bibleCumReg: bibleCumRegSum, bibleCurAtt: bibleCurAttSum,
+        findMonth: findMonthSum, findCum: findCumSum, gospelMonth: gospelMonthSum, gospelCum: gospelCumSum, evangRegFrozen,
+      };
     });
 
     return { syncedRecords: updatedRecords, weeklyRecords };
@@ -158,7 +204,8 @@ export const DiagnosisDataProvider: React.FC<{ children: React.ReactNode; sectio
   // 진단서가 마지막으로 선택했던 월을 그대로 이어서 보여준다.
   const [sectionMonths, setSectionMonths] = useState<Record<string, string>>({});
   const storedMonth = sectionMonths[section];
-  const month = (storedMonth && months.includes(storedMonth)) ? storedMonth : (months.length ? months[months.length - 1] : '');
+  // months는 백엔드에서 최신월이 먼저 오도록(내림차순) 정렬돼 내려온다 — 기본값은 그 첫 번째(최신) 값이어야 한다.
+  const month = (storedMonth && months.includes(storedMonth)) ? storedMonth : (months.length ? months[0] : '');
   const setMonth = useCallback((m: string) => {
     setSectionMonths((prev) => ({ ...prev, [section]: m }));
   }, [section]);

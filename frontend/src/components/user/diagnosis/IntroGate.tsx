@@ -114,7 +114,7 @@ export const IntroGate: React.FC<IntroGateProps> = ({ visible, onEnter }) => {
   const L: Lang = lang;
   const t = (key: keyof typeof UI_TR) => UI_TR[key][L] || UI_TR[key].ko;
 
-  const latestMonth = months[months.length - 1];
+  const latestMonth = months[0];
   const recs = latestMonth ? records.filter((r) => r.month === latestMonth) : [];
   const nChurch = recs.filter((r) => r.gubun === '교회').length;
   const nRegion = recs.filter((r) => r.gubun === '지역').length;

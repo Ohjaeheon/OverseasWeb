@@ -129,7 +129,7 @@ export const ProcessCategoryPage: React.FC<ProcessCategoryPageProps> = ({ catego
   const catDef = CATS[cat] || [];
   const recs = recordsFor(records, month, gubun);
   const rows = buildRows(records, month, gubun, group, jipaOrder, jipaColors, countryContMap);
-  const gl = group === '개별' ? (gubun === '전체' ? '대상' : gubun) : group.replace('별', '');
+  const gl = cat === '①전도' && group === '개별' ? '국가명' : (group === '개별' ? (gubun === '전체' ? '대상' : gubun) : group.replace('별', ''));
 
   const si = sortIdx == null || sortIdx < 0 || sortIdx > catDef.length
     ? (group === '개별' ? 0 : (catDef.findIndex((m) => m.primary) >= 0 ? catDef.findIndex((m) => m.primary) + 1 : 1))

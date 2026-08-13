@@ -55,7 +55,7 @@ export const BusinessModule: React.FC<BusinessModuleProps> = ({ initialTab = 'le
   }, [initialTab]);
 
   const [store, setStore] = useState<Record<string, MonthlyRecord>>({});
-  const [selectedYear, setSelectedYear] = useState('2026');
+  const [selectedYear, setSelectedYear] = useState(() => new Date().getFullYear().toString());
   const [isEditMode, setIsEditMode] = useState(false);
   const [editData, setEditData] = useState<Array<{ country: string; months: Record<number, number | ''> }>>([]);
   const [allChurches, setAllChurches] = useState<Array<{ name: string }>>([]);
@@ -63,8 +63,8 @@ export const BusinessModule: React.FC<BusinessModuleProps> = ({ initialTab = 'le
   const [selectedChurchToAdd, setSelectedChurchToAdd] = useState("");
 
   // Target Year and Month to edit in Report Writer
-  const [reportYear, setReportYear] = useState('2026');
-  const [reportMonth, setReportMonth] = useState('7');
+  const [reportYear, setReportYear] = useState(() => new Date().getFullYear().toString());
+  const [reportMonth, setReportMonth] = useState(() => (new Date().getMonth() + 1).toString());
 
   // Report Writer states
   const [reportDate, setReportDate] = useState('신 43(2026)년 7월 5일');
@@ -93,8 +93,14 @@ export const BusinessModule: React.FC<BusinessModuleProps> = ({ initialTab = 'le
 
   const [archiveYear, setArchiveYear] = useState<string>(() => {
     const currentYear = new Date().getFullYear();
-    return Math.max(2026, currentYear).toString();
+    return Math.max(2025, currentYear).toString();
   });
+
+  // 2025년부터 올해까지 (미래 연도 미노출, 2999년까지 대응 가능한 하한만 고정)
+  const bizCurrentYear = new Date().getFullYear();
+  const bizYears: string[] = [];
+  for (let y = Math.max(bizCurrentYear, 2025); y >= 2025; y--) bizYears.push(y.toString());
+  const bizCurrentMonth = new Date().getMonth() + 1;
 
   // Current logged in user info (from localStorage)
   const [currentUser, setCurrentUser] = useState<{ username: string; role: string; name: string } | null>(() => {
@@ -2067,8 +2073,7 @@ export const BusinessModule: React.FC<BusinessModuleProps> = ({ initialTab = 'le
                       boxShadow: '0 2px 4px rgba(0,0,0,0.02)'
                     }}
                   >
-                    <option value="2026">2026년</option>
-                    <option value="2025">2025년</option>
+                    {bizYears.map((y) => <option key={y} value={y}>{y}년</option>)}
                   </select>
                   <button
                     onClick={handleStartEdit}
@@ -2384,15 +2389,14 @@ export const BusinessModule: React.FC<BusinessModuleProps> = ({ initialTab = 'le
                 onChange={(e) => setReportYear(e.target.value)}
                 style={{ padding: '6px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', fontWeight: 700, fontSize: '0.82rem' }}
               >
-                <option value="2026">2026년</option>
-                <option value="2025">2025년</option>
+                {bizYears.map((y) => <option key={y} value={y}>{y}년</option>)}
               </select>
-              <select 
+              <select
                 value={reportMonth}
                 onChange={(e) => setReportMonth(e.target.value)}
                 style={{ padding: '6px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', fontWeight: 700, fontSize: '0.82rem' }}
               >
-                {Array.from({ length: 12 }, (_, i) => (
+                {Array.from({ length: (parseInt(reportYear, 10) || bizCurrentYear) < bizCurrentYear ? 12 : bizCurrentMonth }, (_, i) => (
                   <option key={i + 1} value={i + 1}>{i + 1}월</option>
                 ))}
               </select>
@@ -3190,7 +3194,7 @@ export const BusinessModule: React.FC<BusinessModuleProps> = ({ initialTab = 'le
                   }}
                 >
                   {(() => {
-                    const startYear = 2026;
+                    const startYear = 2025;
                     const currentYear = new Date().getFullYear();
                     const endYear = Math.max(startYear, currentYear);
                     const options = [];

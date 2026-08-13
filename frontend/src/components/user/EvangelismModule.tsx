@@ -4,7 +4,8 @@ import { logService } from '../../services/logService';
 import { adminService, UserItem } from '../../services/adminService';
 import { diagnosisService } from '../../services/diagnosisService';
 import defaultChurchesData from '../../assets/defaultChurches.json';
-import { Building2, Calendar, Lock, Send, CheckCircle2, BarChart3, Edit3, Filter, HelpCircle, Plus, Pencil, Trash2, PieChart, TrendingUp, Activity, LayoutDashboard, X } from 'lucide-react';
+import { Building2, Calendar, Lock, Send, CheckCircle2, BarChart3, Edit3, Filter, HelpCircle, Plus, Pencil, Trash2, PieChart, TrendingUp, Activity, LayoutDashboard, X, ClipboardList } from 'lucide-react';
+import { EvangelismPlanTab } from './EvangelismPlanTab';
 
 import api from '../../services/api';
 
@@ -42,7 +43,7 @@ interface ConfigItem {
 }
 
 interface EvangelismModuleProps {
-  initialTab?: 'check' | 'aggregate';
+  initialTab?: 'check' | 'aggregate' | 'plan';
 }
 
 const DEPARTMENTS = ['교역자', '자문회', '장년회', '부녀회', '청년회'];
@@ -131,8 +132,8 @@ const getDynamicWeekConfig = (selectedYearStr: string) => {
 
 export const EvangelismModule: React.FC<EvangelismModuleProps> = ({ initialTab = 'check' }) => {
   const navigate = useNavigate();
-  // 1. Navigation Sub-tab ('check': 교회별 데이터 확인, 'aggregate': 취합)
-  const [activeTab, setActiveTab] = useState<'check' | 'aggregate'>(initialTab);
+  // 1. Navigation Sub-tab ('check': 교회별 데이터 확인, 'aggregate': 취합, 'plan': 계획)
+  const [activeTab, setActiveTab] = useState<'check' | 'aggregate' | 'plan'>(initialTab);
 
   useEffect(() => {
     if (initialTab) {
@@ -153,7 +154,7 @@ export const EvangelismModule: React.FC<EvangelismModuleProps> = ({ initialTab =
   const [selectedWeekAgg, setSelectedWeekAgg] = useState<string>(() => getDynamicWeekConfig(`${currentYearNum}년`).currentWeekKey);   // For Tab 2
 
   const dynamicYears: string[] = [];
-  for (let y = currentYearNum; y >= 2026; y--) {
+  for (let y = currentYearNum; y >= 2025; y--) {
     dynamicYears.push(`${y}년`);
   }
 
@@ -1276,6 +1277,28 @@ export const EvangelismModule: React.FC<EvangelismModuleProps> = ({ initialTab =
             <Edit3 size={18} color={activeTab === 'aggregate' ? '#16a34a' : '#cbd5e1'} />
             2. 취합 및 실적 입력
           </button>
+
+          <button
+            onClick={() => navigate('/evangelism/plan')}
+            style={{
+              padding: '10px 22px',
+              borderRadius: '10px',
+              border: 'none',
+              fontSize: '0.92rem',
+              fontWeight: 800,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              transition: 'all 0.2s ease',
+              background: activeTab === 'plan' ? '#ffffff' : 'transparent',
+              color: activeTab === 'plan' ? '#0f172a' : '#cbd5e1',
+              boxShadow: activeTab === 'plan' ? '0 4px 14px rgba(0,0,0,0.2)' : 'none'
+            }}
+          >
+            <ClipboardList size={18} color={activeTab === 'plan' ? '#7c3aed' : '#cbd5e1'} />
+            3. 계획
+          </button>
         </div>
       </div>
 
@@ -1332,57 +1355,61 @@ export const EvangelismModule: React.FC<EvangelismModuleProps> = ({ initialTab =
           )}
         </div>
 
-        {/* Right: Year & Week Filters */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-          {/* Year Dropdown */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#f8fafc', border: '1px solid #e2e8f0', padding: '6px 12px', borderRadius: '10px' }}>
-            <Calendar size={16} color="#64748b" />
-            <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#475569' }}>연도</span>
-            <select
-              value={selectedYear}
-              onChange={(e) => setSelectedYear(e.target.value)}
-              style={{ border: 'none', background: 'transparent', fontWeight: 800, color: '#2563eb', fontSize: '0.9rem', outline: 'none', cursor: 'pointer' }}
-            >
-              {dynamicYears.map(y => (
-                <option key={y} value={y}>{y}</option>
-              ))}
-            </select>
-          </div>
+        {/* Right: Year & Week Filters (계획 탭은 연/주차 개념이 없어 숨김) */}
+        {activeTab !== 'plan' && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+            {/* Year Dropdown */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#f8fafc', border: '1px solid #e2e8f0', padding: '6px 12px', borderRadius: '10px' }}>
+              <Calendar size={16} color="#64748b" />
+              <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#475569' }}>연도</span>
+              <select
+                value={selectedYear}
+                onChange={(e) => setSelectedYear(e.target.value)}
+                style={{ border: 'none', background: 'transparent', fontWeight: 800, color: '#2563eb', fontSize: '0.9rem', outline: 'none', cursor: 'pointer' }}
+              >
+                {dynamicYears.map(y => (
+                  <option key={y} value={y}>{y}</option>
+                ))}
+              </select>
+            </div>
 
-          {/* Week Dropdown */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#f0fdf4', border: '1px solid #bbf7d0', padding: '6px 14px', borderRadius: '10px' }}>
-            <Filter size={16} color="#16a34a" />
-            <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#166534' }}>주차 선택</span>
-            {activeTab === 'check' ? (
-              <select
-                value={selectedWeekCheck}
-                onChange={(e) => setSelectedWeekCheck(e.target.value)}
-                style={{ border: 'none', background: 'transparent', fontWeight: 800, color: '#16a34a', fontSize: '0.9rem', outline: 'none', cursor: 'pointer', maxWidth: '280px' }}
-              >
-                {generateWeeklyOptions(true).map((opt, idx) => (
-                  <option key={idx} value={opt.value} style={{ fontWeight: opt.isMonthHeader ? 800 : 500, color: opt.isMonthHeader ? '#2563eb' : '#0f172a' }}>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
-            ) : (
-              <select
-                value={selectedWeekAgg}
-                onChange={(e) => setSelectedWeekAgg(e.target.value)}
-                style={{ border: 'none', background: 'transparent', fontWeight: 800, color: '#16a34a', fontSize: '0.9rem', outline: 'none', cursor: 'pointer', maxWidth: '280px' }}
-              >
-                {generateWeeklyOptions(false).filter(opt => !opt.isMonthHeader).map((opt, idx) => (
-                  <option key={idx} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
-            )}
+            {/* Week Dropdown */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#f0fdf4', border: '1px solid #bbf7d0', padding: '6px 14px', borderRadius: '10px' }}>
+              <Filter size={16} color="#16a34a" />
+              <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#166534' }}>주차 선택</span>
+              {activeTab === 'check' ? (
+                <select
+                  value={selectedWeekCheck}
+                  onChange={(e) => setSelectedWeekCheck(e.target.value)}
+                  style={{ border: 'none', background: 'transparent', fontWeight: 800, color: '#16a34a', fontSize: '0.9rem', outline: 'none', cursor: 'pointer', maxWidth: '280px' }}
+                >
+                  {generateWeeklyOptions(true).map((opt, idx) => (
+                    <option key={idx} value={opt.value} style={{ fontWeight: opt.isMonthHeader ? 800 : 500, color: opt.isMonthHeader ? '#2563eb' : '#0f172a' }}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <select
+                  value={selectedWeekAgg}
+                  onChange={(e) => setSelectedWeekAgg(e.target.value)}
+                  style={{ border: 'none', background: 'transparent', fontWeight: 800, color: '#16a34a', fontSize: '0.9rem', outline: 'none', cursor: 'pointer', maxWidth: '280px' }}
+                >
+                  {generateWeeklyOptions(false).filter(opt => !opt.isMonthHeader).map((opt, idx) => (
+                    <option key={idx} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
-      {renderProcessChevrons()}
+      {activeTab !== 'plan' && renderProcessChevrons()}
+
+      {activeTab === 'plan' && <EvangelismPlanTab selectedChurch={selectedChurch} />}
 
       {/* ========================================================================= */}
       {/* TAB 1: 교회별 데이터 확인 (Church Data Verification)                      */}
@@ -1676,7 +1703,7 @@ export const EvangelismModule: React.FC<EvangelismModuleProps> = ({ initialTab =
                     gap: '8px'
                   }}
                 >
-                  <CheckCircle2 size={18} /> 실적 저장하기
+                  <CheckCircle2 size={18} /> 저장하기
                 </button>
               ) : (
                 <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', color: '#64748b', padding: '10px 18px', borderRadius: '10px', fontSize: '0.85rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>

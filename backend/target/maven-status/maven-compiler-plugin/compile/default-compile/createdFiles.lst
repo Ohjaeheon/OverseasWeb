@@ -7,12 +7,14 @@ com\overseas\portal\domain\User$UserBuilder.class
 com\overseas\portal\OverseasPortalApplication.class
 com\overseas\portal\controller\MembershipController.class
 com\overseas\portal\service\SystemLogService.class
+com\overseas\portal\domain\EvangelismPlanItem$EvangelismPlanItemBuilder.class
 com\overseas\portal\domain\LoginLog.class
 com\overseas\portal\repository\FileDownloadLogRepository.class
 com\overseas\portal\domain\EvangelismWeeklyRecord$EvangelismWeeklyRecordBuilder.class
 com\overseas\portal\domain\SystemConfig$SystemConfigBuilder.class
 com\overseas\portal\service\DiagnosisService$SummaryMetric$SummaryMetricBuilder.class
 com\overseas\portal\security\JwtAuthenticationFilter.class
+com\overseas\portal\domain\EvangelismPlanItem.class
 com\overseas\portal\security\JwtTokenProvider.class
 com\overseas\portal\service\AdminService$AdminDashboardSummary$AdminDashboardSummaryBuilder.class
 com\overseas\portal\controller\AuthController$LoginRequest.class
@@ -67,6 +69,7 @@ com\overseas\portal\domain\FileUploadLog.class
 com\overseas\portal\controller\UserController$ProfileBotTestRequest.class
 com\overseas\portal\domain\I18nDictionary.class
 com\overseas\portal\service\TelegramBotPollingService$TelegramMultipartFile.class
+com\overseas\portal\controller\EvangelismPlanController$ItemPayload.class
 com\overseas\portal\domain\WeeklyReportSubmission$WeeklyReportSubmissionBuilder.class
 com\overseas\portal\repository\TelegramOtpLogRepository.class
 com\overseas\portal\domain\User.class
@@ -89,6 +92,7 @@ com\overseas\portal\repository\ChurchRepository.class
 com\overseas\portal\repository\WeeklyWorshipHistoryRepository.class
 com\overseas\portal\service\AuthService$LoginResponse.class
 com\overseas\portal\controller\AdminController.class
+com\overseas\portal\controller\EvangelismPlanController.class
 com\overseas\portal\domain\Church$ChurchBuilder.class
 com\overseas\portal\service\AuthService$1.class
 com\overseas\portal\domain\TelegramOtpLog$TelegramOtpLogBuilder.class
@@ -107,6 +111,7 @@ com\overseas\portal\repository\EvangelismEditRequestRepository.class
 com\overseas\portal\domain\AccessLog.class
 com\overseas\portal\domain\LoginLog$LoginLogBuilder.class
 com\overseas\portal\domain\Church.class
+com\overseas\portal\controller\EvangelismPlanController$SaveRequest.class
 com\overseas\portal\domain\FaithProcessRecord$FaithProcessRecordBuilder.class
 com\overseas\portal\repository\MembershipMonthlyRecordRepository.class
 com\overseas\portal\repository\UserRepository.class
@@ -119,6 +124,7 @@ com\overseas\portal\repository\SystemConfigRepository.class
 com\overseas\portal\domain\EvangelismEditRequest$EvangelismEditRequestBuilder.class
 com\overseas\portal\controller\AdminController$ConfigUpdateRequest.class
 com\overseas\portal\security\EncryptionUtil.class
+com\overseas\portal\controller\EvangelismPlanController$DeleteRequest.class
 com\overseas\portal\controller\AdminController$1.class
 com\overseas\portal\domain\AuditLog.class
 com\overseas\portal\domain\OrganizationChart$OrganizationChartBuilder.class
@@ -132,6 +138,7 @@ com\overseas\portal\domain\CalendarEvent$CalendarEventBuilder.class
 com\overseas\portal\repository\BusinessBoardPostRepository.class
 com\overseas\portal\repository\AccessLogRepository.class
 com\overseas\portal\domain\BusinessBoardPost$BusinessBoardPostBuilder.class
+com\overseas\portal\repository\EvangelismPlanItemRepository.class
 com\overseas\portal\controller\UserController$ProfileUpdateRequest.class
 com\overseas\portal\controller\WeeklyWorshipController.class
 com\overseas\portal\service\DiagnosisService.class

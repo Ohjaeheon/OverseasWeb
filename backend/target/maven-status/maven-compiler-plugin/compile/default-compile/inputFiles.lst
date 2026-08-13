@@ -13,11 +13,14 @@ E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\domain\BusinessL
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\domain\OrganizationChart.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\config\DataInitializer.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\controller\AuthController.java
+E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\domain\EvangelismPlanItem.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\domain\EvangelismWeeklyRecord.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\repository\AccessLogRepository.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\config\SecurityConfig.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\domain\AuditLog.java
+E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\controller\EvangelismPlanController.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\controller\I18nController.java
+E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\repository\EvangelismPlanItemRepository.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\security\JwtAuthenticationFilter.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\domain\WeeklyWorshipHistory.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\repository\EvangelismEditRequestRepository.java

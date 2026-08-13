@@ -27,7 +27,7 @@ import { ProcessCategoryPage } from '../../components/user/diagnosis/ProcessCate
 
 interface DiagnosisPageProps {
   section?: string;
-  tab?: 'check' | 'aggregate' | 'input' | 'ledger' | 'ledger_archive' | 'ledger_report' | 'fruit' | 'fruit_archive' | 'transport' | 'transport_archive' | 'mission' | 'mission_archive' | 'business_calendar';
+  tab?: 'check' | 'aggregate' | 'plan' | 'input' | 'ledger' | 'ledger_archive' | 'ledger_report' | 'fruit' | 'fruit_archive' | 'transport' | 'transport_archive' | 'mission' | 'mission_archive' | 'business_calendar';
 }
 
 export const DiagnosisPage: React.FC<DiagnosisPageProps> = ({ section = 'home', tab = 'check' }) => {
@@ -207,7 +207,10 @@ export const DiagnosisPage: React.FC<DiagnosisPageProps> = ({ section = 'home', 
     if (section === 'calendar') return <CalendarPage mode="MAIN" />;
     if (section === 'organization') return <OrganizationPage />;
     if (section === 'business' && tab === 'business_calendar') return <CalendarPage mode="BUSINESS" />;
-    if (section === 'evangelism/check' || section === 'evangelism/aggregate') return <EvangelismModule initialTab={section === 'evangelism/aggregate' ? 'aggregate' : 'check'} />;
+    if (section === 'evangelism/check' || section === 'evangelism/aggregate' || section === 'evangelism/plan') {
+      const evangelismTab = section === 'evangelism/aggregate' ? 'aggregate' : section === 'evangelism/plan' ? 'plan' : 'check';
+      return <EvangelismModule initialTab={evangelismTab} />;
+    }
     if (section === 'membership' || section === 'membership/check' || section === 'membership/input') return <MembershipModule initialTab={section === 'membership/input' ? 'input' : 'check'} />;
     if (section === 'business' || section.startsWith('business/')) return <BusinessModule initialTab={tab as any} />;
     if (section === 'weekly-report') return <WeeklyReportPage />;
