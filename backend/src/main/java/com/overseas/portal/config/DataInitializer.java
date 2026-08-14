@@ -23,6 +23,7 @@ public class DataInitializer implements CommandLineRunner {
     private final SystemConfigRepository systemConfigRepository;
     private final PasswordEncoder passwordEncoder;
     private final EvangelismWeeklyRecordRepository evangelismWeeklyRecordRepository;
+    private final WorshipRegionMappingRepository worshipRegionMappingRepository;
     private final org.springframework.jdbc.core.JdbcTemplate jdbcTemplate;
 
     @Override
@@ -538,6 +539,26 @@ public class DataInitializer implements CommandLineRunner {
             churchRepository.save(church_20);
             churchMap.put("인도첸나이교회인도네시아쿠팡지역", church_20);
             log.info("Successfully seeded 21 churches with enriched metadata into PostgreSQL database!");
+        }
+
+        // 4. Seed default worship region mapping (matches the 19 sheets currently in 양식.xlsx)
+        if (worshipRegionMappingRepository.count() == 0) {
+            log.info("Seeding default worship region mapping (19 regions)...");
+            String[][] defaults = {
+                    {"1", "도쿄"}, {"2", "텍사스"}, {"3", "튀르키예"}, {"4", "파키스탄"},
+                    {"5", "인도첸나이"}, {"6", "민주콩고"}, {"7", "카자흐스탄"}, {"8", "포르투갈"},
+                    {"9", "멕시코"}, {"10", "브라질"}, {"11", "카메룬부에아"}, {"12", "인니(마카사르)"},
+                    {"13", "인도하이데라바드"}, {"14", "인도뭄바이"}, {"15", "인도오디샤"},
+                    {"16", "인도카르나타카서부"}, {"17", "인니(쿠팡)"}, {"18", "모잠비크"}, {"19", "카메룬"}
+            };
+            for (String[] d : defaults) {
+                worshipRegionMappingRepository.save(WorshipRegionMapping.builder()
+                        .regionNo(Integer.parseInt(d[0]))
+                        .displayName(d[1])
+                        .isActive(true)
+                        .build());
+            }
+            log.info("Successfully seeded {} worship region mappings.", defaults.length);
         }
 
         log.info("Demo data seeding disabled as per clean startup requirements.");

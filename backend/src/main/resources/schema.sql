@@ -445,3 +445,35 @@ COMMENT ON COLUMN overseas.weekly_report_submissions.submit_data_json IS '실제
 COMMENT ON COLUMN overseas.weekly_report_submissions.photo_paths IS '첨부 이미지 경로 목록 (JSON 배열)';
 COMMENT ON COLUMN overseas.weekly_report_submissions.status IS '제출 상태 (SUBMITTED, REVISED)';
 
+-- 19. 주간예배 출결 취합 - 지역 번호/표시명 매핑 테이블
+CREATE TABLE IF NOT EXISTS overseas.worship_region_mapping (
+    mapping_id   BIGSERIAL PRIMARY KEY,
+    region_no    INT NOT NULL UNIQUE,
+    display_name VARCHAR(100) NOT NULL,
+    is_active    BOOLEAN DEFAULT TRUE,
+    created_at   TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at   TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+COMMENT ON TABLE overseas.worship_region_mapping IS '주간예배 출결 취합 - 지역 번호(파일/시트 접두사) ↔ 표시명 매핑';
+COMMENT ON COLUMN overseas.worship_region_mapping.region_no IS '지역 파일/템플릿 시트 번호 접두사 (예: 1, 2, ...)';
+COMMENT ON COLUMN overseas.worship_region_mapping.display_name IS '관리자 화면에 표시할 지역명 (예: 도쿄)';
+COMMENT ON COLUMN overseas.worship_region_mapping.is_active IS '현재 사용 중인 지역 여부';
+
+-- 20. 주간예배 출결 취합 - 업로드된 템플릿(양식.xlsx) 이력 테이블
+CREATE TABLE IF NOT EXISTS overseas.worship_template (
+    template_id       BIGSERIAL PRIMARY KEY,
+    original_filename VARCHAR(255) NOT NULL,
+    stored_path       VARCHAR(500) NOT NULL,
+    region_count      INT,
+    is_active         BOOLEAN DEFAULT FALSE,
+    uploaded_by       VARCHAR(50),
+    uploaded_at       TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+COMMENT ON TABLE overseas.worship_template IS '주간예배 출결 취합 - 관리자가 업로드한 양식(템플릿) 파일 이력 (1개만 활성)';
+COMMENT ON COLUMN overseas.worship_template.original_filename IS '업로드 당시 원본 파일명';
+COMMENT ON COLUMN overseas.worship_template.stored_path IS '서버에 보관된 상대 경로';
+COMMENT ON COLUMN overseas.worship_template.region_count IS '업로드 시점에 감지된 지역(시트) 개수 (참고용)';
+COMMENT ON COLUMN overseas.worship_template.is_active IS '현재 취합에 사용 중인 활성 템플릿 여부';
+

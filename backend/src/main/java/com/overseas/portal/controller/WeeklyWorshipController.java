@@ -1,6 +1,8 @@
 package com.overseas.portal.controller;
 
 import com.overseas.portal.domain.WeeklyWorshipHistory;
+import com.overseas.portal.domain.WorshipRegionMapping;
+import com.overseas.portal.domain.WorshipTemplate;
 import com.overseas.portal.service.WeeklyWorshipService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -18,6 +20,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Map;
 
 @Slf4j
 @RestController
@@ -126,6 +129,94 @@ public class WeeklyWorshipController {
         } catch (Exception e) {
             log.error("Failed to delete history files", e);
             return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    /**
+     * 지역 매핑 전체 조회
+     */
+    @GetMapping("/regions")
+    public ResponseEntity<List<WorshipRegionMapping>> listRegions() {
+        return ResponseEntity.ok(weeklyWorshipService.listRegions());
+    }
+
+    /**
+     * 지역 매핑 신규 등록
+     */
+    @PostMapping("/regions")
+    public ResponseEntity<?> createRegion(@RequestBody WorshipRegionMapping body) {
+        try {
+            return ResponseEntity.ok(weeklyWorshipService.createRegion(body.getRegionNo(), body.getDisplayName()));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+        }
+    }
+
+    /**
+     * 지역 매핑 수정 (번호/표시명/활성여부)
+     */
+    @PutMapping("/regions/{id}")
+    public ResponseEntity<?> updateRegion(@PathVariable Long id, @RequestBody WorshipRegionMapping body) {
+        try {
+            return ResponseEntity.ok(weeklyWorshipService.updateRegion(id, body.getRegionNo(), body.getDisplayName(), body.getIsActive()));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+        }
+    }
+
+    /**
+     * 지역 매핑 삭제
+     */
+    @DeleteMapping("/regions/{id}")
+    public ResponseEntity<?> deleteRegion(@PathVariable Long id) {
+        try {
+            weeklyWorshipService.deleteRegion(id);
+            return ResponseEntity.ok().build();
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+        }
+    }
+
+    /**
+     * 업로드된 템플릿 이력 전체 조회 (활성 템플릿 포함)
+     */
+    @GetMapping("/template")
+    public ResponseEntity<List<WorshipTemplate>> listTemplates() {
+        return ResponseEntity.ok(weeklyWorshipService.listTemplates());
+    }
+
+    /**
+     * 새 템플릿(양식.xlsx) 업로드 및 즉시 활성화
+     */
+    @PostMapping("/template")
+    public ResponseEntity<?> uploadTemplate(@RequestParam("file") MultipartFile file,
+                                             jakarta.servlet.http.HttpServletRequest request) {
+        try {
+            String username = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getName();
+            String ip = getClientIp(request);
+            fileLogService.logUpload(username, file.getOriginalFilename(), file.getSize(), ip);
+
+            return ResponseEntity.ok(weeklyWorshipService.uploadTemplate(file, username));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+        } catch (Exception e) {
+            log.error("Failed to upload worship template", e);
+            return ResponseEntity.internalServerError().body(Map.of("message", e.getMessage()));
+        }
+    }
+
+    /**
+     * 과거 템플릿으로 롤백(활성 전환)
+     */
+    @PostMapping("/template/{id}/activate")
+    public ResponseEntity<?> activateTemplate(@PathVariable Long id) {
+        try {
+            return ResponseEntity.ok(weeklyWorshipService.activateTemplate(id));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+        } catch (Exception e) {
+            log.error("Failed to activate worship template", e);
+            return ResponseEntity.internalServerError().body(Map.of("message", e.getMessage()));
         }
     }
 

@@ -11,8 +11,10 @@ import {
   Loader2 
 } from 'lucide-react';
 import api from '../../services/api';
+import { weeklyWorshipConfigService } from '../../services/weeklyWorshipConfigService';
 
 export const AdminWeeklyWorshipPage: React.FC = () => {
+  const [regionCount, setRegionCount] = useState<number | null>(null);
   const [file, setFile] = useState<File | null>(null);
   const [dragActive, setDragActive] = useState<boolean>(false);
   const [executing, setExecuting] = useState<boolean>(false);
@@ -29,6 +31,13 @@ export const AdminWeeklyWorshipPage: React.FC = () => {
       consoleEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }
   }, [logs]);
+
+  // 활성 지역 개수를 불러와 안내 문구에 반영 (지역/양식 설정에서 관리)
+  useEffect(() => {
+    weeklyWorshipConfigService.listRegions()
+      .then(regions => setRegionCount(regions.filter(r => r.isActive).length))
+      .catch(() => setRegionCount(null));
+  }, []);
 
   const handleDrag = (e: React.DragEvent) => {
     e.preventDefault();
@@ -173,7 +182,8 @@ export const AdminWeeklyWorshipPage: React.FC = () => {
           📅 주간예배 출결 자동 취합 관리
         </h2>
         <p style={{ color: '#6b7a99', fontSize: '0.88rem', marginTop: '6px', lineHeight: 1.5 }}>
-          해외 19개 지역별 비밀번호 암호화 엑셀 파일들을 메인 템플릿 파일(양식.xlsx)에 자동으로 취합 및 분배하는 도구입니다.<br />
+          해외 {regionCount ?? '전체'}개 지역별 비밀번호 암호화 엑셀 파일들을 메인 템플릿 파일(양식.xlsx)에 자동으로 취합 및 분배하는 도구입니다.
+          지역 목록과 템플릿 파일은 <strong>지역/양식 설정</strong> 메뉴에서 관리할 수 있습니다.<br />
           업로드할 지역별 엑셀 파일들을 하나의 <strong>ZIP 압축파일(.zip)</strong>로 묶어서 제출해 주십시오.
         </p>
       </div>

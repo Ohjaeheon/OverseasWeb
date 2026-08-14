@@ -25,6 +25,7 @@ import { AdminPlaceholderPage } from './pages/admin/AdminPlaceholderPage';
 import { AdminBotPage } from './pages/admin/AdminBotPage';
 import { AdminWeeklyWorshipPage } from './pages/admin/AdminWeeklyWorshipPage';
 import { AdminWeeklyWorshipHistoryPage } from './pages/admin/AdminWeeklyWorshipHistoryPage';
+import { AdminWeeklyWorshipSettingsPage } from './pages/admin/AdminWeeklyWorshipSettingsPage';
 import { AdminEvangelismBulkPage } from './pages/admin/AdminEvangelismBulkPage';
 import { AdminMembershipBulkPage } from './pages/admin/AdminMembershipBulkPage';
 import { AdminWeeklyReportSchemaPage } from './pages/admin/AdminWeeklyReportSchemaPage';
@@ -161,6 +162,7 @@ export const App: React.FC = () => {
             {/* 데이터 관리 */}
             <Route path="weekly-worship" element={<AdminWeeklyWorshipPage />} />
             <Route path="weekly-worship/history" element={<AdminWeeklyWorshipHistoryPage />} />
+            <Route path="weekly-worship/settings" element={<AdminWeeklyWorshipSettingsPage />} />
             <Route path="evangelism-bulk" element={<AdminEvangelismBulkPage />} />
             <Route path="membership-bulk" element={<AdminMembershipBulkPage />} />
             <Route path="weekly-report-status" element={<AdminWeeklyReportStatusPage />} />

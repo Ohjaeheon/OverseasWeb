@@ -120,6 +120,13 @@ export const DiagnosisSidebar: React.FC<DiagnosisSidebarProps> = ({ isOpen, onCl
     <>
       <div className="sidebar-overlay" style={{ display: isOpen ? 'block' : 'none' }} onClick={onClose} />
       <nav className={`side${isOpen ? ' open' : ''}`}>
+        <div className="side-head">
+          <div className="sidebrand">
+            <div className="gl">🌐</div>
+            <div className="tx"><b>해외선교부</b><span>GLOBAL MISSION DASHBOARD</span></div>
+          </div>
+          <button className="side-close" onClick={onClose} aria-label="메뉴 닫기">✕</button>
+        </div>
         {filtered.map((entry, idx) => {
           if (isGroup(entry)) {
             return <div className="grp" key={`grp-${idx}`}>{entry.grp}</div>;
@@ -140,27 +147,29 @@ export const DiagnosisSidebar: React.FC<DiagnosisSidebarProps> = ({ isOpen, onCl
                 {it.tag && <span className="tag">{it.tag}</span>}
                 {it.children && <span style={{ marginLeft: 'auto', color: 'var(--muted)', fontSize: 11 }}>{expanded ? '▾' : '▸'}</span>}
               </div>
-              {it.children && expanded && it.children.filter((ch) => hasChildAccess(ch, it.s)).map((ch) => (
-                <div
-                  key={ch.path}
-                  className={`mitem ${location.pathname === ch.path ? 'on' : ''}`}
-                  style={{ paddingLeft: 36, fontSize: 13 }}
-                  onClick={() => go(ch.path)}
-                >
-                  <span className="ico" style={{ fontSize: 10, color: 'var(--muted)' }}>·</span>{ch.label}
+              {it.children && expanded && (
+                <div className="msubwrap">
+                  {it.children.filter((ch) => hasChildAccess(ch, it.s)).map((ch) => (
+                    <div
+                      key={ch.path}
+                      className={`mitem sub ${location.pathname === ch.path ? 'on' : ''}`}
+                      onClick={() => go(ch.path)}
+                    >
+                      {ch.label}
+                    </div>
+                  ))}
                 </div>
-              ))}
+              )}
             </React.Fragment>
           );
         })}
 
-        <div className="mobile-side-actions" style={{ marginTop: 20, paddingTop: 15, borderTop: '1px solid rgba(255,255,255,0.15)' }}>
-          <div style={{ padding: '0 10px 10px 10px' }}>
+        <div className="mobile-side-actions">
+          <div className="side-actions-lang">
             <select
               className="langSel"
               value={lang}
               onChange={(e) => onLangChange(e.target.value)}
-              style={{ width: '100%', background: '#1e293b', color: '#fff', border: '1px solid rgba(255,255,255,0.2)', borderRadius: 8, padding: '8px 10px', fontSize: 13, fontWeight: 700 }}
             >
               <option value="ko">한국어</option>
               <option value="en">English</option>
@@ -168,20 +177,21 @@ export const DiagnosisSidebar: React.FC<DiagnosisSidebarProps> = ({ isOpen, onCl
               <option value="ja">日本語</option>
             </select>
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: '0 10px' }}>
-            <button className="repbtn" style={{ width: '100%', justifyContent: 'center', background: 'rgba(255,255,255,0.1)', color: '#fff', border: '1px solid rgba(255,255,255,0.2)' }} onClick={onShowIntro}>🏠 인트로</button>
-            <button className="repbtn" style={{ width: '100%', justifyContent: 'center', background: 'rgba(255,255,255,0.1)', color: '#fff', border: '1px solid rgba(255,255,255,0.2)' }} onClick={() => go('/profile')}>👤 회원관리</button>
+          <div className="actgrid">
+            <button className="actbtn" onClick={onShowIntro}><span>🏠</span>인트로</button>
+            <button className="actbtn" onClick={() => go('/profile')}><span>👤</span>회원관리</button>
+            <button className="actbtn" onClick={() => window.print()}><span>📄</span>출력 · PDF</button>
             {showAdminBtn && (
-              <button className="repbtn" style={{ width: '100%', justifyContent: 'center', background: '#2563eb', color: '#fff', border: 'none', fontWeight: 700 }} onClick={() => go(roleService.getAdminEntryPath(userRole))}>⚙️ 관리자 시스템</button>
+              <button className="actbtn accent" onClick={() => go(roleService.getAdminEntryPath(userRole))}><span>⚙️</span>관리자 시스템</button>
             )}
+          </div>
+          <div className="side-actions-danger">
             {showBackdoorBtn && (
-              <button className="repbtn" style={{ width: '100%', justifyContent: 'center', background: '#7c3aed', color: '#fff', border: 'none', fontWeight: 700 }} onClick={() => { sessionService.clearSession(); window.location.href = '/OverseasPortal/login?mode=backdoor'; }}>🚪 백도어 설정</button>
+              <button className="actbtn full purple" onClick={() => { sessionService.clearSession(); window.location.href = '/OverseasPortal/login?mode=backdoor'; }}>🚪 백도어 설정</button>
             )}
-            <button className="repbtn" style={{ width: '100%', justifyContent: 'center', background: 'rgba(255,255,255,0.1)', color: '#fff', border: '1px solid rgba(255,255,255,0.2)' }} onClick={() => window.print()}>📄 출력 · PDF 저장</button>
             {!telegramService.isTelegramWebApp() && (
               <button
-                className="repbtn"
-                style={{ width: '100%', justifyContent: 'center', background: '#ef4444', color: '#fff', border: 'none', fontWeight: 700 }}
+                className="actbtn full danger"
                 onClick={() => {
                   if (window.confirm('정말 로그아웃 하시겠습니까?')) {
                     onClose();

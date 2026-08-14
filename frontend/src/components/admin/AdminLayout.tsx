@@ -74,7 +74,8 @@ export const AdminLayout: React.FC = () => {
       s: "weekly_worship", ico: "📅", label: "주간예배 출결", path: "/adminsetting/weekly-worship",
       children: [
         { label: "자동 취합 실행", path: "/adminsetting/weekly-worship" },
-        { label: "이전 데이터 확인", path: "/adminsetting/weekly-worship/history" }
+        { label: "이전 데이터 확인", path: "/adminsetting/weekly-worship/history" },
+        { label: "지역/양식 설정", path: "/adminsetting/weekly-worship/settings" }
       ]
     },
     {
