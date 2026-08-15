@@ -79,7 +79,7 @@ export const AdminLayout: React.FC = () => {
       ]
     },
     {
-      s: "weekly_report_status", ico: "📋", label: "주간보고 취합현황", path: "/adminsetting/weekly-report-status",
+      s: "weekly_report_status", ico: "📋", label: "주간보고 관리", path: "/adminsetting/weekly-report-status",
       children: [
         { label: "제출 현황 확인", path: "/adminsetting/weekly-report-status" },
         { label: "주차별 양식 관리", path: "/adminsetting/weekly-report-schema" }

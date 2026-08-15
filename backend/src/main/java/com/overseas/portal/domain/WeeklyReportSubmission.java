@@ -9,10 +9,14 @@ import org.hibernate.annotations.UpdateTimestamp;
 import java.time.ZonedDateTime;
 
 /**
- * 주간보고 사용자 제출 데이터 엔티티
+ * 주간보고 사용자 제출 데이터 엔티티.
+ * 대상 주차(reportYear/reportMonth/reportWeekOfMonth)는 제출건 자체에 저장한다 —
+ * 양식(schema)은 여러 주차에 걸쳐 재사용될 수 있으므로 유니크 제약의 기준이 될 수 없다.
  */
 @Entity
-@Table(name = "weekly_report_submissions", schema = "overseas")
+@Table(name = "weekly_report_submissions", schema = "overseas",
+        uniqueConstraints = @UniqueConstraint(name = "uq_report_week_church",
+                columnNames = {"report_year", "report_month", "report_week_of_month", "church_id"}))
 @Getter
 @Setter
 @NoArgsConstructor
@@ -29,8 +33,20 @@ public class WeeklyReportSubmission {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "schema_id", nullable = false)
-    @Comment("제출 당시 양식 스키마 FK")
+    @Comment("제출 당시 적용된 양식 스키마 FK (이력 보존)")
     private WeeklyReportSchema schema;
+
+    @Column(name = "report_year", nullable = false)
+    @Comment("보고 대상 연도")
+    private Integer reportYear;
+
+    @Column(name = "report_month", nullable = false)
+    @Comment("보고 대상 월 (1-12)")
+    private Integer reportMonth;
+
+    @Column(name = "report_week_of_month", nullable = false)
+    @Comment("보고 대상 월내 주차 (1-5)")
+    private Integer reportWeekOfMonth;
 
     @Column(name = "church_id")
     @Comment("교회 FK (삭제 시 null 유지)")

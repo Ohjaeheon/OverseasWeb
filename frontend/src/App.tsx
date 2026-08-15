@@ -31,7 +31,6 @@ import { AdminEvangelismReportTemplatePage } from './pages/admin/AdminEvangelism
 import { AdminMembershipBulkPage } from './pages/admin/AdminMembershipBulkPage';
 import { AdminWeeklyReportSchemaPage } from './pages/admin/AdminWeeklyReportSchemaPage';
 import { AdminWeeklyReportStatusPage } from './pages/admin/AdminWeeklyReportStatusPage';
-import { WeeklyReportPage } from './pages/user/WeeklyReportPage';
 
 import { roleService } from './services/roleService';
 import { TelegramLifecycleHandler } from './components/TelegramLifecycleHandler';
@@ -148,7 +147,8 @@ export const App: React.FC = () => {
         <Route path="/approvals/completed" element={<DiagnosisPage section="approvals/completed" />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/profile" element={<DiagnosisPage section="profile" />} />
-        <Route path="/weekly-report" element={<WeeklyReportPage />} />
+        <Route path="/weekly-report" element={<DiagnosisPage section="weekly-report" />} />
+        <Route path="/weekly-report/input" element={<DiagnosisPage section="weekly-report/input" />} />
         <Route path="/adminsetting" element={<AdminSettingRootRoute />} />
 
         {/* Protected Admin Routes (ROLE_ADMIN Only) */}

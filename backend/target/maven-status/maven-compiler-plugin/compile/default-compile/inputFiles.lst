@@ -15,6 +15,7 @@ E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\security\JwtAuth
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\repository\EvangelismEditRequestRepository.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\repository\FileUploadLogRepository.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\OverseasPortalApplication.java
+E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\util\WeekUtil.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\controller\EvangelismController.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\exception\GlobalExceptionHandler.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\repository\WeeklyReportSubmissionRepository.java

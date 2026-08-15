@@ -9,23 +9,29 @@ import {
   WeeklyReportSubmissionItem,
   FormSchema
 } from '../../services/weeklyReportService';
+import { Week, getCurrentWeek, enumerateWeeks, formatWeekLabel } from '../../utils/weekUtil';
 
 export const AdminWeeklyReportStatusPage: React.FC = () => {
   const [schemas, setSchemas] = useState<WeeklyReportSchemaItem[]>([]);
+  const [weekOptions, setWeekOptions] = useState<Week[]>([]);
+  const [selectedWeek, setSelectedWeek] = useState<Week | ''>('');
   const [submissions, setSubmissions] = useState<WeeklyReportSubmissionItem[]>([]);
-  const [selectedSchemaId, setSelectedSchemaId] = useState<number | ''>('');
   const [searchText, setSearchText] = useState('');
   const [loading, setLoading] = useState(false);
   const [detailItem, setDetailItem] = useState<WeeklyReportSubmissionItem | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // 양식 목록 로드
+  // 양식 목록 로드 (상세보기에서 스키마 참조용) + 서버 기준 현재 주차로 주차 선택기 구성
   useEffect(() => {
-    weeklyReportService.getSchemas().then(data => {
-      setSchemas(data);
-      const active = data.find(s => s.isActive);
-      if (active) setSelectedSchemaId(active.schemaId);
-    }).catch(() => {});
+    weeklyReportService.getSchemas().then(data => setSchemas(data)).catch(() => {});
+    weeklyReportService.getServerCurrentWeek().then(now => {
+      setWeekOptions(enumerateWeeks(undefined, now).reverse());
+      setSelectedWeek(now);
+    }).catch(() => {
+      const now = getCurrentWeek();
+      setWeekOptions(enumerateWeeks(undefined, now).reverse());
+      setSelectedWeek(now);
+    });
   }, []);
 
   // 제출 현황 로드
@@ -33,16 +39,14 @@ export const AdminWeeklyReportStatusPage: React.FC = () => {
     try {
       setLoading(true);
       setError(null);
-      const data = await weeklyReportService.getSubmissions(
-        selectedSchemaId !== '' ? selectedSchemaId : undefined
-      );
+      const data = await weeklyReportService.getSubmissions(selectedWeek !== '' ? selectedWeek : undefined);
       setSubmissions(data);
     } catch (e: any) {
       setError('데이터를 불러오지 못했습니다.');
     } finally {
       setLoading(false);
     }
-  }, [selectedSchemaId]);
+  }, [selectedWeek]);
 
   useEffect(() => { loadSubmissions(); }, [loadSubmissions]);
 
@@ -78,11 +82,17 @@ export const AdminWeeklyReportStatusPage: React.FC = () => {
       <div style={{ display: 'flex', gap: '12px', marginBottom: '20px', flexWrap: 'wrap' }}>
         <div style={{ position: 'relative' }}>
           <Calendar size={15} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: '#64748b' }} />
-          <select value={selectedSchemaId} onChange={e => setSelectedSchemaId(e.target.value === '' ? '' : Number(e.target.value))}
+          <select
+            value={selectedWeek === '' ? '' : `${selectedWeek.year}-${selectedWeek.month}-${selectedWeek.weekOfMonth}`}
+            onChange={e => {
+              if (e.target.value === '') { setSelectedWeek(''); return; }
+              const [y, m, w] = e.target.value.split('-').map(Number);
+              setSelectedWeek({ year: y, month: m, weekOfMonth: w });
+            }}
             style={{ paddingLeft: '32px', paddingRight: '32px', paddingTop: '9px', paddingBottom: '9px', background: 'rgba(30,41,59,0.8)', border: '1px solid rgba(51,65,85,0.5)', borderRadius: '10px', color: '#e2e8f0', fontSize: '0.875rem', cursor: 'pointer', appearance: 'none' }}>
             <option value="">전체 주차</option>
-            {schemas.map(s => (
-              <option key={s.schemaId} value={s.schemaId}>{s.weekLabel}{s.isActive ? ' (활성)' : ''}</option>
+            {weekOptions.map(w => (
+              <option key={`${w.year}-${w.month}-${w.weekOfMonth}`} value={`${w.year}-${w.month}-${w.weekOfMonth}`}>{formatWeekLabel(w)}</option>
             ))}
           </select>
           <ChevronDown size={14} style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', color: '#64748b', pointerEvents: 'none' }} />
@@ -147,7 +157,7 @@ export const AdminWeeklyReportStatusPage: React.FC = () => {
                     onMouseEnter={e => (e.currentTarget.style.background = 'rgba(30,41,59,0.5)')}
                     onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
                     <td style={{ padding: '13px 16px', fontWeight: 600, color: '#f1f5f9' }}>{sub.churchName}</td>
-                    <td style={{ padding: '13px 16px', color: '#94a3b8', fontSize: '0.85rem' }}>{sub.schema?.weekLabel || '-'}</td>
+                    <td style={{ padding: '13px 16px', color: '#94a3b8', fontSize: '0.85rem' }}>{formatWeekLabel({ year: sub.reportYear, month: sub.reportMonth, weekOfMonth: sub.reportWeekOfMonth })}</td>
                     <td style={{ padding: '13px 16px', color: '#94a3b8', fontSize: '0.85rem' }}>{sub.submittedBy || '-'}</td>
                     <td style={{ padding: '13px 16px', color: '#64748b', fontSize: '0.8rem' }}>
                       {new Date(sub.submittedAt).toLocaleString('ko-KR', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
@@ -188,7 +198,7 @@ export const AdminWeeklyReportStatusPage: React.FC = () => {
               <div>
                 <h3 style={{ margin: 0, color: '#f1f5f9', fontSize: '1.1rem', fontWeight: 700 }}>{detailItem.churchName} — 제출 상세</h3>
                 <p style={{ margin: '4px 0 0', color: '#64748b', fontSize: '0.8rem' }}>
-                  {detailItem.schema?.weekLabel} · {new Date(detailItem.submittedAt).toLocaleString('ko-KR')}
+                  {formatWeekLabel({ year: detailItem.reportYear, month: detailItem.reportMonth, weekOfMonth: detailItem.reportWeekOfMonth })} · {new Date(detailItem.submittedAt).toLocaleString('ko-KR')}
                 </p>
               </div>
               <button onClick={() => setDetailItem(null)} style={{ background: 'transparent', border: 'none', color: '#64748b', cursor: 'pointer' }}>
@@ -254,22 +264,19 @@ const DetailRenderer: React.FC<{ dataJson: string; schemaJson?: string }> = ({ d
             return (
               <div key={sec.sectionId} style={{ marginBottom: '16px' }}>
                 <div style={{ color: '#94a3b8', fontSize: '0.82rem', marginBottom: '8px', fontWeight: 600 }}>{sec.title}</div>
-                {(sec.type === 'table') && sec.rows && sec.columns && (
+                {sec.type === 'grouped_table' && sec.leafColumns && (
                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
                     <thead>
-                      <tr>{sec.columns.map(c => <th key={c} style={{ padding: '6px 10px', background: 'rgba(30,41,59,0.8)', color: '#64748b', textAlign: 'left', border: '1px solid rgba(51,65,85,0.4)', fontWeight: 600 }}>{c}</th>)}</tr>
+                      <tr>{sec.leafColumns.map(c => <th key={c.key} style={{ padding: '6px 10px', background: 'rgba(30,41,59,0.8)', color: '#64748b', textAlign: 'center', border: '1px solid rgba(51,65,85,0.4)', fontWeight: 600 }}>{c.groupLabel ? `${c.groupLabel} · ` : ''}{c.label}</th>)}</tr>
                     </thead>
                     <tbody>
-                      {sec.rows.map(row => (
-                        <tr key={row.rowId}>
-                          <td style={{ padding: '6px 10px', border: '1px solid rgba(51,65,85,0.3)', color: '#94a3b8', background: 'rgba(15,23,42,0.4)' }}>{row.label}</td>
-                          {sec.columns!.slice(1).map(c => (
-                            <td key={c} style={{ padding: '6px 10px', border: '1px solid rgba(51,65,85,0.3)', color: '#e2e8f0', textAlign: 'center' }}>
-                              {secData?.[row.rowId]?.[c] ?? '-'}
-                            </td>
-                          ))}
-                        </tr>
-                      ))}
+                      <tr>
+                        {sec.leafColumns.map(c => (
+                          <td key={c.key} style={{ padding: '6px 10px', border: '1px solid rgba(51,65,85,0.3)', color: '#e2e8f0', textAlign: 'center' }}>
+                            {secData?.[c.key] ?? '-'}
+                          </td>
+                        ))}
+                      </tr>
                     </tbody>
                   </table>
                 )}
@@ -282,14 +289,22 @@ const DetailRenderer: React.FC<{ dataJson: string; schemaJson?: string }> = ({ d
                     ))}
                   </div>
                 )}
-                {sec.type === 'dynamic_fields' && Array.isArray(secData) && (
-                  <div>
-                    {secData.map((item: any, i: number) => (
-                      <div key={i} style={{ display: 'flex', gap: '12px', marginBottom: '6px' }}>
-                        <span style={{ color: '#64748b', fontSize: '0.82rem' }}>{item.label || `항목 ${i+1}`}:</span>
-                        <span style={{ color: '#e2e8f0', fontSize: '0.82rem' }}>{item.value || '-'}</span>
-                      </div>
-                    ))}
+                {sec.type === 'notes_board' && sec.cards && (
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '8px' }}>
+                    {sec.cards.map(card => {
+                      const cv = secData?.[card.cardId] || {};
+                      return (
+                        <div key={card.cardId} style={{ background: 'rgba(15,23,42,0.4)', border: '1px solid rgba(51,65,85,0.3)', borderRadius: '8px', padding: '10px' }}>
+                          <div style={{ color: '#818cf8', fontSize: '0.75rem', fontWeight: 600 }}>{card.title}{card.subtitle ? ` · ${card.subtitle}` : ''}</div>
+                          <div style={{ color: '#e2e8f0', fontSize: '0.82rem', marginTop: '4px', whiteSpace: 'pre-wrap' }}>{cv.value || '-'}</div>
+                          {(cv.photoPaths?.length || 0) > 0 && (
+                            <div style={{ color: '#64748b', fontSize: '0.72rem', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '3px' }}>
+                              <Image size={11} /> 사진 {cv.photoPaths.length}장
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
               </div>

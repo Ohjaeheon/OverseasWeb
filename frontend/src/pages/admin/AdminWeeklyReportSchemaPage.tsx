@@ -1,99 +1,21 @@
-﻿import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
-  Plus, Edit2, Trash2, CheckCircle2, XCircle, ChevronDown, ChevronRight,
-  FileText, ToggleLeft, ToggleRight, Eye, Columns, Rows, Save, X, AlertCircle
+  Plus, Edit2, Trash2, ChevronDown, ChevronRight,
+  FileText, ToggleLeft, ToggleRight, Eye, Save, X, AlertCircle
 } from 'lucide-react';
-import { weeklyReportService, WeeklyReportSchemaItem, FormSchema, FormSection, TableRow } from '../../services/weeklyReportService';
+import { weeklyReportService, WeeklyReportSchemaItem, FormSchema, FormSection, NotesBoardCard } from '../../services/weeklyReportService';
+import { DEFAULT_SCHEMA } from '../../data/weeklyReportDefaultSchema';
+import { getCurrentWeek, weeksInMonth, formatWeekLabel } from '../../utils/weekUtil';
 
-// ─── 기본 초기 스키마 (PPT 양식 기반) ───────────────────────────────────
-const DEFAULT_SCHEMA: FormSchema = {
-  pages: [
-    {
-      pageId: 'page1',
-      title: '기본 정보',
-      fields: [
-        { fieldId: 'church_name', label: '교회명', type: 'church_select', required: true },
-        { fieldId: 'report_week', label: '보고 주차', type: 'text', required: true },
-        { fieldId: 'report_date', label: '보고일', type: 'date', required: false },
-      ]
-    },
-    {
-      pageId: 'page2',
-      title: '각종 취합 내용',
-      sections: [
-        {
-          sectionId: 'worship_attendance',
-          title: '예배출결 현황',
-          type: 'table',
-          columns: ['항목', '재적', '출석(대면)', '출석(온라인)', '결석', '비고'],
-          rows: [
-            { rowId: 'main_worship', label: '주일예배' },
-            { rowId: 'wed_worship', label: '수요예배' },
-            { rowId: 'fri_worship', label: '금요예배' },
-          ]
-        },
-        {
-          sectionId: 'mission_center',
-          title: '선교센터 현황',
-          type: 'table',
-          columns: ['항목', '이번 주', '누적', '비고'],
-          rows: [
-            { rowId: 'center_reg', label: '신규 등록' },
-            { rowId: 'center_grad', label: '종강' },
-            { rowId: 'center_att', label: '현재 출석' },
-          ]
-        },
-        {
-          sectionId: 'evangelism_status',
-          title: '전도 현황',
-          type: 'table',
-          columns: ['항목', '이번 주', '누적', '비고'],
-          rows: [
-            { rowId: 'evang_contact', label: '전도 접촉' },
-            { rowId: 'evang_bible', label: '동행/복음방 등록' },
-            { rowId: 'evang_att', label: '동행/복음방 출석' },
-          ]
-        }
-      ]
-    },
-    {
-      pageId: 'page3',
-      title: '주간 특이사항 및 사진',
-      sections: [
-        {
-          sectionId: 'education',
-          title: '주간 교육 현황',
-          type: 'dynamic_table',
-          columns: ['과목/내용', '강사', '수강인원', '비고'],
-          allowAddRow: true
-        },
-        {
-          sectionId: 'special_notes',
-          title: '주간 특이사항',
-          type: 'dynamic_fields',
-          allowAddField: true
-        },
-        {
-          sectionId: 'photos',
-          title: '사진 첨부',
-          type: 'photo_upload',
-          maxFiles: 10
-        }
-      ]
-    }
-  ]
-};
+interface BuilderFormData { weekLabel: string; startYear: number; startMonth: number; startWeekOfMonth: number; schema: FormSchema }
 
-// ─── 주차 계산 헬퍼 ────────────────────────────────────────────────────
-function getCurrentWeekInfo(): { year: number; weekNumber: number; weekLabel: string } {
-  const now = new Date();
-  const year = now.getFullYear();
-  const startOfYear = new Date(year, 0, 1);
-  const weekNumber = Math.ceil(((now.getTime() - startOfYear.getTime()) / 86400000 + startOfYear.getDay() + 1) / 7);
-  const month = now.getMonth() + 1;
-  const weekOfMonth = Math.ceil(now.getDate() / 7);
-  const weekLabel = `${year}년 ${month}월 ${weekOfMonth}주차`;
-  return { year, weekNumber, weekLabel };
+function buildDefaultFormData(): BuilderFormData {
+  const w = getCurrentWeek();
+  return {
+    weekLabel: `${w.year}년 ${w.month}월 ${w.weekOfMonth}주차부터`,
+    startYear: w.year, startMonth: w.month, startWeekOfMonth: w.weekOfMonth,
+    schema: JSON.parse(JSON.stringify(DEFAULT_SCHEMA)) as FormSchema
+  };
 }
 
 // ─── 메인 컴포넌트 ─────────────────────────────────────────────────────
@@ -103,10 +25,7 @@ export const AdminWeeklyReportSchemaPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [showBuilder, setShowBuilder] = useState(false);
   const [editingSchema, setEditingSchema] = useState<WeeklyReportSchemaItem | null>(null);
-  const [formData, setFormData] = useState<{ weekLabel: string; year: number; weekNumber: number; schema: FormSchema }>({
-    ...getCurrentWeekInfo(),
-    schema: JSON.parse(JSON.stringify(DEFAULT_SCHEMA))
-  });
+  const [formData, setFormData] = useState<BuilderFormData>(buildDefaultFormData());
   const [saving, setSaving] = useState(false);
   const [showJsonPreview, setShowJsonPreview] = useState(false);
   const [expandedPage, setExpandedPage] = useState<string | null>('page2');
@@ -126,8 +45,7 @@ export const AdminWeeklyReportSchemaPage: React.FC = () => {
   useEffect(() => { loadSchemas(); }, [loadSchemas]);
 
   const openNewBuilder = () => {
-    const wi = getCurrentWeekInfo();
-    setFormData({ ...wi, schema: JSON.parse(JSON.stringify(DEFAULT_SCHEMA)) });
+    setFormData(buildDefaultFormData());
     setEditingSchema(null);
     setShowBuilder(true);
     setExpandedPage('page2');
@@ -136,8 +54,9 @@ export const AdminWeeklyReportSchemaPage: React.FC = () => {
   const openEditBuilder = (s: WeeklyReportSchemaItem) => {
     setFormData({
       weekLabel: s.weekLabel,
-      year: s.year,
-      weekNumber: s.weekNumber,
+      startYear: s.startYear,
+      startMonth: s.startMonth,
+      startWeekOfMonth: s.startWeekOfMonth,
       schema: JSON.parse(s.formSchemaJson)
     });
     setEditingSchema(s);
@@ -146,15 +65,15 @@ export const AdminWeeklyReportSchemaPage: React.FC = () => {
   };
 
   const handleSave = async () => {
-    if (!formData.weekLabel.trim()) { alert('주차명을 입력해 주세요.'); return; }
+    if (!formData.weekLabel.trim()) { alert('표시 라벨을 입력해 주세요.'); return; }
     try {
       setSaving(true);
       const payload = {
         weekLabel: formData.weekLabel,
-        year: formData.year,
-        weekNumber: formData.weekNumber,
+        startYear: formData.startYear,
+        startMonth: formData.startMonth,
+        startWeekOfMonth: formData.startWeekOfMonth,
         formSchemaJson: JSON.stringify(formData.schema),
-        isActive: false
       };
       if (editingSchema) {
         await weeklyReportService.updateSchema(editingSchema.schemaId, payload);
@@ -170,22 +89,16 @@ export const AdminWeeklyReportSchemaPage: React.FC = () => {
     }
   };
 
-  const handleActivate = async (schemaId: number) => {
-    if (!confirm('이 양식을 활성화하면 기존 활성 양식은 자동으로 비활성화됩니다. 계속하시겠습니까?')) return;
+  const handleToggleEnabled = async (s: WeeklyReportSchemaItem) => {
     try {
-      await weeklyReportService.activateSchema(schemaId);
+      if (s.isEnabled) {
+        await weeklyReportService.disableSchema(s.schemaId);
+      } else {
+        await weeklyReportService.enableSchema(s.schemaId);
+      }
       await loadSchemas();
     } catch (e: any) {
-      alert('활성화에 실패했습니다.');
-    }
-  };
-
-  const handleDeactivate = async (schemaId: number) => {
-    try {
-      await weeklyReportService.deactivateSchema(schemaId);
-      await loadSchemas();
-    } catch (e: any) {
-      alert('비활성화에 실패했습니다.');
+      alert('사용 여부 변경에 실패했습니다.');
     }
   };
 
@@ -195,7 +108,7 @@ export const AdminWeeklyReportSchemaPage: React.FC = () => {
       await weeklyReportService.deleteSchema(schemaId);
       await loadSchemas();
     } catch (e: any) {
-      alert(e.response?.data?.message || '삭제에 실패했습니다. 활성화된 양식은 삭제할 수 없습니다.');
+      alert(e.response?.data?.message || '삭제에 실패했습니다. 사용중인 양식은 먼저 사용 중지 해주세요.');
     }
   };
 
@@ -209,6 +122,36 @@ export const AdminWeeklyReportSchemaPage: React.FC = () => {
     });
   };
 
+  // grouped_table: leaf 컬럼 편집
+  const updateLeafLabel = (pageIdx: number, secIdx: number, leafIdx: number, value: string) => {
+    updateSection(pageIdx, secIdx, s => {
+      const leaves = [...(s.leafColumns || [])];
+      leaves[leafIdx] = { ...leaves[leafIdx], label: value };
+      return { ...s, leafColumns: leaves };
+    });
+  };
+  const updateLeafGroup = (pageIdx: number, secIdx: number, leafIdx: number, value: string) => {
+    updateSection(pageIdx, secIdx, s => {
+      const leaves = [...(s.leafColumns || [])];
+      leaves[leafIdx] = { ...leaves[leafIdx], groupLabel: value || undefined };
+      return { ...s, leafColumns: leaves };
+    });
+  };
+  const addLeafColumn = (pageIdx: number, secIdx: number) => {
+    updateSection(pageIdx, secIdx, s => ({
+      ...s, leafColumns: [...(s.leafColumns || []), { key: `col_${Date.now()}`, label: '새 컬럼' }]
+    }));
+  };
+  const removeLeafColumn = (pageIdx: number, secIdx: number, leafIdx: number) => {
+    updateSection(pageIdx, secIdx, s => {
+      const leaves = [...(s.leafColumns || [])];
+      if (leaves.length <= 1) return s;
+      leaves.splice(leafIdx, 1);
+      return { ...s, leafColumns: leaves };
+    });
+  };
+
+  // dynamic_table: 컬럼 편집
   const updateColumnName = (pageIdx: number, secIdx: number, colIdx: number, value: string) => {
     updateSection(pageIdx, secIdx, s => {
       const cols = [...(s.columns || [])];
@@ -216,13 +159,9 @@ export const AdminWeeklyReportSchemaPage: React.FC = () => {
       return { ...s, columns: cols };
     });
   };
-
   const addColumn = (pageIdx: number, secIdx: number) => {
-    updateSection(pageIdx, secIdx, s => ({
-      ...s, columns: [...(s.columns || []), '새 컬럼']
-    }));
+    updateSection(pageIdx, secIdx, s => ({ ...s, columns: [...(s.columns || []), '새 컬럼'] }));
   };
-
   const removeColumn = (pageIdx: number, secIdx: number, colIdx: number) => {
     updateSection(pageIdx, secIdx, s => {
       const cols = [...(s.columns || [])];
@@ -232,28 +171,28 @@ export const AdminWeeklyReportSchemaPage: React.FC = () => {
     });
   };
 
-  const updateRowLabel = (pageIdx: number, secIdx: number, rowIdx: number, value: string) => {
+  // notes_board: 카드 편집
+  const updateCard = (pageIdx: number, secIdx: number, cardIdx: number, patch: Partial<NotesBoardCard>) => {
     updateSection(pageIdx, secIdx, s => {
-      const rows = [...(s.rows || [])];
-      rows[rowIdx] = { ...rows[rowIdx], label: value };
-      return { ...s, rows };
+      const cards = [...(s.cards || [])];
+      cards[cardIdx] = { ...cards[cardIdx], ...patch };
+      return { ...s, cards };
     });
   };
-
-  const addRow = (pageIdx: number, secIdx: number) => {
+  const addCard = (pageIdx: number, secIdx: number) => {
     updateSection(pageIdx, secIdx, s => ({
-      ...s,
-      rows: [...(s.rows || []), { rowId: `row_${Date.now()}`, label: '새 항목' }]
+      ...s, cards: [...(s.cards || []), { cardId: `card_${Date.now()}`, title: '새 항목', inputType: 'photo_text' as const }]
     }));
   };
-
-  const removeRow = (pageIdx: number, secIdx: number, rowIdx: number) => {
+  const removeCard = (pageIdx: number, secIdx: number, cardIdx: number) => {
     updateSection(pageIdx, secIdx, s => {
-      const rows = [...(s.rows || [])];
-      rows.splice(rowIdx, 1);
-      return { ...s, rows };
+      const cards = [...(s.cards || [])];
+      cards.splice(cardIdx, 1);
+      return { ...s, cards };
     });
   };
+
+  const inputSm: React.CSSProperties = { background: 'rgba(15,23,42,0.7)', border: '1px solid rgba(71,85,105,0.5)', borderRadius: '8px', padding: '8px 10px', color: '#e2e8f0', fontSize: '0.875rem', boxSizing: 'border-box' };
 
   return (
     <div style={{ padding: '24px', maxWidth: '1200px', margin: '0 auto', color: '#e2e8f0', fontFamily: "'Inter', sans-serif" }}>
@@ -262,7 +201,7 @@ export const AdminWeeklyReportSchemaPage: React.FC = () => {
         <div>
           <h1 style={{ fontSize: '1.5rem', fontWeight: 700, color: '#f1f5f9', margin: 0 }}>📋 주차별 양식 관리</h1>
           <p style={{ color: '#94a3b8', marginTop: '4px', fontSize: '0.875rem' }}>
-            매주 배포할 주간보고 양식을 생성하고 관리합니다.
+            적용 시작 주차를 지정해 두면, 그 주차부터 다음 양식이 시작되는 주차 전까지 자동으로 이 양식이 적용됩니다.
           </p>
         </div>
         <button onClick={openNewBuilder} style={{
@@ -274,14 +213,12 @@ export const AdminWeeklyReportSchemaPage: React.FC = () => {
         </button>
       </div>
 
-      {/* Error */}
       {error && (
         <div style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: '10px', padding: '12px 16px', marginBottom: '20px', display: 'flex', gap: '8px', alignItems: 'center' }}>
           <AlertCircle size={16} color='#ef4444' /> <span style={{ color: '#fca5a5' }}>{error}</span>
         </div>
       )}
 
-      {/* 양식 목록 */}
       {loading ? (
         <div style={{ textAlign: 'center', padding: '60px', color: '#64748b' }}>불러오는 중...</div>
       ) : schemas.length === 0 ? (
@@ -296,42 +233,36 @@ export const AdminWeeklyReportSchemaPage: React.FC = () => {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           {schemas.map(s => (
             <div key={s.schemaId} style={{
-              background: 'rgba(30,41,59,0.7)', border: s.isActive ? '1.5px solid rgba(99,102,241,0.6)' : '1px solid rgba(51,65,85,0.5)',
+              background: 'rgba(30,41,59,0.7)', border: s.isEnabled ? '1.5px solid rgba(99,102,241,0.6)' : '1px solid rgba(51,65,85,0.5)',
               borderRadius: '14px', padding: '18px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
               backdropFilter: 'blur(8px)',
-              boxShadow: s.isActive ? '0 0 20px rgba(99,102,241,0.15)' : 'none'
+              boxShadow: s.isEnabled ? '0 0 20px rgba(99,102,241,0.15)' : 'none'
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
                 <div style={{
                   width: '44px', height: '44px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  background: s.isActive ? 'rgba(99,102,241,0.2)' : 'rgba(51,65,85,0.5)',
+                  background: s.isEnabled ? 'rgba(99,102,241,0.2)' : 'rgba(51,65,85,0.5)',
                 }}>
-                  <FileText size={20} color={s.isActive ? '#a5b4fc' : '#64748b'} />
+                  <FileText size={20} color={s.isEnabled ? '#a5b4fc' : '#64748b'} />
                 </div>
                 <div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                     <span style={{ fontWeight: 700, fontSize: '1rem', color: '#f1f5f9' }}>{s.weekLabel}</span>
-                    {s.isActive && (
+                    {s.isEnabled && (
                       <span style={{ background: 'rgba(99,102,241,0.2)', color: '#a5b4fc', border: '1px solid rgba(99,102,241,0.4)', padding: '2px 10px', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 600 }}>
-                        ✓ 활성
+                        ✓ 사용중
                       </span>
                     )}
                   </div>
                   <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '3px' }}>
-                    {s.year}년 {s.weekNumber}주차 · 생성자: {s.createdBy || '-'} · {new Date(s.createdAt).toLocaleDateString('ko-KR')}
+                    적용: {s.startYear}년 {s.startMonth}월 {s.startWeekOfMonth}주차부터 · 생성자: {s.createdBy || '-'} · {new Date(s.createdAt).toLocaleDateString('ko-KR')}
                   </div>
                 </div>
               </div>
               <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                {!s.isActive ? (
-                  <button onClick={() => handleActivate(s.schemaId)} style={{ padding: '7px 14px', background: 'rgba(16,185,129,0.15)', border: '1px solid rgba(16,185,129,0.3)', borderRadius: '8px', color: '#6ee7b7', cursor: 'pointer', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '5px' }}>
-                    <ToggleLeft size={14} /> 활성화
-                  </button>
-                ) : (
-                  <button onClick={() => handleDeactivate(s.schemaId)} style={{ padding: '7px 14px', background: 'rgba(245,158,11,0.15)', border: '1px solid rgba(245,158,11,0.3)', borderRadius: '8px', color: '#fcd34d', cursor: 'pointer', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '5px' }}>
-                    <ToggleRight size={14} /> 비활성화
-                  </button>
-                )}
+                <button onClick={() => handleToggleEnabled(s)} style={{ padding: '7px 14px', background: s.isEnabled ? 'rgba(245,158,11,0.15)' : 'rgba(16,185,129,0.15)', border: `1px solid ${s.isEnabled ? 'rgba(245,158,11,0.3)' : 'rgba(16,185,129,0.3)'}`, borderRadius: '8px', color: s.isEnabled ? '#fcd34d' : '#6ee7b7', cursor: 'pointer', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                  {s.isEnabled ? <><ToggleRight size={14} /> 사용 중지</> : <><ToggleLeft size={14} /> 사용</>}
+                </button>
                 <button onClick={() => openEditBuilder(s)} style={{ padding: '7px 12px', background: 'rgba(99,102,241,0.15)', border: '1px solid rgba(99,102,241,0.3)', borderRadius: '8px', color: '#a5b4fc', cursor: 'pointer' }}>
                   <Edit2 size={14} />
                 </button>
@@ -347,8 +278,7 @@ export const AdminWeeklyReportSchemaPage: React.FC = () => {
       {/* ── Form Builder 모달 ─────────────────────────────────────── */}
       {showBuilder && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 1000, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '24px', overflowY: 'auto' }}>
-          <div style={{ background: '#0f172a', border: '1px solid rgba(99,102,241,0.3)', borderRadius: '20px', width: '100%', maxWidth: '900px', boxShadow: '0 25px 60px rgba(0,0,0,0.5)' }}>
-            {/* 모달 헤더 */}
+          <div style={{ background: '#0f172a', border: '1px solid rgba(99,102,241,0.3)', borderRadius: '20px', width: '100%', maxWidth: '960px', boxShadow: '0 25px 60px rgba(0,0,0,0.5)' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '24px 28px', borderBottom: '1px solid rgba(51,65,85,0.5)' }}>
               <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 700, color: '#f1f5f9' }}>
                 {editingSchema ? '양식 수정' : '새 양식 만들기'}
@@ -364,28 +294,39 @@ export const AdminWeeklyReportSchemaPage: React.FC = () => {
             </div>
 
             <div style={{ padding: '24px 28px', display: 'grid', gridTemplateColumns: showJsonPreview ? '1fr 1fr' : '1fr', gap: '24px' }}>
-              {/* 편집 패널 */}
               <div>
-                {/* 주차 설정 */}
+                {/* 적용 시작 주차 설정 */}
                 <div style={{ marginBottom: '24px', background: 'rgba(30,41,59,0.6)', borderRadius: '12px', padding: '18px' }}>
-                  <h3 style={{ margin: '0 0 14px', fontSize: '0.9rem', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>📅 주차 설정</h3>
-                  <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: '10px' }}>
-                    <div>
-                      <label style={{ fontSize: '0.8rem', color: '#64748b', display: 'block', marginBottom: '4px' }}>주차명</label>
-                      <input value={formData.weekLabel} onChange={e => setFormData(p => ({ ...p, weekLabel: e.target.value }))}
-                        style={{ width: '100%', background: 'rgba(15,23,42,0.7)', border: '1px solid rgba(71,85,105,0.5)', borderRadius: '8px', padding: '8px 10px', color: '#e2e8f0', fontSize: '0.875rem', boxSizing: 'border-box' }}
-                        placeholder="예: 2026년 8월 2주차" />
-                    </div>
+                  <h3 style={{ margin: '0 0 14px', fontSize: '0.9rem', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>📅 적용 시작 주차</h3>
+                  <div style={{ marginBottom: '10px' }}>
+                    <label style={{ fontSize: '0.8rem', color: '#64748b', display: 'block', marginBottom: '4px' }}>표시 라벨</label>
+                    <input value={formData.weekLabel} onChange={e => setFormData(p => ({ ...p, weekLabel: e.target.value }))}
+                      style={{ ...inputSm, width: '100%' }} placeholder="예: 2026년 8월 3주차부터" />
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px' }}>
                     <div>
                       <label style={{ fontSize: '0.8rem', color: '#64748b', display: 'block', marginBottom: '4px' }}>연도</label>
-                      <input type="number" value={formData.year} onChange={e => setFormData(p => ({ ...p, year: Number(e.target.value) }))}
-                        style={{ width: '100%', background: 'rgba(15,23,42,0.7)', border: '1px solid rgba(71,85,105,0.5)', borderRadius: '8px', padding: '8px 10px', color: '#e2e8f0', fontSize: '0.875rem', boxSizing: 'border-box' }} />
+                      <input type="number" min={2025} max={2999} value={formData.startYear}
+                        onChange={e => setFormData(p => ({ ...p, startYear: Number(e.target.value) }))}
+                        style={{ ...inputSm, width: '100%' }} />
                     </div>
                     <div>
-                      <label style={{ fontSize: '0.8rem', color: '#64748b', display: 'block', marginBottom: '4px' }}>주차 번호</label>
-                      <input type="number" value={formData.weekNumber} onChange={e => setFormData(p => ({ ...p, weekNumber: Number(e.target.value) }))}
-                        style={{ width: '100%', background: 'rgba(15,23,42,0.7)', border: '1px solid rgba(71,85,105,0.5)', borderRadius: '8px', padding: '8px 10px', color: '#e2e8f0', fontSize: '0.875rem', boxSizing: 'border-box' }} />
+                      <label style={{ fontSize: '0.8rem', color: '#64748b', display: 'block', marginBottom: '4px' }}>월</label>
+                      <select value={formData.startMonth} onChange={e => setFormData(p => ({ ...p, startMonth: Number(e.target.value), startWeekOfMonth: 1 }))}
+                        style={{ ...inputSm, width: '100%' }}>
+                        {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (<option key={m} value={m}>{m}월</option>))}
+                      </select>
                     </div>
+                    <div>
+                      <label style={{ fontSize: '0.8rem', color: '#64748b', display: 'block', marginBottom: '4px' }}>주차</label>
+                      <select value={formData.startWeekOfMonth} onChange={e => setFormData(p => ({ ...p, startWeekOfMonth: Number(e.target.value) }))}
+                        style={{ ...inputSm, width: '100%' }}>
+                        {Array.from({ length: weeksInMonth(formData.startYear, formData.startMonth) }, (_, i) => i + 1).map(w => (<option key={w} value={w}>{w}주차</option>))}
+                      </select>
+                    </div>
+                  </div>
+                  <div style={{ marginTop: '8px', fontSize: '0.78rem', color: '#818cf8' }}>
+                    → {formatWeekLabel({ year: formData.startYear, month: formData.startMonth, weekOfMonth: formData.startWeekOfMonth })}부터 적용 (다음 양식의 시작 주차 전까지)
                   </div>
                 </div>
 
@@ -407,17 +348,43 @@ export const AdminWeeklyReportSchemaPage: React.FC = () => {
                               {section.title}
                             </div>
 
-                            {/* 컬럼 편집 (table/dynamic_table) */}
-                            {(section.type === 'table' || section.type === 'dynamic_table') && section.columns && (
-                              <div style={{ marginBottom: '12px' }}>
-                                <div style={{ fontSize: '0.75rem', color: '#64748b', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                  <Columns size={12} /> 컬럼
+                            {/* grouped_table: leaf 컬럼(라벨 + 그룹라벨) 편집 */}
+                            {section.type === 'grouped_table' && section.leafColumns && (
+                              <div>
+                                <div style={{ fontSize: '0.75rem', color: '#64748b', marginBottom: '6px' }}>컬럼 (그룹라벨을 같게 입력하면 연속된 컬럼끼리 상단에 병합됩니다)</div>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                  {section.leafColumns.map((leaf, leafIdx) => (
+                                    <div key={leafIdx} style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                                      <input value={leaf.groupLabel || ''} placeholder="그룹라벨 (선택)"
+                                        onChange={e => updateLeafGroup(pageIdx, secIdx, leafIdx, e.target.value)}
+                                        style={{ ...inputSm, width: '140px' }} />
+                                      <input value={leaf.label} placeholder="컬럼 라벨"
+                                        onChange={e => updateLeafLabel(pageIdx, secIdx, leafIdx, e.target.value)}
+                                        style={{ ...inputSm, flex: 1 }} />
+                                      {section.leafColumns!.length > 1 && (
+                                        <button onClick={() => removeLeafColumn(pageIdx, secIdx, leafIdx)}
+                                          style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: '6px', color: '#f87171', cursor: 'pointer', padding: '6px' }}>
+                                          <X size={12} />
+                                        </button>
+                                      )}
+                                    </div>
+                                  ))}
                                 </div>
+                                <button onClick={() => addLeafColumn(pageIdx, secIdx)} style={{ marginTop: '8px', padding: '6px 12px', background: 'rgba(99,102,241,0.1)', border: '1px dashed rgba(99,102,241,0.3)', borderRadius: '6px', color: '#818cf8', cursor: 'pointer', fontSize: '0.75rem' }}>
+                                  + 컬럼 추가
+                                </button>
+                              </div>
+                            )}
+
+                            {/* dynamic_table: 컬럼 편집 */}
+                            {section.type === 'dynamic_table' && section.columns && (
+                              <div>
+                                <div style={{ fontSize: '0.75rem', color: '#64748b', marginBottom: '6px' }}>컬럼 (사용자가 화면에서 행을 자유롭게 추가/삭제합니다)</div>
                                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
                                   {section.columns.map((col, colIdx) => (
                                     <div key={colIdx} style={{ display: 'flex', alignItems: 'center', background: 'rgba(30,41,59,0.8)', borderRadius: '6px', overflow: 'hidden', border: '1px solid rgba(51,65,85,0.5)' }}>
                                       <input value={col} onChange={e => updateColumnName(pageIdx, secIdx, colIdx, e.target.value)}
-                                        style={{ background: 'transparent', border: 'none', color: '#e2e8f0', padding: '5px 8px', fontSize: '0.8rem', width: '80px' }} />
+                                        style={{ background: 'transparent', border: 'none', color: '#e2e8f0', padding: '5px 8px', fontSize: '0.8rem', width: '100px' }} />
                                       {section.columns!.length > 1 && (
                                         <button onClick={() => removeColumn(pageIdx, secIdx, colIdx)}
                                           style={{ background: 'transparent', border: 'none', color: '#475569', cursor: 'pointer', padding: '5px' }}>
@@ -433,24 +400,36 @@ export const AdminWeeklyReportSchemaPage: React.FC = () => {
                               </div>
                             )}
 
-                            {/* 행(Row) 편집 (table만) */}
-                            {section.type === 'table' && section.rows && (
+                            {/* notes_board: 카드 편집 */}
+                            {section.type === 'notes_board' && section.cards && (
                               <div>
-                                <div style={{ fontSize: '0.75rem', color: '#64748b', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                  <Rows size={12} /> 행 항목
+                                <div style={{ fontSize: '0.75rem', color: '#64748b', marginBottom: '6px' }}>카드 (사진+텍스트 입력 또는 숫자 입력)</div>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                  {section.cards.map((card, cardIdx) => (
+                                    <div key={card.cardId} style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                                      <input value={card.title} placeholder="카드 제목"
+                                        onChange={e => updateCard(pageIdx, secIdx, cardIdx, { title: e.target.value })}
+                                        style={{ ...inputSm, flex: 1 }} />
+                                      <input value={card.subtitle || ''} placeholder="부제목 (선택)"
+                                        onChange={e => updateCard(pageIdx, secIdx, cardIdx, { subtitle: e.target.value })}
+                                        style={{ ...inputSm, width: '140px' }} />
+                                      <select value={card.inputType}
+                                        onChange={e => updateCard(pageIdx, secIdx, cardIdx, { inputType: e.target.value as NotesBoardCard['inputType'] })}
+                                        style={{ ...inputSm, width: '120px' }}>
+                                        <option value="photo_text">사진+텍스트</option>
+                                        <option value="number">숫자</option>
+                                      </select>
+                                      {section.cards!.length > 1 && (
+                                        <button onClick={() => removeCard(pageIdx, secIdx, cardIdx)}
+                                          style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: '6px', color: '#f87171', cursor: 'pointer', padding: '6px' }}>
+                                          <X size={12} />
+                                        </button>
+                                      )}
+                                    </div>
+                                  ))}
                                 </div>
-                                {section.rows.map((row, rowIdx) => (
-                                  <div key={row.rowId} style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
-                                    <input value={row.label} onChange={e => updateRowLabel(pageIdx, secIdx, rowIdx, e.target.value)}
-                                      style={{ flex: 1, background: 'rgba(15,23,42,0.7)', border: '1px solid rgba(51,65,85,0.5)', borderRadius: '6px', padding: '6px 10px', color: '#e2e8f0', fontSize: '0.8rem' }} />
-                                    <button onClick={() => removeRow(pageIdx, secIdx, rowIdx)}
-                                      style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: '6px', color: '#f87171', cursor: 'pointer', padding: '6px' }}>
-                                      <Trash2 size={12} />
-                                    </button>
-                                  </div>
-                                ))}
-                                <button onClick={() => addRow(pageIdx, secIdx)} style={{ padding: '6px 12px', background: 'rgba(16,185,129,0.1)', border: '1px dashed rgba(16,185,129,0.3)', borderRadius: '6px', color: '#6ee7b7', cursor: 'pointer', fontSize: '0.8rem', marginTop: '4px' }}>
-                                  + 행 추가
+                                <button onClick={() => addCard(pageIdx, secIdx)} style={{ marginTop: '8px', padding: '6px 12px', background: 'rgba(99,102,241,0.1)', border: '1px dashed rgba(99,102,241,0.3)', borderRadius: '6px', color: '#818cf8', cursor: 'pointer', fontSize: '0.75rem' }}>
+                                  + 카드 추가
                                 </button>
                               </div>
                             )}
@@ -462,7 +441,6 @@ export const AdminWeeklyReportSchemaPage: React.FC = () => {
                 ))}
               </div>
 
-              {/* JSON 미리보기 */}
               {showJsonPreview && (
                 <div style={{ background: 'rgba(15,23,42,0.8)', borderRadius: '12px', padding: '16px', border: '1px solid rgba(51,65,85,0.4)' }}>
                   <div style={{ fontSize: '0.75rem', color: '#64748b', marginBottom: '8px' }}>JSON Schema 미리보기</div>
@@ -473,13 +451,12 @@ export const AdminWeeklyReportSchemaPage: React.FC = () => {
               )}
             </div>
 
-            {/* 모달 푸터 */}
             <div style={{ padding: '20px 28px', borderTop: '1px solid rgba(51,65,85,0.5)', display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
               <button onClick={() => setShowBuilder(false)} style={{ padding: '10px 20px', background: 'rgba(51,65,85,0.5)', border: '1px solid rgba(71,85,105,0.4)', borderRadius: '8px', color: '#94a3b8', cursor: 'pointer' }}>
                 취소
               </button>
               <button onClick={handleSave} disabled={saving} style={{ padding: '10px 24px', background: saving ? 'rgba(99,102,241,0.4)' : 'linear-gradient(135deg, #6366f1, #8b5cf6)', border: 'none', borderRadius: '8px', color: 'white', fontWeight: 600, cursor: saving ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <Save size={15} /> {saving ? '저장 중...': '저장'}
+                <Save size={15} /> {saving ? '저장 중...' : '저장'}
               </button>
             </div>
           </div>
@@ -488,4 +465,3 @@ export const AdminWeeklyReportSchemaPage: React.FC = () => {
     </div>
   );
 };
-

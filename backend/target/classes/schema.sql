@@ -398,46 +398,54 @@ COMMENT ON COLUMN overseas.organization_charts.church_id IS '교회 고유 PK';
 COMMENT ON COLUMN overseas.organization_charts.chart_data IS '조직도 트리 및 하이라커 JSON 데이터';
 COMMENT ON COLUMN overseas.organization_charts.updated_at IS '수정 일시';
 
--- 17. 주간보고 양식 스키마 테이블 (관리자 폼 빌더)
+-- 17. 주간보고 양식 스키마 테이블 (관리자 폼 빌더, 주차구간별 자동전환)
 CREATE TABLE IF NOT EXISTS overseas.weekly_report_schemas (
-    schema_id   BIGSERIAL PRIMARY KEY,
-    week_label  VARCHAR(100) NOT NULL,
-    year        INT NOT NULL,
-    week_number INT NOT NULL,
-    form_schema_json TEXT NOT NULL,
-    is_active   BOOLEAN DEFAULT FALSE,
-    created_by  VARCHAR(100),
-    created_at  TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    updated_at  TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    schema_id           BIGSERIAL PRIMARY KEY,
+    week_label          VARCHAR(100) NOT NULL,
+    start_year          INT NOT NULL,
+    start_month         INT NOT NULL,
+    start_week_of_month INT NOT NULL,
+    form_schema_json    TEXT NOT NULL,
+    is_enabled          BOOLEAN DEFAULT TRUE,
+    created_by          VARCHAR(100),
+    created_at          TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at          TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
-COMMENT ON TABLE overseas.weekly_report_schemas IS '주간보고 주차별 동적 양식 스키마 (JSON)';
+COMMENT ON TABLE overseas.weekly_report_schemas IS '주간보고 주차구간별 동적 양식 스키마 (JSON)';
 COMMENT ON COLUMN overseas.weekly_report_schemas.schema_id IS '스키마 고유 PK';
-COMMENT ON COLUMN overseas.weekly_report_schemas.week_label IS '표시 주차명 (예: 2026년 8월 2주차)';
-COMMENT ON COLUMN overseas.weekly_report_schemas.year IS '해당 연도';
-COMMENT ON COLUMN overseas.weekly_report_schemas.week_number IS '연도 내 주차 번호';
+COMMENT ON COLUMN overseas.weekly_report_schemas.week_label IS '표시용 라벨 (예: 2026년 8월 2주차부터)';
+COMMENT ON COLUMN overseas.weekly_report_schemas.start_year IS '적용 시작 연도';
+COMMENT ON COLUMN overseas.weekly_report_schemas.start_month IS '적용 시작 월 (1-12)';
+COMMENT ON COLUMN overseas.weekly_report_schemas.start_week_of_month IS '적용 시작 월내 주차 (1-5)';
 COMMENT ON COLUMN overseas.weekly_report_schemas.form_schema_json IS '양식 구조 JSON (Page별 섹션/필드 정의)';
-COMMENT ON COLUMN overseas.weekly_report_schemas.is_active IS '현재 활성 양식 여부 (1개만 active 권장)';
+COMMENT ON COLUMN overseas.weekly_report_schemas.is_enabled IS '사용 여부 (여러 개 동시 가능, 대상 주차에 가장 가까운 시작주차의 양식이 자동 적용)';
 COMMENT ON COLUMN overseas.weekly_report_schemas.created_by IS '양식 생성 관리자 username';
 
 -- 18. 주간보고 제출 데이터 테이블 (사용자 입력)
 CREATE TABLE IF NOT EXISTS overseas.weekly_report_submissions (
-    submission_id   BIGSERIAL PRIMARY KEY,
-    schema_id       BIGINT NOT NULL REFERENCES overseas.weekly_report_schemas(schema_id) ON DELETE RESTRICT,
-    church_id       BIGINT REFERENCES overseas.churches(church_id) ON DELETE SET NULL,
-    church_name     VARCHAR(150) NOT NULL,
-    submitted_by    VARCHAR(100),
-    submit_data_json TEXT NOT NULL,
-    photo_paths     TEXT,
-    status          VARCHAR(20) DEFAULT 'SUBMITTED',
-    submitted_at    TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    updated_at      TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT uq_schema_church UNIQUE (schema_id, church_id)
+    submission_id       BIGSERIAL PRIMARY KEY,
+    schema_id           BIGINT NOT NULL REFERENCES overseas.weekly_report_schemas(schema_id) ON DELETE RESTRICT,
+    report_year         INT NOT NULL,
+    report_month        INT NOT NULL,
+    report_week_of_month INT NOT NULL,
+    church_id           BIGINT REFERENCES overseas.churches(church_id) ON DELETE SET NULL,
+    church_name         VARCHAR(150) NOT NULL,
+    submitted_by         VARCHAR(100),
+    submit_data_json     TEXT NOT NULL,
+    photo_paths          TEXT,
+    status               VARCHAR(20) DEFAULT 'SUBMITTED',
+    submitted_at          TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at            TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT uq_report_week_church UNIQUE (report_year, report_month, report_week_of_month, church_id)
 );
 
 COMMENT ON TABLE overseas.weekly_report_submissions IS '주간보고 사용자 제출 데이터';
 COMMENT ON COLUMN overseas.weekly_report_submissions.submission_id IS '제출 고유 PK';
-COMMENT ON COLUMN overseas.weekly_report_submissions.schema_id IS '제출 당시 양식 스키마 FK (이력 보존)';
+COMMENT ON COLUMN overseas.weekly_report_submissions.schema_id IS '제출 당시 적용된 양식 스키마 FK (이력 보존)';
+COMMENT ON COLUMN overseas.weekly_report_submissions.report_year IS '보고 대상 연도';
+COMMENT ON COLUMN overseas.weekly_report_submissions.report_month IS '보고 대상 월 (1-12)';
+COMMENT ON COLUMN overseas.weekly_report_submissions.report_week_of_month IS '보고 대상 월내 주차 (1-5)';
 COMMENT ON COLUMN overseas.weekly_report_submissions.church_id IS '교회 FK';
 COMMENT ON COLUMN overseas.weekly_report_submissions.church_name IS '교회명 (church 삭제 시에도 이력 보존용)';
 COMMENT ON COLUMN overseas.weekly_report_submissions.submitted_by IS '제출자 username';

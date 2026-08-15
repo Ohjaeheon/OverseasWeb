@@ -11,6 +11,7 @@ import { ApprovalModule } from '../../components/user/ApprovalModule';
 import { BusinessModule } from '../../components/user/BusinessModule';
 import { MyProfilePage } from './MyProfilePage';
 import { WeeklyReportPage } from './WeeklyReportPage';
+import { UnderConstructionNotice } from '../../components/user/UnderConstructionNotice';
 import { CalendarPage } from '../../components/user/CalendarPage';
 import { OrganizationPage } from '../../components/user/OrganizationPage';
 
@@ -51,7 +52,7 @@ const SECTION_TO_MENU_KEY: Record<string, string> = {
   'business/transport': 'business_transport', 'business/transport/archive': 'business_transport_archive',
   'business/mission': 'business_mission', 'business/mission/archive': 'business_mission_archive',
   'approvals/pending': 'approvals_pending', 'approvals/completed': 'approvals_completed',
-  'weekly-report': 'weekly_report_input',
+  'weekly-report': 'weekly_report_sub', 'weekly-report/input': 'weekly_report_input',
 };
 
 interface AccessDecision {
@@ -224,7 +225,8 @@ export const DiagnosisPage: React.FC<DiagnosisPageProps> = ({ section = 'home', 
     }
     if (section === 'membership' || section === 'membership/check' || section === 'membership/input') return <MembershipModule initialTab={section === 'membership/input' ? 'input' : 'check'} />;
     if (section === 'business' || section.startsWith('business/')) return <BusinessModule initialTab={tab as any} />;
-    if (section === 'weekly-report') return <WeeklyReportPage />;
+    if (section === 'weekly-report') return <UnderConstructionNotice title="주간보고" description="전도·가개강처럼 표와 그래프로 볼 수 있는 주간보고 통계 대시보드가 추후 제공됩니다. 지금은 좌측 하위 메뉴의 '보고입력'에서 주간보고를 입력할 수 있습니다." />;
+    if (section === 'weekly-report/input') return <WeeklyReportPage />;
     if (section === 'approvals/pending' || section === 'approvals/completed') return <ApprovalModule mode={section === 'approvals/pending' ? 'pending' : 'completed'} />;
 
     if (section === 'home') return <HomePage />;

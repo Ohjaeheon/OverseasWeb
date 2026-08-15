@@ -1,4 +1,5 @@
-﻿import api from './api';
+import api from './api';
+import { Week } from '../utils/weekUtil';
 
 // ─── 타입 정의 ───────────────────────────────────────────
 
@@ -15,16 +16,34 @@ export interface TableRow {
   label: string;
 }
 
+/** grouped_table 전용: leaf(최하단) 컬럼. groupLabel이 같은 연속 leaf는 상단에 병합 헤더로 묶인다. */
+export interface LeafColumn {
+  key: string;
+  label: string;
+  groupLabel?: string;
+}
+
+/** notes_board 전용: 카드 한 장 (사진+텍스트 입력 또는 숫자 입력) */
+export interface NotesBoardCard {
+  cardId: string;
+  title: string;
+  subtitle?: string;
+  inputType: 'photo_text' | 'number';
+}
+
 export interface FormSection {
   sectionId: string;
   title: string;
-  type: 'table' | 'dynamic_table' | 'dynamic_fields' | 'photo_upload' | 'fields';
+  type: 'grouped_table' | 'dynamic_table' | 'dynamic_fields' | 'photo_upload' | 'notes_board';
+  // grouped_table (표1 예배출결 / 표10 선교센터 / 표11 전도현황처럼 주차당 1행 요약표)
+  leafColumns?: LeafColumn[];
+  // dynamic_table (표15 주간교육처럼 행을 추가/삭제하는 표)
   columns?: string[];
-  rows?: TableRow[];
   allowAddRow?: boolean;
-  allowAddField?: boolean;
+  // notes_board (표19 주간특이사항 카드형 게시판)
+  cards?: NotesBoardCard[];
+  // photo_upload
   maxFiles?: number;
-  fields?: FormField[];
 }
 
 export interface FormPage {
@@ -41,10 +60,11 @@ export interface FormSchema {
 export interface WeeklyReportSchemaItem {
   schemaId: number;
   weekLabel: string;
-  year: number;
-  weekNumber: number;
+  startYear: number;
+  startMonth: number;
+  startWeekOfMonth: number;
   formSchemaJson: string;
-  isActive: boolean;
+  isEnabled: boolean;
   createdBy: string;
   createdAt: string;
   updatedAt: string;
@@ -53,6 +73,9 @@ export interface WeeklyReportSchemaItem {
 export interface WeeklyReportSubmissionItem {
   submissionId: number;
   schema: { schemaId: number; weekLabel: string };
+  reportYear: number;
+  reportMonth: number;
+  reportWeekOfMonth: number;
   churchId: number;
   churchName: string;
   submittedBy: string;
@@ -67,6 +90,7 @@ export interface ChurchOption {
   churchId: number;
   name: string;
   country: string;
+  jipa: string;
   gubun: string;
 }
 
@@ -92,14 +116,14 @@ export const weeklyReportService = {
     return res.data;
   },
 
-  // 관리자: 양식 활성화
-  activateSchema: async (schemaId: number): Promise<WeeklyReportSchemaItem> => {
+  // 관리자: 양식 사용 설정
+  enableSchema: async (schemaId: number): Promise<WeeklyReportSchemaItem> => {
     const res = await api.post<WeeklyReportSchemaItem>(`/admin/weekly-report/schemas/${schemaId}/activate`);
     return res.data;
   },
 
-  // 관리자: 양식 비활성화
-  deactivateSchema: async (schemaId: number): Promise<WeeklyReportSchemaItem> => {
+  // 관리자: 양식 사용 중지
+  disableSchema: async (schemaId: number): Promise<WeeklyReportSchemaItem> => {
     const res = await api.post<WeeklyReportSchemaItem>(`/admin/weekly-report/schemas/${schemaId}/deactivate`);
     return res.data;
   },
@@ -109,9 +133,21 @@ export const weeklyReportService = {
     await api.delete(`/admin/weekly-report/schemas/${schemaId}`);
   },
 
-  // 사용자: 활성 양식 조회
+  // 사용자: 현재 주차 기준 적용 양식 조회
   getActiveSchema: async (): Promise<WeeklyReportSchemaItem> => {
     const res = await api.get<WeeklyReportSchemaItem>('/weekly-report/active-schema');
+    return res.data;
+  },
+
+  // 사용자: 특정 주차에 적용될 양식 조회
+  getSchemaForWeek: async (week: Week): Promise<WeeklyReportSchemaItem> => {
+    const res = await api.get<WeeklyReportSchemaItem>('/weekly-report/schema-for-week', { params: week });
+    return res.data;
+  },
+
+  // 서버 기준 현재 주차 조회 (클라이언트 시간 조작/오차 방지)
+  getServerCurrentWeek: async (): Promise<Week> => {
+    const res = await api.get<Week>('/weekly-report/current-week');
     return res.data;
   },
 
@@ -121,9 +157,11 @@ export const weeklyReportService = {
     return res.data;
   },
 
-  // 사용자: 보고 제출
+  // 사용자: 보고 제출 (대상 주차는 현재 주차와 일치해야 함)
   submitReport: async (payload: {
-    schemaId: number;
+    reportYear: number;
+    reportMonth: number;
+    reportWeekOfMonth: number;
     churchId: number;
     submitDataJson: string;
     photoPaths?: string;
@@ -144,11 +182,11 @@ export const weeklyReportService = {
     return res.data.paths;
   },
 
-  // 사용자: 내 제출 확인
-  getMySubmission: async (schemaId: number, churchId: number): Promise<WeeklyReportSubmissionItem | null> => {
+  // 사용자: 내 교회의 특정 주차 제출 확인
+  getMySubmission: async (week: Week, churchId: number): Promise<WeeklyReportSubmissionItem | null> => {
     try {
       const res = await api.get<WeeklyReportSubmissionItem>('/weekly-report/my-submission', {
-        params: { schemaId, churchId }
+        params: { ...week, churchId }
       });
       return res.data;
     } catch {
@@ -156,9 +194,15 @@ export const weeklyReportService = {
     }
   },
 
+  // 사용자: 내 교회의 전체 제출 이력 (주차 선택기 표시용)
+  getMySubmissions: async (churchId: number): Promise<WeeklyReportSubmissionItem[]> => {
+    const res = await api.get<WeeklyReportSubmissionItem[]>('/weekly-report/my-submissions', { params: { churchId } });
+    return res.data;
+  },
+
   // 관리자: 제출 현황 조회
-  getSubmissions: async (schemaId?: number): Promise<WeeklyReportSubmissionItem[]> => {
-    const params = schemaId ? { schemaId } : {};
+  getSubmissions: async (week?: Week): Promise<WeeklyReportSubmissionItem[]> => {
+    const params = week ? week : {};
     const res = await api.get<WeeklyReportSubmissionItem[]>('/admin/weekly-report/submissions', { params });
     return res.data;
   },
@@ -174,4 +218,3 @@ export const weeklyReportService = {
     await api.delete(`/admin/weekly-report/submissions/${submissionId}`);
   },
 };
-

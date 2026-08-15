@@ -43,17 +43,19 @@ public class WeeklyReportSubmissionController {
         return ResponseEntity.ok(submissionService.getAccessibleChurches());
     }
 
-    /** 보고 데이터 제출 */
+    /** 보고 데이터 제출 (대상 주차는 현재 주차와 일치해야 함 — 지난 주차는 거부) */
     @PostMapping("/api/v1/weekly-report/submit")
     public ResponseEntity<?> submitReport(@RequestBody Map<String, Object> body) {
         try {
-            Long schemaId = Long.valueOf(body.get("schemaId").toString());
+            Integer reportYear = Integer.valueOf(body.get("reportYear").toString());
+            Integer reportMonth = Integer.valueOf(body.get("reportMonth").toString());
+            Integer reportWeekOfMonth = Integer.valueOf(body.get("reportWeekOfMonth").toString());
             Long churchId = Long.valueOf(body.get("churchId").toString());
             String submitDataJson = body.get("submitDataJson").toString();
             String photoPaths = body.containsKey("photoPaths") ? body.get("photoPaths").toString() : null;
 
-            WeeklyReportSubmission result =
-                    submissionService.submitReport(schemaId, churchId, submitDataJson, photoPaths);
+            WeeklyReportSubmission result = submissionService.submitReport(
+                    reportYear, reportMonth, reportWeekOfMonth, churchId, submitDataJson, photoPaths);
             return ResponseEntity.ok(result);
         } catch (SecurityException e) {
             return ResponseEntity.status(403).body(Map.of("message", e.getMessage()));
@@ -94,12 +96,14 @@ public class WeeklyReportSubmissionController {
         }
     }
 
-    /** 제출 현황 조회 - 주차별 (관리자용) */
+    /** 제출 현황 조회 - 주차별 (관리자용, 미지정 시 전체) */
     @GetMapping("/api/v1/admin/weekly-report/submissions")
     public ResponseEntity<List<WeeklyReportSubmission>> getSubmissions(
-            @RequestParam(required = false) Long schemaId) {
-        if (schemaId != null) {
-            return ResponseEntity.ok(submissionService.getSubmissionsBySchema(schemaId));
+            @RequestParam(required = false) Integer year,
+            @RequestParam(required = false) Integer month,
+            @RequestParam(required = false) Integer weekOfMonth) {
+        if (year != null && month != null && weekOfMonth != null) {
+            return ResponseEntity.ok(submissionService.getSubmissionsByWeek(year, month, weekOfMonth));
         }
         return ResponseEntity.ok(submissionService.getAllSubmissions());
     }
@@ -117,12 +121,18 @@ public class WeeklyReportSubmissionController {
         return ResponseEntity.ok().build();
     }
 
-    /** 내 제출 여부 확인 (사용자용) */
+    /** 내 교회의 전체 제출 이력 (주차 선택기에서 제출/잠금 여부 표시용) */
+    @GetMapping("/api/v1/weekly-report/my-submissions")
+    public ResponseEntity<List<WeeklyReportSubmission>> getMySubmissions(@RequestParam Long churchId) {
+        return ResponseEntity.ok(submissionService.getMySubmissions(churchId));
+    }
+
+    /** 내 교회의 특정 주차 제출 여부 확인 (사용자용) */
     @GetMapping("/api/v1/weekly-report/my-submission")
     public ResponseEntity<?> getMySubmission(
-            @RequestParam Long schemaId,
+            @RequestParam int year, @RequestParam int month, @RequestParam int weekOfMonth,
             @RequestParam Long churchId) {
-        return submissionService.getMySubmission(schemaId, churchId)
+        return submissionService.getMySubmission(year, month, weekOfMonth, churchId)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.noContent().build());
     }

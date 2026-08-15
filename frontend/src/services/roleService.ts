@@ -61,7 +61,7 @@ export const DEFAULT_MENUS: { menuKey: string; menuName: string; category: strin
   { menuKey: 'approvals_completed', menuName: '📋 결재 완료 건', category: '🖥️ 일반 사용자 진단서 포탈', path: '/approvals/completed' },
   { menuKey: 'weekly_report_root', menuName: '📋 업무', category: '🖥️ 일반 사용자 진단서 포탈', path: '/weekly-report' },
   { menuKey: 'weekly_report_sub', menuName: '   ㄴ 주간보고', category: '🖥️ 일반 사용자 진단서 포탈', path: '/weekly-report' },
-  { menuKey: 'weekly_report_input', menuName: '     ㄴ 주간보고 취합', category: '🖥️ 일반 사용자 진단서 포탈', path: '/weekly-report' },
+  { menuKey: 'weekly_report_input', menuName: '     ㄴ 보고입력', category: '🖥️ 일반 사용자 진단서 포탈', path: '/weekly-report/input' },
 
   // Admin Portal Menus
   { menuKey: 'admin_dash', menuName: '📊 관리자 대시보드', category: '⚙️ 관리자 전용 (adminsetting)', path: '/adminsetting/dashboard' },

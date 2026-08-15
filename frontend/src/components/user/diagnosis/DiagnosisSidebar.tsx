@@ -53,9 +53,16 @@ const SIDEBAR: SidebarEntry[] = [
       { tab: 'mission_archive', label: 'ㄴ 품의서 및 회의록', path: '/business/mission/archive' },
     ],
   },
-  { grp: '보 기' },
-  { s: 'map', ico: '🌍', label: '지도·지구본', path: '/map' },
-  { s: 'trend', ico: '📈', label: '추이·비교', path: '/trend' },
+  // 보기 그룹: 지도·지구본 / 추이·비교는 추후 구현 예정이라 당분간 숨김 처리 (코드는 재사용 대비 보존)
+  // { grp: '보 기' },
+  // { s: 'map', ico: '🌍', label: '지도·지구본', path: '/map' },
+  // { s: 'trend', ico: '📈', label: '추이·비교', path: '/trend' },
+  { grp: '보 고' },
+  {
+    s: 'weekly_report_sub', ico: '🗓️', label: '주간보고', path: '/weekly-report', children: [
+      { cat: 'weekly_report_input', label: '보고입력', path: '/weekly-report/input' },
+    ],
+  },
   { grp: '결 재' },
   { s: 'approvals/pending', ico: '📥', label: '결재 대기중인 건', path: '/approvals/pending' },
   { s: 'approvals/completed', ico: '📋', label: '결재 완료 건', path: '/approvals/completed' },
