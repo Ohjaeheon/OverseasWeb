@@ -34,24 +34,41 @@ def find_target_sheet(filename, sheetnames):
     return None
 
 def load_encrypted_workbook(path, password):
-    decrypted = io.BytesIO()
+    """지역별 엑셀 파일을 엽니다. 공유 암호로 암호화된 파일이면 복호화 후 열고,
+    암호화되어 있지 않은 일반 xlsx 파일이면 그대로 평문으로 엽니다."""
     with open(path, "rb") as f:
         file = msoffcrypto.OfficeFile(f)
+        if not file.is_encrypted():
+            print(f"    [정보] '{os.path.basename(path)}' 파일은 암호화되어 있지 않아 평문으로 읽습니다.")
+            f.seek(0)
+            return openpyxl.load_workbook(f, data_only=True, rich_text=True)
+
+        decrypted = io.BytesIO()
         file.load_key(password=password)
         file.decrypt(decrypted)
     decrypted.seek(0)
     return openpyxl.load_workbook(decrypted, data_only=True, rich_text=True)
 
-def copy_sheet_data_openpyxl(ws_src, ws_dst):
+def copy_sheet_data_openpyxl(ws_src, ws_dst, reference_date=None):
+    """
+    ws_src의 A1 날짜를 추출해 반환합니다. reference_date가 주어지고 추출된 날짜와
+    다르면, 대상 시트(ws_dst)의 A1에는 원본 날짜 대신 기준 날짜를 덮어써 결과
+    보고서의 모든 탭이 동일한 날짜를 갖도록 보정합니다.
+    """
     extracted_date = None
     try:
-        # A1 셀 복사
+        # A1 셀 복사 (기준 날짜와 다르면 기준 날짜로 덮어씀)
         a1_val = ws_src["A1"].value
-        ws_dst["A1"].value = a1_val
         if a1_val:
             m = re.search(r"(\([^)]+\))", str(a1_val))
             if m:
                 extracted_date = m.group(1)
+
+        dst_a1_val = a1_val
+        if reference_date and extracted_date and extracted_date != reference_date:
+            dst_a1_val = re.sub(r"\([^)]+\)", reference_date, str(a1_val))
+
+        ws_dst["A1"].value = dst_a1_val
 
         # C6:W13 범위의 데이터 복사 (수식 열 G, H, O, P, T, U 제외)
         ranges = [
@@ -180,12 +197,12 @@ def process_merge():
                         has_주일 = True
                         sh_src = wb_src["(주일)예배출석현황"]
                         sh_dst = wb_주일[dst_sheet_name]
-                        date_found = copy_sheet_data_openpyxl(sh_src, sh_dst)
+                        date_found = copy_sheet_data_openpyxl(sh_src, sh_dst, extracted_date_주일)
                         if date_found:
                             if not extracted_date_주일:
                                 extracted_date_주일 = date_found
                             elif date_found != extracted_date_주일:
-                                print(f"  [경고] '{r_file}'의 주일 날짜({date_found})가 기준 날짜({extracted_date_주일})와 다릅니다.")
+                                print(f"  [경고] '{r_file}'의 주일 날짜({date_found})가 기준 날짜({extracted_date_주일})와 다릅니다. -> 기준 날짜로 덮어씀")
                         print(f"  [완료] '{r_file}' -> '{dst_sheet_name}' (주일) 값 병합 완료")
                     if not has_주일:
                         print(f"  [정보] '{r_file}' 파일에 '(주일)예배출석현황' 시트가 없어 해당 국가(시트)는 건너뜀")
@@ -196,12 +213,12 @@ def process_merge():
                         has_수요 = True
                         sh_src = wb_src["(수요)예배출석현황"]
                         sh_dst = wb_수요[dst_sheet_name]
-                        date_found = copy_sheet_data_openpyxl(sh_src, sh_dst)
+                        date_found = copy_sheet_data_openpyxl(sh_src, sh_dst, extracted_date_수요)
                         if date_found:
                             if not extracted_date_수요:
                                 extracted_date_수요 = date_found
                             elif date_found != extracted_date_수요:
-                                print(f"  [경고] '{r_file}'의 수요 날짜({date_found})가 기준 날짜({extracted_date_수요})와 다릅니다.")
+                                print(f"  [경고] '{r_file}'의 수요 날짜({date_found})가 기준 날짜({extracted_date_수요})와 다릅니다. -> 기준 날짜로 덮어씀")
                         print(f"  [완료] '{r_file}' -> '{dst_sheet_name}' (수요) 값 병합 완료")
                     if not has_수요:
                         print(f"  [정보] '{r_file}' 파일에 '(수요)예배출석현황' 시트가 없어 해당 국가(시트)는 건너뜜")
