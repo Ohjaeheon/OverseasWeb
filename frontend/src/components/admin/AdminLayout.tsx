@@ -26,11 +26,72 @@ interface SidebarItem {
   children?: { cat?: string; label: string; path: string }[];
 }
 
+// SIDEBAR data structure matching permissions matrix items.
+// 컴포넌트 상태와 무관한 정적 데이터라 모듈 스코프로 빼서 openGroups 초기값 계산에도 재사용한다.
+const RAW_SIDEBAR: SidebarItem[] = [
+  { s: "home", ico: "🏠", label: "홈 (종합 현황)", path: "/adminsetting/dashboard" },
+
+  { grp: "교회/지역/개척지" },
+  { s: "diag", ico: "🩺", label: "목록 및 설정", path: "/adminsetting/faith-records" },
+  { s: "inspect", ico: "🚨", label: "상세 점검 (양·질)", path: "/adminsetting/church-detail" },
+
+  { grp: "데이터 관리" },
+  {
+    s: "weekly_worship", ico: "📅", label: "주간예배 출결", path: "/adminsetting/weekly-worship",
+    children: [
+      { label: "자동 취합 실행", path: "/adminsetting/weekly-worship" },
+      { label: "이전 데이터 확인", path: "/adminsetting/weekly-worship/history" },
+      { label: "지역/양식 설정", path: "/adminsetting/weekly-worship/settings" }
+    ]
+  },
+  {
+    s: "weekly_report_status", ico: "📋", label: "주간보고 관리", path: "/adminsetting/weekly-report-status",
+    children: [
+      { label: "제출 현황 확인", path: "/adminsetting/weekly-report-status" },
+      { label: "주차별 양식 관리", path: "/adminsetting/weekly-report-schema" }
+    ]
+  },
+  {
+    s: "evangelism_bulk", ico: "📊", label: "전도 가개강 데이터 전체관리", path: "/adminsetting/evangelism-bulk",
+    children: [
+      { label: "데이터 전체관리", path: "/adminsetting/evangelism-bulk" },
+      { label: "월말보고서 양식관리", path: "/adminsetting/evangelism-bulk/report-template" }
+    ]
+  },
+  { s: "membership_bulk", ico: "👥", label: "내무 데이터 전체관리", path: "/adminsetting/membership-bulk" },
+
+  { grp: "회원 및 권한" },
+  { s: "users", ico: "🌍", label: "회원 관리", path: "/adminsetting/users" },
+  { s: "roles", ico: "📈", label: "권한 목록 및 소속 회원 관리", path: "/adminsetting/roles" },
+  { s: "perm", ico: "🔑", label: "권한별 접근 메뉴 설정", path: "/adminsetting/permissions" },
+
+  { grp: "로그 및 시스템" },
+  { s: "admin_bot", ico: "🤖", label: "봇 연결 관리", path: "/adminsetting/bot" },
+  { s: "i18n", ico: "🌐", label: "다국어 사전 관리", path: "/adminsetting/i18n" },
+  { s: "sys", ico: "⚙️", label: "시스템 설정", path: "/adminsetting/settings" },
+  { s: "messages", ico: "💬", label: "메세지 관리", path: "/adminsetting/messages" },
+  { s: "login_log", ico: "📥", label: "로그인 로그", path: "/adminsetting/login-logs" },
+  { s: "access_log", ico: "📥", label: "접근로그", path: "/adminsetting/access-logs" },
+  { s: "file_upload_logs", ico: "📥", label: "파일 업로드 로그", path: "/adminsetting/file-upload-logs" },
+  { s: "file_download_logs", ico: "📥", label: "파일 다운로드 로그", path: "/adminsetting/file-download-logs" }
+];
+
 export const AdminLayout: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { t } = useTranslation();
-  const [openSubMenu, setOpenSubMenu] = useState<boolean>(true);
+  // 그룹(children이 있는 항목)별로 펼침 상태를 독립적으로 관리 — item.s를 키로 사용.
+  // 현재 경로가 속한 그룹은 처음부터 펼쳐진 채로 시작한다.
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => {
+    const initial: Record<string, boolean> = {};
+    RAW_SIDEBAR.forEach(item => {
+      if (item.children && item.s && item.children.some(c => c.path === location.pathname)) {
+        initial[item.s] = true;
+      }
+    });
+    return initial;
+  });
+  const toggleGroup = (key: string) => setOpenGroups(prev => ({ ...prev, [key]: !prev[key] }));
   const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(false);
   const [isBackdoorAllowed, setIsBackdoorAllowed] = useState<boolean>(false);
 
@@ -60,55 +121,6 @@ export const AdminLayout: React.FC = () => {
       currentUserRole = u.role || 'ROLE_ADMIN';
     } catch (e) {}
   }
-
-  // SIDEBAR data structure matching permissions matrix items
-  const RAW_SIDEBAR: SidebarItem[] = [
-    { s: "home", ico: "🏠", label: "홈 (종합 현황)", path: "/adminsetting/dashboard" },
-
-    { grp: "교회/지역/개척지" },
-    { s: "diag", ico: "🩺", label: "목록 및 설정", path: "/adminsetting/faith-records" },
-    { s: "inspect", ico: "🚨", label: "상세 점검 (양·질)", path: "/adminsetting/church-detail" },
-
-    { grp: "데이터 관리" },
-    {
-      s: "weekly_worship", ico: "📅", label: "주간예배 출결", path: "/adminsetting/weekly-worship",
-      children: [
-        { label: "자동 취합 실행", path: "/adminsetting/weekly-worship" },
-        { label: "이전 데이터 확인", path: "/adminsetting/weekly-worship/history" },
-        { label: "지역/양식 설정", path: "/adminsetting/weekly-worship/settings" }
-      ]
-    },
-    {
-      s: "weekly_report_status", ico: "📋", label: "주간보고 관리", path: "/adminsetting/weekly-report-status",
-      children: [
-        { label: "제출 현황 확인", path: "/adminsetting/weekly-report-status" },
-        { label: "주차별 양식 관리", path: "/adminsetting/weekly-report-schema" }
-      ]
-    },
-    {
-      s: "evangelism_bulk", ico: "📊", label: "전도 가개강 데이터 전체관리", path: "/adminsetting/evangelism-bulk",
-      children: [
-        { label: "데이터 전체관리", path: "/adminsetting/evangelism-bulk" },
-        { label: "월말보고서 양식관리", path: "/adminsetting/evangelism-bulk/report-template" }
-      ]
-    },
-    { s: "membership_bulk", ico: "👥", label: "내무 데이터 전체관리", path: "/adminsetting/membership-bulk" },
-
-    { grp: "회원 및 권한" },
-    { s: "users", ico: "🌍", label: "회원 관리", path: "/adminsetting/users" },
-    { s: "roles", ico: "📈", label: "권한 목록 및 소속 회원 관리", path: "/adminsetting/roles" },
-    { s: "perm", ico: "🔑", label: "권한별 접근 메뉴 설정", path: "/adminsetting/permissions" },
-
-    { grp: "로그 및 시스템" },
-    { s: "admin_bot", ico: "🤖", label: "봇 연결 관리", path: "/adminsetting/bot" },
-    { s: "i18n", ico: "🌐", label: "다국어 사전 관리", path: "/adminsetting/i18n" },
-    { s: "sys", ico: "⚙️", label: "시스템 설정", path: "/adminsetting/settings" },
-    { s: "messages", ico: "💬", label: "메세지 관리", path: "/adminsetting/messages" },
-    { s: "login_log", ico: "📥", label: "로그인 로그", path: "/adminsetting/login-logs" },
-    { s: "access_log", ico: "📥", label: "접근로그", path: "/adminsetting/access-logs" },
-    { s: "file_upload_logs", ico: "📥", label: "파일 업로드 로그", path: "/adminsetting/file-upload-logs" },
-    { s: "file_download_logs", ico: "📥", label: "파일 다운로드 로그", path: "/adminsetting/file-download-logs" }
-  ];
 
   const isAdmin = currentUserRole === 'ROLE_ADMIN' || currentUserRole === 'ADMIN' || currentUserRole === '관리자' || currentUserRole === 'ROLE_관리자';
 
@@ -374,10 +386,12 @@ export const AdminLayout: React.FC = () => {
               const isActive = location.pathname === item.path;
 
               if (item.children) {
+                const groupKey = item.s || String(idx);
+                const isOpen = !!openGroups[groupKey];
                 return (
                   <div key={idx} style={{ display: 'flex', flexDirection: 'column' }}>
                     <div
-                      onClick={() => setOpenSubMenu(!openSubMenu)}
+                      onClick={() => toggleGroup(groupKey)}
                       style={{
                         display: 'flex',
                         alignItems: 'center',
@@ -396,10 +410,10 @@ export const AdminLayout: React.FC = () => {
                         <span style={{ fontSize: '1rem' }}>{item.ico}</span>
                         <span>{item.label}</span>
                       </span>
-                      {openSubMenu ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                      {isOpen ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
                     </div>
 
-                    {openSubMenu && (
+                    {isOpen && (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', paddingLeft: '32px', marginTop: '2px' }}>
                         {item.children.map((sub, sIdx) => {
                           const isSubActive = location.pathname === sub.path;

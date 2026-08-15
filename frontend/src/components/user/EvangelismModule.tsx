@@ -1,10 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { logService } from '../../services/logService';
 import { adminService, UserItem } from '../../services/adminService';
 import { diagnosisService } from '../../services/diagnosisService';
 import defaultChurchesData from '../../assets/defaultChurches.json';
-import { Building2, Calendar, Lock, Send, CheckCircle2, BarChart3, Edit3, Filter, HelpCircle, Plus, Pencil, Trash2, PieChart, TrendingUp, Activity, LayoutDashboard, X, ClipboardList, FileBarChart, FileSpreadsheet } from 'lucide-react';
+import { Building2, Calendar, Lock, Send, CheckCircle2, Filter, HelpCircle, Plus, Pencil, Trash2, PieChart, TrendingUp, Activity, LayoutDashboard, X } from 'lucide-react';
 import { EvangelismPlanTab } from './EvangelismPlanTab';
 import { EvangelismMonthlyReportTab } from './EvangelismMonthlyReportTab';
 import { EvangelismMonthlyReportExportTab } from './EvangelismMonthlyReportExportTab';
@@ -133,7 +132,6 @@ const getDynamicWeekConfig = (selectedYearStr: string) => {
 };
 
 export const EvangelismModule: React.FC<EvangelismModuleProps> = ({ initialTab = 'check' }) => {
-  const navigate = useNavigate();
   // 1. Navigation Sub-tab ('check': 교회별 데이터 확인, 'aggregate': 취합, 'plan': 계획)
   const [activeTab, setActiveTab] = useState<'check' | 'aggregate' | 'plan' | 'monthly' | 'report'>(initialTab);
 
@@ -1262,118 +1260,6 @@ export const EvangelismModule: React.FC<EvangelismModuleProps> = ({ initialTab =
           </button>
         </div>
 
-        {/* Sub-tab Switches */}
-        <div style={{ display: 'flex', background: 'rgba(255,255,255,0.08)', padding: '5px', borderRadius: '14px', border: '1px solid rgba(255,255,255,0.1)' }}>
-          <button
-            onClick={() => navigate('/evangelism/check')}
-            style={{
-              padding: '10px 22px',
-              borderRadius: '10px',
-              border: 'none',
-              fontSize: '0.92rem',
-              fontWeight: 800,
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              transition: 'all 0.2s ease',
-              background: activeTab === 'check' ? '#ffffff' : 'transparent',
-              color: activeTab === 'check' ? '#0f172a' : '#cbd5e1',
-              boxShadow: activeTab === 'check' ? '0 4px 14px rgba(0,0,0,0.2)' : 'none'
-            }}
-          >
-            <BarChart3 size={18} color={activeTab === 'check' ? '#2563eb' : '#cbd5e1'} />
-            1. 교회별 데이터 확인
-          </button>
-
-          <button
-            onClick={() => navigate('/evangelism/aggregate')}
-            style={{
-              padding: '10px 22px',
-              borderRadius: '10px',
-              border: 'none',
-              fontSize: '0.92rem',
-              fontWeight: 800,
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              transition: 'all 0.2s ease',
-              background: activeTab === 'aggregate' ? '#ffffff' : 'transparent',
-              color: activeTab === 'aggregate' ? '#0f172a' : '#cbd5e1',
-              boxShadow: activeTab === 'aggregate' ? '0 4px 14px rgba(0,0,0,0.2)' : 'none'
-            }}
-          >
-            <Edit3 size={18} color={activeTab === 'aggregate' ? '#16a34a' : '#cbd5e1'} />
-            2. 주간보고
-          </button>
-
-          <button
-            onClick={() => navigate('/evangelism/plan')}
-            style={{
-              padding: '10px 22px',
-              borderRadius: '10px',
-              border: 'none',
-              fontSize: '0.92rem',
-              fontWeight: 800,
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              transition: 'all 0.2s ease',
-              background: activeTab === 'plan' ? '#ffffff' : 'transparent',
-              color: activeTab === 'plan' ? '#0f172a' : '#cbd5e1',
-              boxShadow: activeTab === 'plan' ? '0 4px 14px rgba(0,0,0,0.2)' : 'none'
-            }}
-          >
-            <ClipboardList size={18} color={activeTab === 'plan' ? '#7c3aed' : '#cbd5e1'} />
-            3. 계획
-          </button>
-
-          <button
-            onClick={() => navigate('/evangelism/monthly')}
-            style={{
-              padding: '10px 22px',
-              borderRadius: '10px',
-              border: 'none',
-              fontSize: '0.92rem',
-              fontWeight: 800,
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              transition: 'all 0.2s ease',
-              background: activeTab === 'monthly' ? '#ffffff' : 'transparent',
-              color: activeTab === 'monthly' ? '#0f172a' : '#cbd5e1',
-              boxShadow: activeTab === 'monthly' ? '0 4px 14px rgba(0,0,0,0.2)' : 'none'
-            }}
-          >
-            <FileBarChart size={18} color={activeTab === 'monthly' ? '#0891b2' : '#cbd5e1'} />
-            4. 월간보고
-          </button>
-
-          <button
-            onClick={() => navigate('/evangelism/report')}
-            style={{
-              padding: '10px 22px',
-              borderRadius: '10px',
-              border: 'none',
-              fontSize: '0.92rem',
-              fontWeight: 800,
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              transition: 'all 0.2s ease',
-              background: activeTab === 'report' ? '#ffffff' : 'transparent',
-              color: activeTab === 'report' ? '#0f172a' : '#cbd5e1',
-              boxShadow: activeTab === 'report' ? '0 4px 14px rgba(0,0,0,0.2)' : 'none'
-            }}
-          >
-            <FileSpreadsheet size={18} color={activeTab === 'report' ? '#0891b2' : '#cbd5e1'} />
-            5. 월말보고서 출력
-          </button>
-        </div>
       </div>
 
       {/* Global Control Bar (Church Selector + Year + Week Filter) */}
