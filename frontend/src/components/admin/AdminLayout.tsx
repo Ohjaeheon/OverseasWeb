@@ -85,7 +85,13 @@ export const AdminLayout: React.FC = () => {
         { label: "주차별 양식 관리", path: "/adminsetting/weekly-report-schema" }
       ]
     },
-    { s: "evangelism_bulk", ico: "📊", label: "전도 가개강 데이터 전체관리", path: "/adminsetting/evangelism-bulk" },
+    {
+      s: "evangelism_bulk", ico: "📊", label: "전도 가개강 데이터 전체관리", path: "/adminsetting/evangelism-bulk",
+      children: [
+        { label: "데이터 전체관리", path: "/adminsetting/evangelism-bulk" },
+        { label: "월말보고서 양식관리", path: "/adminsetting/evangelism-bulk/report-template" }
+      ]
+    },
     { s: "membership_bulk", ico: "👥", label: "내무 데이터 전체관리", path: "/adminsetting/membership-bulk" },
 
     { grp: "회원 및 권한" },

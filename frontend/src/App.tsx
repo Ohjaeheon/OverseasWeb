@@ -27,6 +27,7 @@ import { AdminWeeklyWorshipPage } from './pages/admin/AdminWeeklyWorshipPage';
 import { AdminWeeklyWorshipHistoryPage } from './pages/admin/AdminWeeklyWorshipHistoryPage';
 import { AdminWeeklyWorshipSettingsPage } from './pages/admin/AdminWeeklyWorshipSettingsPage';
 import { AdminEvangelismBulkPage } from './pages/admin/AdminEvangelismBulkPage';
+import { AdminEvangelismReportTemplatePage } from './pages/admin/AdminEvangelismReportTemplatePage';
 import { AdminMembershipBulkPage } from './pages/admin/AdminMembershipBulkPage';
 import { AdminWeeklyReportSchemaPage } from './pages/admin/AdminWeeklyReportSchemaPage';
 import { AdminWeeklyReportStatusPage } from './pages/admin/AdminWeeklyReportStatusPage';
@@ -127,6 +128,7 @@ export const App: React.FC = () => {
         <Route path="/evangelism/aggregate" element={<DiagnosisPage section="evangelism/aggregate" tab="aggregate" />} />
         <Route path="/evangelism/plan" element={<DiagnosisPage section="evangelism/plan" tab="plan" />} />
         <Route path="/evangelism/monthly" element={<DiagnosisPage section="evangelism/monthly" tab="monthly" />} />
+        <Route path="/evangelism/report" element={<DiagnosisPage section="evangelism/report" tab="report" />} />
         <Route path="/center" element={<DiagnosisPage section="center" />} />
         <Route path="/membership" element={<DiagnosisPage section="membership" tab="check" />} />
         <Route path="/membership/check" element={<DiagnosisPage section="membership/check" tab="check" />} />
@@ -164,6 +166,7 @@ export const App: React.FC = () => {
             <Route path="weekly-worship/history" element={<AdminWeeklyWorshipHistoryPage />} />
             <Route path="weekly-worship/settings" element={<AdminWeeklyWorshipSettingsPage />} />
             <Route path="evangelism-bulk" element={<AdminEvangelismBulkPage />} />
+            <Route path="evangelism-bulk/report-template" element={<AdminEvangelismReportTemplatePage />} />
             <Route path="membership-bulk" element={<AdminMembershipBulkPage />} />
             <Route path="weekly-report-status" element={<AdminWeeklyReportStatusPage />} />
             <Route path="weekly-report-schema" element={<AdminWeeklyReportSchemaPage />} />

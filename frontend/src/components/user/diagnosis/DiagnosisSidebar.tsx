@@ -28,6 +28,7 @@ const SIDEBAR: SidebarEntry[] = [
       { cat: 'p1_agg', label: '①-2. 주간보고', path: '/evangelism/aggregate' },
       { cat: 'p1_plan', label: '①-3. 계획', path: '/evangelism/plan' },
       { cat: 'p1_monthly', label: '①-4. 월간보고', path: '/evangelism/monthly' },
+      { cat: 'p1_report', label: '①-5. 월말보고서 출력', path: '/evangelism/report' },
     ],
   },
   { s: 'p2', ico: '②', label: '센터', path: '/center' },

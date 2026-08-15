@@ -1,7 +1,9 @@
 com\overseas\portal\domain\TelegramBotConfig$TelegramBotConfigBuilder.class
 com\overseas\portal\service\WeeklyWorshipService$1.class
+com\overseas\portal\domain\EvangelismReportTemplate$EvangelismReportTemplateBuilder.class
 com\overseas\portal\domain\WeeklyReportSchema.class
 com\overseas\portal\config\DataInitializer.class
+com\overseas\portal\repository\EvangelismReportFieldMappingRepository.class
 com\overseas\portal\domain\EvangelismMonthlyActivity.class
 com\overseas\portal\service\AdminService$AdminDashboardSummary.class
 com\overseas\portal\domain\User$UserBuilder.class
@@ -38,12 +40,14 @@ com\overseas\portal\domain\I18nDictionary$I18nDictionaryBuilder.class
 com\overseas\portal\domain\SystemConfig.class
 com\overseas\portal\service\FileLogService.class
 com\overseas\portal\service\I18nService.class
+com\overseas\portal\domain\EvangelismReportFieldMapping.class
 com\overseas\portal\controller\EvangelismMonthlyActivityController$SaveRequest.class
 com\overseas\portal\service\TelegramBotPollingService.class
 com\overseas\portal\controller\OrganizationChartController.class
 com\overseas\portal\domain\FaithProcessRecord.class
 com\overseas\portal\domain\WorshipRegionMapping$WorshipRegionMappingBuilder.class
 com\overseas\portal\controller\AuthController$TelegramLoginRequest.class
+com\overseas\portal\domain\EvangelismReportTemplate.class
 com\overseas\portal\repository\FileUploadLogRepository.class
 com\overseas\portal\service\WeeklyWorshipService.class
 com\overseas\portal\repository\WorshipRegionMappingRepository.class
@@ -52,6 +56,7 @@ com\overseas\portal\repository\BusinessBoardAttachmentRepository.class
 com\overseas\portal\controller\I18nController.class
 com\overseas\portal\domain\EvangelismEditRequest.class
 com\overseas\portal\domain\AccessLog$AccessLogBuilder.class
+com\overseas\portal\service\EvangelismReportService$ReportResult.class
 com\overseas\portal\service\AdminService.class
 com\overseas\portal\controller\UserController$PasswordUpdateRequest.class
 com\overseas\portal\controller\UserController$1.class
@@ -79,6 +84,7 @@ com\overseas\portal\domain\I18nDictionary.class
 com\overseas\portal\service\TelegramBotPollingService$TelegramMultipartFile.class
 com\overseas\portal\controller\EvangelismPlanController$ItemPayload.class
 com\overseas\portal\domain\WeeklyReportSubmission$WeeklyReportSubmissionBuilder.class
+com\overseas\portal\service\EvangelismReportService.class
 com\overseas\portal\repository\TelegramOtpLogRepository.class
 com\overseas\portal\domain\User.class
 com\overseas\portal\dto\LedgerSaveRequest.class
@@ -119,6 +125,7 @@ com\overseas\portal\service\TelegramBotService$1.class
 com\overseas\portal\controller\FileLogController.class
 com\overseas\portal\domain\MembershipMonthlyRecord.class
 com\overseas\portal\config\SecurityConfig.class
+com\overseas\portal\service\EvangelismReportService$ReportResult$ReportResultBuilder.class
 com\overseas\portal\repository\EvangelismEditRequestRepository.class
 com\overseas\portal\domain\AccessLog.class
 com\overseas\portal\domain\WorshipTemplate.class
@@ -147,13 +154,16 @@ com\overseas\portal\controller\UserController.class
 com\overseas\portal\repository\BusinessLedgerRecordRepository.class
 com\overseas\portal\domain\FileDownloadLog$FileDownloadLogBuilder.class
 com\overseas\portal\service\BusinessLedgerService.class
+com\overseas\portal\domain\EvangelismReportFieldMapping$EvangelismReportFieldMappingBuilder.class
 com\overseas\portal\service\AuthService.class
 com\overseas\portal\domain\CalendarEvent$CalendarEventBuilder.class
 com\overseas\portal\repository\BusinessBoardPostRepository.class
+com\overseas\portal\repository\EvangelismReportTemplateRepository.class
 com\overseas\portal\repository\AccessLogRepository.class
 com\overseas\portal\domain\BusinessBoardPost$BusinessBoardPostBuilder.class
 com\overseas\portal\domain\EvangelismMonthlyActivityEditRequest$EvangelismMonthlyActivityEditRequestBuilder.class
 com\overseas\portal\repository\EvangelismPlanItemRepository.class
+com\overseas\portal\controller\EvangelismReportController.class
 com\overseas\portal\controller\UserController$ProfileUpdateRequest.class
 com\overseas\portal\config\MenuPermissionInterceptor$PermEntry.class
 com\overseas\portal\controller\WeeklyWorshipController.class

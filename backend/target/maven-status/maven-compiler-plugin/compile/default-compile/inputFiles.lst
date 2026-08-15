@@ -25,6 +25,7 @@ E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\service\Business
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\domain\SystemConfig.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\controller\SystemLogController.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\domain\FileUploadLog.java
+E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\domain\EvangelismReportFieldMapping.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\domain\EvangelismEditRequest.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\service\TelegramBotPollingService.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\repository\WorshipRegionMappingRepository.java
@@ -46,6 +47,7 @@ E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\repository\UserR
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\controller\WeeklyReportSchemaController.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\controller\BusinessLedgerController.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\controller\BusinessBoardController.java
+E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\domain\EvangelismReportTemplate.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\service\SystemLogService.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\service\WeeklyReportSchemaService.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\domain\Church.java
@@ -59,11 +61,13 @@ E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\domain\Evangelis
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\repository\AccessLogRepository.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\controller\I18nController.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\domain\WeeklyWorshipHistory.java
+E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\repository\EvangelismReportFieldMappingRepository.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\controller\UserController.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\service\AdminService.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\domain\EvangelismMonthlyActivityEditRequest.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\controller\BusinessArchiveController.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\config\WebMvcConfig.java
+E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\repository\EvangelismReportTemplateRepository.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\controller\MembershipController.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\repository\WeeklyWorshipHistoryRepository.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\service\WeeklyWorshipService.java
@@ -74,6 +78,7 @@ E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\controller\FileL
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\domain\MembershipEditRequest.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\service\TelegramBotService.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\repository\BusinessLedgerRecordRepository.java
+E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\service\EvangelismReportService.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\repository\OrganizationChartRepository.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\repository\TelegramOtpLogRepository.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\domain\I18nDictionary.java
@@ -94,6 +99,7 @@ E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\repository\Evang
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\repository\FileDownloadLogRepository.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\domain\FaithProcessRecord.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\controller\AdminController.java
+E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\controller\EvangelismReportController.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\security\SessionManager.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\controller\DiagnosisController.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\repository\MembershipEditRequestRepository.java

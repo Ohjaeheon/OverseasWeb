@@ -24,6 +24,7 @@ public class DataInitializer implements CommandLineRunner {
     private final PasswordEncoder passwordEncoder;
     private final EvangelismWeeklyRecordRepository evangelismWeeklyRecordRepository;
     private final WorshipRegionMappingRepository worshipRegionMappingRepository;
+    private final EvangelismReportFieldMappingRepository evangelismReportFieldMappingRepository;
     private final org.springframework.jdbc.core.JdbcTemplate jdbcTemplate;
 
     @Override
@@ -559,6 +560,30 @@ public class DataInitializer implements CommandLineRunner {
                         .build());
             }
             log.info("Successfully seeded {} worship region mappings.", defaults.length);
+        }
+
+        // 5. Seed default evangelism monthly report field mapping (7 fixed fields)
+        if (evangelismReportFieldMappingRepository.count() == 0) {
+            log.info("Seeding default evangelism report field mapping (7 fields)...");
+            Object[][] defaults = {
+                    {"BASE_REG", "금년초재적 (전년도 12월 재적)", "D", "MEMBERSHIP_PREV_DEC", true},
+                    {"MONTHLY_ADMIT", "월등록 (당월 개강)", "E", "EVANGELISM_MONTHLY_ADMIT", true},
+                    {"YTD_ADMIT", "등록 연누계", "G", "EVANGELISM_YTD_ADMIT", true},
+                    {"CURRENT_ATTENDANCE", "현재 출석수", "I", "NONE", false},
+                    {"ACTIVE_TEACHER", "활동교사수", "K", "EVANGELISM_MONTHLY_TEACHER", true},
+                    {"CENTER_MONTHLY", "월센터등록", "M", "NONE", false},
+                    {"CENTER_YTD", "센터등록 연누계", "O", "NONE", false}
+            };
+            for (Object[] d : defaults) {
+                evangelismReportFieldMappingRepository.save(EvangelismReportFieldMapping.builder()
+                        .fieldKey((String) d[0])
+                        .label((String) d[1])
+                        .columnLetter((String) d[2])
+                        .dataSource((String) d[3])
+                        .isEnabled((Boolean) d[4])
+                        .build());
+            }
+            log.info("Successfully seeded {} evangelism report field mappings.", defaults.length);
         }
 
         log.info("Demo data seeding disabled as per clean startup requirements.");

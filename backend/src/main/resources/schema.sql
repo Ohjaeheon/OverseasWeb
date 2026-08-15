@@ -477,3 +477,36 @@ COMMENT ON COLUMN overseas.worship_template.stored_path IS '서버에 보관된 
 COMMENT ON COLUMN overseas.worship_template.region_count IS '업로드 시점에 감지된 지역(시트) 개수 (참고용)';
 COMMENT ON COLUMN overseas.worship_template.is_active IS '현재 취합에 사용 중인 활성 템플릿 여부';
 
+-- 21. 전도 월말 보고서 - 업로드된 템플릿(양식) 이력 테이블
+CREATE TABLE IF NOT EXISTS overseas.evangelism_report_template (
+    template_id       BIGSERIAL PRIMARY KEY,
+    original_filename VARCHAR(255) NOT NULL,
+    stored_path       VARCHAR(500) NOT NULL,
+    password          VARCHAR(200) NOT NULL,
+    is_active         BOOLEAN DEFAULT FALSE,
+    uploaded_by       VARCHAR(50),
+    uploaded_at       TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+COMMENT ON TABLE overseas.evangelism_report_template IS '전도 월말 보고서 - 관리자가 업로드한 양식(템플릿) 파일 이력 (1개만 활성)';
+COMMENT ON COLUMN overseas.evangelism_report_template.original_filename IS '업로드 당시 원본 파일명';
+COMMENT ON COLUMN overseas.evangelism_report_template.stored_path IS '서버에 보관된 상대 경로';
+COMMENT ON COLUMN overseas.evangelism_report_template.password IS '템플릿 암호화 비밀번호 (업로드 시 입력, 평문 저장)';
+COMMENT ON COLUMN overseas.evangelism_report_template.is_active IS '현재 출력에 사용 중인 활성 템플릿 여부';
+
+-- 22. 전도 월말 보고서 - 필드(열) 매핑 설정 테이블
+CREATE TABLE IF NOT EXISTS overseas.evangelism_report_field_mapping (
+    mapping_id     BIGSERIAL PRIMARY KEY,
+    field_key      VARCHAR(50) NOT NULL UNIQUE,
+    label          VARCHAR(100) NOT NULL,
+    column_letter  VARCHAR(2) NOT NULL,
+    data_source    VARCHAR(50) NOT NULL DEFAULT 'NONE',
+    is_enabled     BOOLEAN DEFAULT FALSE
+);
+
+COMMENT ON TABLE overseas.evangelism_report_field_mapping IS '전도 월말 보고서 - 템플릿 열(D/E/G/I/K/M/O)과 데이터 소스 매핑 설정 (고정 7항목)';
+COMMENT ON COLUMN overseas.evangelism_report_field_mapping.field_key IS '필드 식별자 (BASE_REG, MONTHLY_ADMIT, YTD_ADMIT, CURRENT_ATTENDANCE, ACTIVE_TEACHER, CENTER_MONTHLY, CENTER_YTD)';
+COMMENT ON COLUMN overseas.evangelism_report_field_mapping.column_letter IS '템플릿 시트 내 열 문자 (예: D, E, G)';
+COMMENT ON COLUMN overseas.evangelism_report_field_mapping.data_source IS '데이터 소스 (MEMBERSHIP_PREV_DEC, EVANGELISM_MONTHLY_ADMIT, EVANGELISM_YTD_ADMIT, EVANGELISM_MONTHLY_TEACHER, NONE)';
+COMMENT ON COLUMN overseas.evangelism_report_field_mapping.is_enabled IS '이 필드를 실제로 채울지 여부 (보류 항목은 false)';
+

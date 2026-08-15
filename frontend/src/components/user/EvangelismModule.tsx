@@ -4,9 +4,10 @@ import { logService } from '../../services/logService';
 import { adminService, UserItem } from '../../services/adminService';
 import { diagnosisService } from '../../services/diagnosisService';
 import defaultChurchesData from '../../assets/defaultChurches.json';
-import { Building2, Calendar, Lock, Send, CheckCircle2, BarChart3, Edit3, Filter, HelpCircle, Plus, Pencil, Trash2, PieChart, TrendingUp, Activity, LayoutDashboard, X, ClipboardList, FileBarChart } from 'lucide-react';
+import { Building2, Calendar, Lock, Send, CheckCircle2, BarChart3, Edit3, Filter, HelpCircle, Plus, Pencil, Trash2, PieChart, TrendingUp, Activity, LayoutDashboard, X, ClipboardList, FileBarChart, FileSpreadsheet } from 'lucide-react';
 import { EvangelismPlanTab } from './EvangelismPlanTab';
 import { EvangelismMonthlyReportTab } from './EvangelismMonthlyReportTab';
+import { EvangelismMonthlyReportExportTab } from './EvangelismMonthlyReportExportTab';
 
 import api from '../../services/api';
 
@@ -44,7 +45,7 @@ interface ConfigItem {
 }
 
 interface EvangelismModuleProps {
-  initialTab?: 'check' | 'aggregate' | 'plan' | 'monthly';
+  initialTab?: 'check' | 'aggregate' | 'plan' | 'monthly' | 'report';
 }
 
 const DEPARTMENTS = ['교역자', '자문회', '장년회', '부녀회', '청년회'];
@@ -134,7 +135,7 @@ const getDynamicWeekConfig = (selectedYearStr: string) => {
 export const EvangelismModule: React.FC<EvangelismModuleProps> = ({ initialTab = 'check' }) => {
   const navigate = useNavigate();
   // 1. Navigation Sub-tab ('check': 교회별 데이터 확인, 'aggregate': 취합, 'plan': 계획)
-  const [activeTab, setActiveTab] = useState<'check' | 'aggregate' | 'plan' | 'monthly'>(initialTab);
+  const [activeTab, setActiveTab] = useState<'check' | 'aggregate' | 'plan' | 'monthly' | 'report'>(initialTab);
 
   useEffect(() => {
     if (initialTab) {
@@ -1350,6 +1351,28 @@ export const EvangelismModule: React.FC<EvangelismModuleProps> = ({ initialTab =
             <FileBarChart size={18} color={activeTab === 'monthly' ? '#0891b2' : '#cbd5e1'} />
             4. 월간보고
           </button>
+
+          <button
+            onClick={() => navigate('/evangelism/report')}
+            style={{
+              padding: '10px 22px',
+              borderRadius: '10px',
+              border: 'none',
+              fontSize: '0.92rem',
+              fontWeight: 800,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              transition: 'all 0.2s ease',
+              background: activeTab === 'report' ? '#ffffff' : 'transparent',
+              color: activeTab === 'report' ? '#0f172a' : '#cbd5e1',
+              boxShadow: activeTab === 'report' ? '0 4px 14px rgba(0,0,0,0.2)' : 'none'
+            }}
+          >
+            <FileSpreadsheet size={18} color={activeTab === 'report' ? '#0891b2' : '#cbd5e1'} />
+            5. 월말보고서 출력
+          </button>
         </div>
       </div>
 
@@ -1406,8 +1429,8 @@ export const EvangelismModule: React.FC<EvangelismModuleProps> = ({ initialTab =
           )}
         </div>
 
-        {/* Right: Year & Month Filters for Monthly Tab */}
-        {activeTab === 'monthly' && (
+        {/* Right: Year & Month Filters for Monthly / Report Tabs */}
+        {(activeTab === 'monthly' || activeTab === 'report') && (
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
             {/* Year Dropdown */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#f8fafc', border: '1px solid #e2e8f0', padding: '6px 12px', borderRadius: '10px' }}>
@@ -1441,7 +1464,7 @@ export const EvangelismModule: React.FC<EvangelismModuleProps> = ({ initialTab =
         )}
 
         {/* Right: Year & Week Filters for Check/Aggregate Tabs */}
-        {activeTab !== 'plan' && activeTab !== 'monthly' && (
+        {activeTab !== 'plan' && activeTab !== 'monthly' && activeTab !== 'report' && (
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
             {/* Year Dropdown */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#f8fafc', border: '1px solid #e2e8f0', padding: '6px 12px', borderRadius: '10px' }}>
@@ -1492,7 +1515,7 @@ export const EvangelismModule: React.FC<EvangelismModuleProps> = ({ initialTab =
         )}
       </div>
 
-      {activeTab !== 'plan' && activeTab !== 'monthly' && renderProcessChevrons()}
+      {activeTab !== 'plan' && activeTab !== 'monthly' && activeTab !== 'report' && renderProcessChevrons()}
 
       {activeTab === 'plan' && <EvangelismPlanTab selectedChurch={selectedChurch} />}
 
@@ -1504,6 +1527,14 @@ export const EvangelismModule: React.FC<EvangelismModuleProps> = ({ initialTab =
           setSelectedYear={setSelectedYear}
           selectedMonth={selectedMonth}
           setSelectedMonth={setSelectedMonth}
+        />
+      )}
+
+      {activeTab === 'report' && (
+        <EvangelismMonthlyReportExportTab
+          selectedChurch={selectedChurch}
+          selectedYear={selectedYear}
+          selectedMonth={selectedMonth}
         />
       )}
 
