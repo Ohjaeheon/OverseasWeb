@@ -72,7 +72,10 @@ public class WeeklyReportSubmissionController {
             @AuthenticationPrincipal UserDetails principal,
             HttpServletRequest request) {
         try {
-            Path dir = Paths.get(uploadDir);
+            // 상대경로를 그대로 File로 넘기면 MultipartFile#transferTo가 서블릿 컨테이너의 임시
+            // 업로드 디렉터리를 기준으로 다시 해석해버려 엉뚱한 경로에 쓰려다 실패한다 (Spring 알려진 동작).
+            // 절대경로로 고정해 두 API(createDirectories/transferTo)가 항상 같은 위치를 가리키게 한다.
+            Path dir = Paths.get(uploadDir).toAbsolutePath();
             if (!Files.exists(dir)) Files.createDirectories(dir);
 
             List<String> savedPaths = new ArrayList<>();

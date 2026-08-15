@@ -1,19 +1,16 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import {
   ChevronRight, ChevronLeft, CheckCircle2, AlertCircle,
-  X, Plus, Image, Send, RefreshCw, Lock
+  Send, RefreshCw, Lock
 } from 'lucide-react';
 import {
   weeklyReportService,
   WeeklyReportSchemaItem,
   FormSchema,
-  FormPage,
-  FormSection,
   ChurchOption
 } from '../../services/weeklyReportService';
 import { Week, getCurrentWeek, enumerateWeeks, formatWeekLabel, isSameWeek } from '../../utils/weekUtil';
-
-interface NotesCardValue { value?: string; photoPaths?: string[] }
+import { PageRenderer, NotesCardEntry, generateCardId } from '../../components/weeklyReport/FormRenderer';
 
 // ─── 메인 컴포넌트 ──────────────────────────────────────────────────
 export const WeeklyReportPage: React.FC = () => {
@@ -152,12 +149,38 @@ export const WeeklyReportPage: React.FC = () => {
     });
   };
 
-  // ── 특이사항 카드형 게시판(notes_board) 데이터 처리 ─────────────────
-  const updateNotesCardValue = (sectionId: string, cardId: string, value: string) => {
+  // ── 특이사항 카드형 게시판(notes_board) 데이터 처리 — 사용자가 카드를 자유롭게 추가/삭제 ──
+  const addNotesCard = (sectionId: string, maxCards?: number) => {
     setFormData(prev => {
-      const section: Record<string, NotesCardValue> = { ...(prev[sectionId] || {}) };
-      section[cardId] = { ...(section[cardId] || {}), value };
-      return { ...prev, [sectionId]: section };
+      const cards: NotesCardEntry[] = [...(prev[sectionId] || [])];
+      if (maxCards && cards.length >= maxCards) return prev;
+      cards.push({ cardId: generateCardId(), title: '', value: '', photoPaths: [] });
+      return { ...prev, [sectionId]: cards };
+    });
+  };
+
+  const removeNotesCard = (sectionId: string, cardId: string) => {
+    setFormData(prev => {
+      const cards: NotesCardEntry[] = (prev[sectionId] || []).filter((c: NotesCardEntry) => c.cardId !== cardId);
+      return { ...prev, [sectionId]: cards };
+    });
+    setNotesPhotos(prev => {
+      const sectionMap = { ...(prev[sectionId] || {}) };
+      delete sectionMap[cardId];
+      return { ...prev, [sectionId]: sectionMap };
+    });
+    setNotesPhotoPreviews(prev => {
+      const sectionMap = { ...(prev[sectionId] || {}) };
+      delete sectionMap[cardId];
+      return { ...prev, [sectionId]: sectionMap };
+    });
+  };
+
+  const updateNotesCardField = (sectionId: string, cardId: string, field: 'title' | 'value', val: string) => {
+    setFormData(prev => {
+      const cards: NotesCardEntry[] = (prev[sectionId] || []).map((c: NotesCardEntry) =>
+        c.cardId === cardId ? { ...c, [field]: val } : c);
+      return { ...prev, [sectionId]: cards };
     });
   };
 
@@ -222,10 +245,12 @@ export const WeeklyReportPage: React.FC = () => {
         for (const entry of pendingEntries) {
           const paths = uploadedPaths.slice(cursor, cursor + entry.files.length);
           cursor += entry.files.length;
-          const sectionData = { ...(finalData[entry.sectionId] || {}) };
-          const existing: NotesCardValue = sectionData[entry.cardId] || {};
-          sectionData[entry.cardId] = { ...existing, photoPaths: [...(existing.photoPaths || []), ...paths] };
-          finalData[entry.sectionId] = sectionData;
+          const cards: NotesCardEntry[] = [...(finalData[entry.sectionId] || [])];
+          const idx = cards.findIndex(c => c.cardId === entry.cardId);
+          if (idx >= 0) {
+            cards[idx] = { ...cards[idx], photoPaths: [...(cards[idx].photoPaths || []), ...paths] };
+            finalData[entry.sectionId] = cards;
+          }
         }
       }
 
@@ -256,45 +281,56 @@ export const WeeklyReportPage: React.FC = () => {
     }
   };
 
-  // ── 렌더링 ───────────────────────────────────────────────────────
+  // ─── 렌더링 ───────────────────────────────────────────────────────
   const inputStyle: React.CSSProperties = {
-    background: 'rgba(15,23,42,0.7)', border: '1px solid rgba(71,85,105,0.5)',
-    borderRadius: '8px', padding: '8px 12px', color: '#e2e8f0', fontSize: '0.875rem', width: '100%', boxSizing: 'border-box'
+    background: '#ffffff',
+    border: '1.5px solid #cbd5e1',
+    borderRadius: '8px',
+    padding: '9px 12px',
+    color: '#0f172a',
+    fontSize: '0.875rem',
+    width: '100%',
+    boxSizing: 'border-box',
+    outline: 'none',
+    fontFamily: '"Pretendard", "Noto Sans KR", -apple-system, sans-serif'
   };
 
   const numInputStyle: React.CSSProperties = {
-    ...inputStyle, textAlign: 'center', padding: '6px 4px', fontSize: '0.85rem'
+    ...inputStyle,
+    textAlign: 'center',
+    padding: '6px 4px',
+    fontSize: '0.875rem'
   };
 
   if (loading) {
     return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '300px', color: '#64748b' }}>
-        <RefreshCw size={20} style={{ animation: 'spin 1s linear infinite', marginRight: '10px' }} /> 불러오는 중...
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '300px', color: '#475569', fontWeight: 600, fontFamily: '"Pretendard", "Noto Sans KR", sans-serif' }}>
+        <RefreshCw size={20} style={{ animation: 'spin 1s linear infinite', marginRight: '10px', color: '#2563eb' }} /> 불러오는 중...
       </div>
     );
   }
 
   return (
-    <div style={{ maxWidth: '900px', margin: '0 auto', padding: '0 16px', fontFamily: "'Inter', sans-serif", color: '#e2e8f0' }}>
+    <div style={{ maxWidth: '1360px', margin: '0 auto', padding: '0 20px', fontFamily: '"Pretendard", "Noto Sans KR", -apple-system, BlinkMacSystemFont, sans-serif', color: '#1e293b' }}>
       {/* ── 헤더 ── */}
       <div style={{ marginBottom: '20px' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
           <div>
-            <h2 style={{ margin: 0, fontSize: '1.3rem', fontWeight: 700, color: '#f1f5f9' }}>📋 주간보고 입력</h2>
-            <p style={{ margin: '4px 0 0', color: '#64748b', fontSize: '0.85rem' }}>
+            <h2 style={{ margin: 0, fontSize: '1.4rem', fontWeight: 800, color: '#16224a', letterSpacing: '-0.3px' }}>📋 주간보고 입력</h2>
+            <p style={{ margin: '4px 0 0', color: '#475569', fontSize: '0.875rem', fontWeight: 500 }}>
               {activeSchema ? activeSchema.weekLabel : ''}
             </p>
           </div>
           {alreadySubmitted && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.3)', borderRadius: '8px', padding: '6px 12px', fontSize: '0.8rem', color: '#6ee7b7' }}>
-              <CheckCircle2 size={13} /> 제출됨
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#ecfdf5', border: '1px solid #a7f3d0', borderRadius: '8px', padding: '6px 12px', fontSize: '0.82rem', color: '#047857', fontWeight: 700 }}>
+              <CheckCircle2 size={15} /> 제출됨
             </div>
           )}
         </div>
 
         {/* 주차 선택기 */}
         <div style={{ marginTop: '16px' }}>
-          <label style={{ fontSize: '0.8rem', color: '#64748b', display: 'block', marginBottom: '4px' }}>보고 주차</label>
+          <label style={{ fontSize: '0.85rem', color: '#334155', fontWeight: 600, display: 'block', marginBottom: '6px' }}>보고 주차</label>
           <select
             value={weekKey(selectedWeek)}
             onChange={e => {
@@ -302,7 +338,7 @@ export const WeeklyReportPage: React.FC = () => {
               const w = weekOptions.find(o => weekKey(o) === key);
               if (w) setSelectedWeek(w);
             }}
-            style={{ ...inputStyle, maxWidth: '320px', cursor: 'pointer' }}
+            style={{ ...inputStyle, maxWidth: '320px', cursor: 'pointer', fontWeight: 600 }}
           >
             {weekOptions.map(w => (
               <option key={weekKey(w)} value={weekKey(w)}>
@@ -313,21 +349,27 @@ export const WeeklyReportPage: React.FC = () => {
         </div>
 
         {isLocked && (
-          <div style={{ marginTop: '12px', display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.3)', borderRadius: '10px', padding: '10px 14px', fontSize: '0.82rem', color: '#fcd34d' }}>
-            <Lock size={14} /> 지난 주차는 수정할 수 없습니다. (읽기 전용) 정정 결재 기능은 추후 지원 예정입니다.
+          <div style={{ marginTop: '12px', display: 'flex', alignItems: 'center', gap: '8px', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: '10px', padding: '10px 14px', fontSize: '0.85rem', color: '#b45309', fontWeight: 600 }}>
+            <Lock size={15} /> 지난 주차는 수정할 수 없습니다. (읽기 전용) 정정 결재 기능은 추후 지원 예정입니다.
           </div>
         )}
       </div>
 
       {loadError && (
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '60px 20px', gap: '12px', color: '#94a3b8' }}>
-          <AlertCircle size={36} color='#475569' />
-          <p style={{ margin: 0 }}>{loadError}</p>
+        <div style={{
+          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+          padding: '50px 24px', margin: '24px 0', background: '#ffffff', borderRadius: '16px',
+          border: '1px solid #fee2e2', boxShadow: '0 4px 16px rgba(20,40,90,0.05)', color: '#1e293b'
+        }}>
+          <div style={{ width: '52px', height: '52px', borderRadius: '50%', background: '#fef2f2', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '14px' }}>
+            <AlertCircle size={30} color='#ef4444' />
+          </div>
+          <p style={{ margin: 0, fontSize: '0.95rem', fontWeight: 700, color: '#1e293b', textAlign: 'center', lineHeight: 1.5 }}>{loadError}</p>
         </div>
       )}
 
       {!loadError && schemaLoading && (
-        <div style={{ textAlign: 'center', padding: '40px', color: '#64748b' }}>양식 불러오는 중...</div>
+        <div style={{ textAlign: 'center', padding: '40px', color: '#475569', fontWeight: 600 }}>양식 불러오는 중...</div>
       )}
 
       {!loadError && !schemaLoading && parsedSchema && activeSchema && (
@@ -335,12 +377,12 @@ export const WeeklyReportPage: React.FC = () => {
           {/* 진행 표시줄 */}
           <div style={{ display: 'flex', gap: '6px' }}>
             {parsedSchema.pages.map((p, i) => (
-              <div key={p.pageId} style={{ flex: 1, height: '4px', borderRadius: '4px', background: i <= currentPage ? 'linear-gradient(90deg, #6366f1, #8b5cf6)' : 'rgba(51,65,85,0.6)', transition: 'background 0.3s' }} />
+              <div key={p.pageId} style={{ flex: 1, height: '5px', borderRadius: '4px', background: i <= currentPage ? 'linear-gradient(90deg, #2563eb, #3b82f6)' : '#e2e8f0', transition: 'background 0.3s' }} />
             ))}
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '6px', marginBottom: '20px' }}>
             {parsedSchema.pages.map((p, i) => (
-              <span key={p.pageId} style={{ fontSize: '0.75rem', color: i === currentPage ? '#a5b4fc' : '#475569', fontWeight: i === currentPage ? 600 : 400, textAlign: 'center', flex: 1 }}>
+              <span key={p.pageId} style={{ fontSize: '0.8rem', color: i === currentPage ? '#1d4ed8' : '#64748b', fontWeight: i === currentPage ? 700 : 500, textAlign: 'center', flex: 1 }}>
                 {p.title}
               </span>
             ))}
@@ -348,14 +390,14 @@ export const WeeklyReportPage: React.FC = () => {
 
           {/* 제출 결과 배너 */}
           {submitResult && (
-            <div style={{ background: submitResult === 'success' ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.1)', border: `1px solid ${submitResult === 'success' ? 'rgba(16,185,129,0.3)' : 'rgba(239,68,68,0.3)'}`, borderRadius: '12px', padding: '14px 18px', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-              {submitResult === 'success' ? <CheckCircle2 size={18} color='#10b981' /> : <AlertCircle size={18} color='#ef4444' />}
-              <span style={{ color: submitResult === 'success' ? '#6ee7b7' : '#fca5a5', fontWeight: 600 }}>{submitMessage}</span>
+            <div style={{ background: submitResult === 'success' ? '#f0fdf4' : '#fef2f2', border: `1px solid ${submitResult === 'success' ? '#bbf7d0' : '#fecaca'}`, borderRadius: '12px', padding: '14px 18px', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+              {submitResult === 'success' ? <CheckCircle2 size={18} color='#16a34a' /> : <AlertCircle size={18} color='#dc2626' />}
+              <span style={{ color: submitResult === 'success' ? '#15803d' : '#b91c1c', fontWeight: 700, fontSize: '0.9rem' }}>{submitMessage}</span>
             </div>
           )}
 
           {/* ── 페이지 폼 ── */}
-          <div style={{ background: 'rgba(15,23,42,0.6)', borderRadius: '16px', border: '1px solid rgba(51,65,85,0.4)', padding: '24px', backdropFilter: 'blur(8px)', opacity: isLocked ? 0.75 : 1 }}>
+          <div style={{ background: '#ffffff', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 4px 20px rgba(20,40,90,0.05)', padding: '28px', opacity: isLocked ? 0.85 : 1 }}>
             <PageRenderer
               page={parsedSchema.pages[currentPage]}
               pageIndex={currentPage}
@@ -368,7 +410,9 @@ export const WeeklyReportPage: React.FC = () => {
               onUpdateDynamicTableRow={updateDynamicTableRow}
               onAddDynamicTableRow={addDynamicTableRow}
               onRemoveDynamicTableRow={removeDynamicTableRow}
-              onUpdateNotesCardValue={updateNotesCardValue}
+              onAddNotesCard={addNotesCard}
+              onRemoveNotesCard={removeNotesCard}
+              onUpdateNotesCardField={updateNotesCardField}
               onAddNotesCardPhotos={addNotesCardPhotos}
               onRemoveNotesCardPhoto={removeNotesCardPhoto}
               notesPhotoPreviews={notesPhotoPreviews}
@@ -379,23 +423,23 @@ export const WeeklyReportPage: React.FC = () => {
           </div>
 
           {/* ── 네비게이션 버튼 ── */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '20px', gap: '12px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '24px', gap: '12px' }}>
             <button onClick={() => setCurrentPage(p => Math.max(0, p - 1))} disabled={currentPage === 0}
-              style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '11px 22px', background: currentPage === 0 ? 'rgba(30,41,59,0.3)' : 'rgba(30,41,59,0.8)', border: '1px solid rgba(51,65,85,0.4)', borderRadius: '10px', color: currentPage === 0 ? '#334155' : '#94a3b8', cursor: currentPage === 0 ? 'not-allowed' : 'pointer', fontWeight: 500 }}>
+              style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '11px 22px', background: currentPage === 0 ? '#f1f5f9' : '#ffffff', border: '1px solid #cbd5e1', borderRadius: '10px', color: currentPage === 0 ? '#94a3b8' : '#334155', cursor: currentPage === 0 ? 'not-allowed' : 'pointer', fontWeight: 600, fontFamily: 'inherit' }}>
               <ChevronLeft size={16} /> 이전
             </button>
 
             {currentPage === parsedSchema.pages.length - 1 ? (
               !isLocked && (
                 <button onClick={handleSubmit} disabled={submitting || !selectedChurchId}
-                  style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '11px 28px', background: (submitting || !selectedChurchId) ? 'rgba(99,102,241,0.3)' : 'linear-gradient(135deg, #6366f1, #8b5cf6)', border: 'none', borderRadius: '10px', color: 'white', fontWeight: 700, cursor: (submitting || !selectedChurchId) ? 'not-allowed' : 'pointer', fontSize: '0.95rem' }}>
+                  style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '11px 28px', background: (submitting || !selectedChurchId) ? '#93c5fd' : 'linear-gradient(135deg, #2563eb, #1d4ed8)', border: 'none', borderRadius: '10px', color: 'white', fontWeight: 700, cursor: (submitting || !selectedChurchId) ? 'not-allowed' : 'pointer', fontSize: '0.95rem', boxShadow: '0 4px 12px rgba(37,99,235,0.25)', fontFamily: 'inherit' }}>
                   {submitting ? <RefreshCw size={16} style={{ animation: 'spin 1s linear infinite' }} /> : <Send size={16} />}
                   {submitting ? '제출 중...' : alreadySubmitted ? '재제출 (수정)' : '제출하기'}
                 </button>
               )
             ) : (
               <button onClick={() => setCurrentPage(p => Math.min(parsedSchema.pages.length - 1, p + 1))}
-                style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '11px 22px', background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', border: 'none', borderRadius: '10px', color: 'white', fontWeight: 600, cursor: 'pointer' }}>
+                style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '11px 24px', background: 'linear-gradient(135deg, #2563eb, #1d4ed8)', border: 'none', borderRadius: '10px', color: 'white', fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 12px rgba(37,99,235,0.25)', fontFamily: 'inherit' }}>
                 다음 <ChevronRight size={16} />
               </button>
             )}
@@ -406,246 +450,3 @@ export const WeeklyReportPage: React.FC = () => {
   );
 };
 
-// ─── 페이지 렌더러 ─────────────────────────────────────────────────
-interface PageRendererProps {
-  page: FormPage;
-  pageIndex: number;
-  formData: Record<string, any>;
-  churches: ChurchOption[];
-  selectedChurchId: number | null;
-  onChurchSelect: (id: number) => void;
-  onUpdateField: (key: string, value: any) => void;
-  onUpdateGroupedCell: (sid: string, leafKey: string, val: string) => void;
-  onUpdateDynamicTableRow: (sid: string, rowIdx: number, col: string, val: string) => void;
-  onAddDynamicTableRow: (sid: string, cols: string[]) => void;
-  onRemoveDynamicTableRow: (sid: string, rowIdx: number) => void;
-  onUpdateNotesCardValue: (sid: string, cardId: string, val: string) => void;
-  onAddNotesCardPhotos: (sid: string, cardId: string, files: FileList | null) => void;
-  onRemoveNotesCardPhoto: (sid: string, cardId: string, idx: number) => void;
-  notesPhotoPreviews: Record<string, Record<string, string[]>>;
-  inputStyle: React.CSSProperties;
-  numInputStyle: React.CSSProperties;
-  disabled: boolean;
-}
-
-const PageRenderer: React.FC<PageRendererProps> = ({
-  page, pageIndex, formData, churches, selectedChurchId, onChurchSelect,
-  onUpdateField, onUpdateGroupedCell, onUpdateDynamicTableRow, onAddDynamicTableRow, onRemoveDynamicTableRow,
-  onUpdateNotesCardValue, onAddNotesCardPhotos, onRemoveNotesCardPhoto, notesPhotoPreviews,
-  inputStyle, numInputStyle, disabled
-}) => {
-
-  const labelStyle: React.CSSProperties = { fontSize: '0.82rem', color: '#64748b', marginBottom: '4px', display: 'block' };
-  const sectionTitleStyle: React.CSSProperties = { fontSize: '0.95rem', fontWeight: 700, color: '#a5b4fc', marginBottom: '12px', paddingBottom: '8px', borderBottom: '1px solid rgba(99,102,241,0.2)' };
-  const thStyle: React.CSSProperties = { padding: '8px 10px', background: 'rgba(30,41,59,0.8)', color: '#94a3b8', border: '1px solid rgba(51,65,85,0.4)', fontWeight: 600, textAlign: 'center', whiteSpace: 'nowrap' };
-
-  return (
-    <div>
-      <h3 style={{ margin: '0 0 20px', fontSize: '1.05rem', fontWeight: 700, color: '#f1f5f9' }}>
-        Page {pageIndex + 1} — {page.title}
-      </h3>
-
-      {/* 일반 필드 (Page 1) */}
-      {page.fields?.map(field => (
-        <div key={field.fieldId} style={{ marginBottom: '16px' }}>
-          <label style={labelStyle}>{field.label}{field.required && <span style={{ color: '#ef4444', marginLeft: '3px' }}>*</span>}</label>
-          {field.type === 'church_select' ? (
-            <div style={{ position: 'relative' }}>
-              <select value={selectedChurchId || ''} onChange={e => onChurchSelect(Number(e.target.value))} disabled={disabled}
-                style={{ ...inputStyle, appearance: 'none', cursor: disabled ? 'not-allowed' : 'pointer' }}>
-                <option value="">-- 교회 선택 --</option>
-                {churches.map(c => (
-                  <option key={c.churchId} value={c.churchId}>{c.name} ({c.country})</option>
-                ))}
-              </select>
-              {churches.length <= 1 && selectedChurchId && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '5px', marginTop: '4px', fontSize: '0.78rem', color: '#64748b' }}>
-                  <Lock size={11} /> 담당 교회로 자동 설정됨
-                </div>
-              )}
-            </div>
-          ) : (
-            <input type={field.type === 'date' ? 'date' : 'text'} disabled={disabled}
-              value={formData[field.fieldId] || ''}
-              onChange={e => onUpdateField(field.fieldId, e.target.value)}
-              style={inputStyle}
-              placeholder={field.placeholder || `${field.label} 입력`} />
-          )}
-        </div>
-      ))}
-
-      {/* 섹션 렌더링 (Page 2, 3) */}
-      {page.sections?.map(section => (
-        <div key={section.sectionId} style={{ marginBottom: '28px' }}>
-          <div style={sectionTitleStyle}>{section.title}</div>
-
-          {/* 요약형 병합헤더 표 (예배출결/선교센터/전도현황) */}
-          {section.type === 'grouped_table' && section.leafColumns && (
-            <GroupedTable
-              section={section}
-              value={formData[section.sectionId] || {}}
-              onChange={(leafKey, val) => onUpdateGroupedCell(section.sectionId, leafKey, val)}
-              thStyle={thStyle}
-              numInputStyle={numInputStyle}
-              disabled={disabled}
-            />
-          )}
-
-          {/* 동적 테이블 (주간 교육 현황) */}
-          {section.type === 'dynamic_table' && section.columns && (
-            <div>
-              <div style={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
-                  <thead>
-                    <tr>
-                      {section.columns.map(col => (<th key={col} style={thStyle}>{col}</th>))}
-                      {!disabled && <th style={{ ...thStyle, width: '40px' }}></th>}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {(formData[section.sectionId] || [{}]).map((row: any, rowIdx: number) => (
-                      <tr key={rowIdx}>
-                        {section.columns!.map(col => (
-                          <td key={col} style={{ padding: '4px', border: '1px solid rgba(51,65,85,0.3)', background: 'rgba(15,23,42,0.3)' }}>
-                            <input type="text" disabled={disabled} value={row[col] || ''}
-                              onChange={e => onUpdateDynamicTableRow(section.sectionId, rowIdx, col, e.target.value)}
-                              style={{ ...inputStyle, padding: '6px 8px' }} />
-                          </td>
-                        ))}
-                        {!disabled && (
-                          <td style={{ padding: '4px', border: '1px solid rgba(51,65,85,0.3)', background: 'rgba(15,23,42,0.3)', textAlign: 'center' }}>
-                            <button onClick={() => onRemoveDynamicTableRow(section.sectionId, rowIdx)}
-                              style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: '5px', color: '#f87171', cursor: 'pointer', padding: '4px 6px' }}>
-                              <X size={12} />
-                            </button>
-                          </td>
-                        )}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-              {!disabled && (
-                <button onClick={() => onAddDynamicTableRow(section.sectionId, section.columns!)}
-                  style={{ marginTop: '8px', padding: '7px 16px', background: 'rgba(99,102,241,0.1)', border: '1px dashed rgba(99,102,241,0.4)', borderRadius: '8px', color: '#818cf8', cursor: 'pointer', fontSize: '0.82rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <Plus size={13} /> 행 추가
-                </button>
-              )}
-            </div>
-          )}
-
-          {/* 특이사항 카드형 게시판 */}
-          {section.type === 'notes_board' && section.cards && (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px' }}>
-              {section.cards.map(card => {
-                const cardValue: NotesCardValue = (formData[section.sectionId] || {})[card.cardId] || {};
-                const previews = notesPhotoPreviews[section.sectionId]?.[card.cardId] || [];
-                return (
-                  <div key={card.cardId} style={{ background: 'rgba(15,23,42,0.5)', border: '1px solid rgba(51,65,85,0.4)', borderRadius: '10px', padding: '14px' }}>
-                    <div style={{ fontWeight: 700, fontSize: '0.85rem', color: '#e2e8f0' }}>{card.title}</div>
-                    {card.subtitle && <div style={{ fontSize: '0.75rem', color: '#818cf8', marginBottom: '8px' }}>{card.subtitle}</div>}
-                    {!card.subtitle && <div style={{ marginBottom: '8px' }} />}
-
-                    {card.inputType === 'number' ? (
-                      <input type="number" min="0" disabled={disabled} value={cardValue.value || ''}
-                        onChange={e => onUpdateNotesCardValue(section.sectionId, card.cardId, e.target.value)}
-                        style={numInputStyle} />
-                    ) : (
-                      <>
-                        <textarea disabled={disabled} value={cardValue.value || ''}
-                          onChange={e => onUpdateNotesCardValue(section.sectionId, card.cardId, e.target.value)}
-                          placeholder="내용 입력"
-                          style={{ ...inputStyle, minHeight: '60px', resize: 'vertical', marginBottom: '8px' }} />
-                        {!disabled && (
-                          <label style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '0.75rem', color: '#818cf8', cursor: 'pointer' }}>
-                            <Image size={12} /> 사진 첨부
-                            <input type="file" accept="image/*" multiple style={{ display: 'none' }}
-                              onChange={e => onAddNotesCardPhotos(section.sectionId, card.cardId, e.target.files)} />
-                          </label>
-                        )}
-                        {previews.length > 0 && (
-                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '6px', marginTop: '8px' }}>
-                            {previews.map((url, i) => (
-                              <div key={i} style={{ position: 'relative', borderRadius: '6px', overflow: 'hidden' }}>
-                                <img src={url} alt="" style={{ width: '100%', height: '48px', objectFit: 'cover' }} />
-                                {!disabled && (
-                                  <button onClick={() => onRemoveNotesCardPhoto(section.sectionId, card.cardId, i)}
-                                    style={{ position: 'absolute', top: '2px', right: '2px', background: 'rgba(0,0,0,0.6)', border: 'none', borderRadius: '50%', color: 'white', cursor: 'pointer', padding: '2px' }}>
-                                    <X size={9} />
-                                  </button>
-                                )}
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                        {(cardValue.photoPaths?.length || 0) > 0 && (
-                          <p style={{ fontSize: '0.72rem', color: '#64748b', marginTop: '6px' }}>
-                            기존 첨부 {cardValue.photoPaths!.length}장
-                          </p>
-                        )}
-                      </>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      ))}
-    </div>
-  );
-};
-
-// ─── 병합헤더 요약표 (grouped_table) ────────────────────────────────
-const GroupedTable: React.FC<{
-  section: FormSection;
-  value: Record<string, string>;
-  onChange: (leafKey: string, val: string) => void;
-  thStyle: React.CSSProperties;
-  numInputStyle: React.CSSProperties;
-  disabled: boolean;
-}> = ({ section, value, onChange, thStyle, numInputStyle, disabled }) => {
-  const leaves = section.leafColumns || [];
-  const hasGroups = leaves.some(l => l.groupLabel);
-
-  const topRow: React.ReactNode[] = [];
-  let i = 0;
-  while (i < leaves.length) {
-    const leaf = leaves[i];
-    if (leaf.groupLabel) {
-      let j = i;
-      while (j < leaves.length && leaves[j].groupLabel === leaf.groupLabel) j++;
-      topRow.push(<th key={leaf.key} style={thStyle} colSpan={j - i}>{leaf.groupLabel}</th>);
-      i = j;
-    } else {
-      topRow.push(<th key={leaf.key} style={thStyle} rowSpan={hasGroups ? 2 : 1}>{leaf.label}</th>);
-      i++;
-    }
-  }
-
-  return (
-    <div style={{ overflowX: 'auto' }}>
-      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
-        <thead>
-          <tr>{topRow}</tr>
-          {hasGroups && (
-            <tr>
-              {leaves.filter(l => l.groupLabel).map(l => (<th key={l.key} style={thStyle}>{l.label}</th>))}
-            </tr>
-          )}
-        </thead>
-        <tbody>
-          <tr>
-            {leaves.map(leaf => (
-              <td key={leaf.key} style={{ padding: '4px', border: '1px solid rgba(51,65,85,0.3)', background: 'rgba(15,23,42,0.3)' }}>
-                <input type="number" min="0" disabled={disabled} value={value[leaf.key] || ''}
-                  onChange={e => onChange(leaf.key, e.target.value)}
-                  style={numInputStyle} />
-              </td>
-            ))}
-          </tr>
-        </tbody>
-      </table>
-    </div>
-  );
-};

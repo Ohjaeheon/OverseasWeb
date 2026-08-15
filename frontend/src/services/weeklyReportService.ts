@@ -21,14 +21,16 @@ export interface LeafColumn {
   key: string;
   label: string;
   groupLabel?: string;
+  /** 계산식 (선택). 같은 표의 다른 컬럼 key를 변수로 참조하는 사칙연산 수식. 지정 시 사용자 입력 대신 자동 계산됨. */
+  formula?: string;
 }
 
-/** notes_board 전용: 카드 한 장 (사진+텍스트 입력 또는 숫자 입력) */
-export interface NotesBoardCard {
+/** notes_board 전용: 사용자가 화면에서 자유롭게 추가하는 사진+텍스트 카드 한 장 (제출 데이터에 저장되는 실제 항목) */
+export interface NotesBoardEntry {
   cardId: string;
   title: string;
-  subtitle?: string;
-  inputType: 'photo_text' | 'number';
+  value: string;
+  photoPaths: string[];
 }
 
 export interface FormSection {
@@ -40,8 +42,9 @@ export interface FormSection {
   // dynamic_table (표15 주간교육처럼 행을 추가/삭제하는 표)
   columns?: string[];
   allowAddRow?: boolean;
-  // notes_board (표19 주간특이사항 카드형 게시판)
-  cards?: NotesBoardCard[];
+  // notes_board (표19 주간특이사항: 사용자가 자유롭게 추가/삭제하는 사진+텍스트 카드. 관리자는 섹션만 두고
+  // 개별 카드는 지정하지 않음 — 사용자가 화면에서 직접 제목/내용/사진을 채운다)
+  maxCards?: number;
   // photo_upload
   maxFiles?: number;
 }

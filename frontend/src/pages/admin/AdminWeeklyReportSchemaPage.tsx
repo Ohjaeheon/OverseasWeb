@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   Plus, Edit2, Trash2, ChevronDown, ChevronRight,
-  FileText, ToggleLeft, ToggleRight, Eye, Save, X, AlertCircle
+  FileText, ToggleLeft, ToggleRight, Eye, Save, X, AlertCircle, Smartphone
 } from 'lucide-react';
-import { weeklyReportService, WeeklyReportSchemaItem, FormSchema, FormSection, NotesBoardCard } from '../../services/weeklyReportService';
+import { weeklyReportService, WeeklyReportSchemaItem, FormSchema, FormSection, ChurchOption } from '../../services/weeklyReportService';
 import { DEFAULT_SCHEMA } from '../../data/weeklyReportDefaultSchema';
 import { getCurrentWeek, weeksInMonth, formatWeekLabel } from '../../utils/weekUtil';
+import { PageRenderer, NotesCardEntry, generateCardId } from '../../components/weeklyReport/FormRenderer';
 
 interface BuilderFormData { weekLabel: string; startYear: number; startMonth: number; startWeekOfMonth: number; schema: FormSchema }
 
@@ -27,7 +28,7 @@ export const AdminWeeklyReportSchemaPage: React.FC = () => {
   const [editingSchema, setEditingSchema] = useState<WeeklyReportSchemaItem | null>(null);
   const [formData, setFormData] = useState<BuilderFormData>(buildDefaultFormData());
   const [saving, setSaving] = useState(false);
-  const [showJsonPreview, setShowJsonPreview] = useState(false);
+  const [previewMode, setPreviewMode] = useState<'none' | 'json' | 'form'>('none');
   const [expandedPage, setExpandedPage] = useState<string | null>('page2');
 
   const loadSchemas = useCallback(async () => {
@@ -137,6 +138,21 @@ export const AdminWeeklyReportSchemaPage: React.FC = () => {
       return { ...s, leafColumns: leaves };
     });
   };
+  const updateLeafKey = (pageIdx: number, secIdx: number, leafIdx: number, value: string) => {
+    const sanitized = value.replace(/[^A-Za-z0-9_]/g, '_');
+    updateSection(pageIdx, secIdx, s => {
+      const leaves = [...(s.leafColumns || [])];
+      leaves[leafIdx] = { ...leaves[leafIdx], key: sanitized };
+      return { ...s, leafColumns: leaves };
+    });
+  };
+  const updateLeafFormula = (pageIdx: number, secIdx: number, leafIdx: number, value: string) => {
+    updateSection(pageIdx, secIdx, s => {
+      const leaves = [...(s.leafColumns || [])];
+      leaves[leafIdx] = { ...leaves[leafIdx], formula: value || undefined };
+      return { ...s, leafColumns: leaves };
+    });
+  };
   const addLeafColumn = (pageIdx: number, secIdx: number) => {
     updateSection(pageIdx, secIdx, s => ({
       ...s, leafColumns: [...(s.leafColumns || []), { key: `col_${Date.now()}`, label: '새 컬럼' }]
@@ -171,61 +187,46 @@ export const AdminWeeklyReportSchemaPage: React.FC = () => {
     });
   };
 
-  // notes_board: 카드 편집
-  const updateCard = (pageIdx: number, secIdx: number, cardIdx: number, patch: Partial<NotesBoardCard>) => {
-    updateSection(pageIdx, secIdx, s => {
-      const cards = [...(s.cards || [])];
-      cards[cardIdx] = { ...cards[cardIdx], ...patch };
-      return { ...s, cards };
-    });
-  };
-  const addCard = (pageIdx: number, secIdx: number) => {
-    updateSection(pageIdx, secIdx, s => ({
-      ...s, cards: [...(s.cards || []), { cardId: `card_${Date.now()}`, title: '새 항목', inputType: 'photo_text' as const }]
-    }));
-  };
-  const removeCard = (pageIdx: number, secIdx: number, cardIdx: number) => {
-    updateSection(pageIdx, secIdx, s => {
-      const cards = [...(s.cards || [])];
-      cards.splice(cardIdx, 1);
-      return { ...s, cards };
-    });
+  // notes_board: 카드 최대 개수 설정 (개별 카드는 사용자가 화면에서 직접 추가)
+  const updateMaxCards = (pageIdx: number, secIdx: number, value: number) => {
+    updateSection(pageIdx, secIdx, s => ({ ...s, maxCards: value }));
   };
 
-  const inputSm: React.CSSProperties = { background: 'rgba(15,23,42,0.7)', border: '1px solid rgba(71,85,105,0.5)', borderRadius: '8px', padding: '8px 10px', color: '#e2e8f0', fontSize: '0.875rem', boxSizing: 'border-box' };
+  const inputSm: React.CSSProperties = { background: '#ffffff', border: '1.5px solid #cbd5e1', borderRadius: '8px', padding: '8px 10px', color: '#0f172a', fontSize: '0.875rem', boxSizing: 'border-box', outline: 'none', fontFamily: 'inherit' };
 
   return (
-    <div style={{ padding: '24px', maxWidth: '1200px', margin: '0 auto', color: '#e2e8f0', fontFamily: "'Inter', sans-serif" }}>
+    <div style={{ padding: '24px', maxWidth: '1200px', margin: '0 auto', color: '#1e293b', fontFamily: '"Pretendard", "Noto Sans KR", -apple-system, sans-serif' }}>
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '28px' }}>
         <div>
-          <h1 style={{ fontSize: '1.5rem', fontWeight: 700, color: '#f1f5f9', margin: 0 }}>📋 주차별 양식 관리</h1>
-          <p style={{ color: '#94a3b8', marginTop: '4px', fontSize: '0.875rem' }}>
+          <h1 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#16224a', margin: 0, letterSpacing: '-0.3px' }}>📋 주차별 양식 관리</h1>
+          <p style={{ color: '#475569', marginTop: '4px', fontSize: '0.875rem', fontWeight: 500 }}>
             적용 시작 주차를 지정해 두면, 그 주차부터 다음 양식이 시작되는 주차 전까지 자동으로 이 양식이 적용됩니다.
           </p>
         </div>
         <button onClick={openNewBuilder} style={{
           display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 20px',
-          background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', border: 'none',
-          borderRadius: '10px', color: 'white', fontWeight: 600, cursor: 'pointer', fontSize: '0.9rem'
+          background: 'linear-gradient(135deg, #2563eb, #1d4ed8)', border: 'none',
+          borderRadius: '10px', color: 'white', fontWeight: 700, cursor: 'pointer', fontSize: '0.9rem',
+          boxShadow: '0 4px 12px rgba(37,99,235,0.25)', fontFamily: 'inherit'
         }}>
           <Plus size={16} /> 새 양식 만들기
         </button>
       </div>
 
       {error && (
-        <div style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: '10px', padding: '12px 16px', marginBottom: '20px', display: 'flex', gap: '8px', alignItems: 'center' }}>
-          <AlertCircle size={16} color='#ef4444' /> <span style={{ color: '#fca5a5' }}>{error}</span>
+        <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '10px', padding: '12px 16px', marginBottom: '20px', display: 'flex', gap: '8px', alignItems: 'center' }}>
+          <AlertCircle size={16} color='#dc2626' /> <span style={{ color: '#991b1b', fontWeight: 600 }}>{error}</span>
         </div>
       )}
 
       {loading ? (
-        <div style={{ textAlign: 'center', padding: '60px', color: '#64748b' }}>불러오는 중...</div>
+        <div style={{ textAlign: 'center', padding: '60px', color: '#475569', fontWeight: 600 }}>불러오는 중...</div>
       ) : schemas.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: '80px 20px', background: 'rgba(30,41,59,0.5)', borderRadius: '16px', border: '1px dashed rgba(100,116,139,0.3)' }}>
-          <FileText size={48} color='#475569' style={{ marginBottom: '16px' }} />
-          <p style={{ color: '#64748b', fontSize: '1rem' }}>아직 생성된 양식이 없습니다.</p>
-          <button onClick={openNewBuilder} style={{ marginTop: '16px', padding: '10px 24px', background: 'rgba(99,102,241,0.15)', border: '1px solid rgba(99,102,241,0.4)', borderRadius: '8px', color: '#a5b4fc', cursor: 'pointer' }}>
+        <div style={{ textAlign: 'center', padding: '80px 20px', background: '#ffffff', borderRadius: '16px', border: '1px dashed #cbd5e1', boxShadow: '0 2px 10px rgba(0,0,0,0.03)' }}>
+          <FileText size={48} color='#94a3b8' style={{ marginBottom: '16px' }} />
+          <p style={{ color: '#475569', fontSize: '1rem', fontWeight: 600 }}>아직 생성된 양식이 없습니다.</p>
+          <button onClick={openNewBuilder} style={{ marginTop: '16px', padding: '10px 24px', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '8px', color: '#2563eb', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
             첫 번째 양식 만들기
           </button>
         </div>
@@ -233,40 +234,39 @@ export const AdminWeeklyReportSchemaPage: React.FC = () => {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           {schemas.map(s => (
             <div key={s.schemaId} style={{
-              background: 'rgba(30,41,59,0.7)', border: s.isEnabled ? '1.5px solid rgba(99,102,241,0.6)' : '1px solid rgba(51,65,85,0.5)',
+              background: '#ffffff', border: s.isEnabled ? '1.5px solid #3b82f6' : '1px solid #e2e8f0',
               borderRadius: '14px', padding: '18px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-              backdropFilter: 'blur(8px)',
-              boxShadow: s.isEnabled ? '0 0 20px rgba(99,102,241,0.15)' : 'none'
+              boxShadow: s.isEnabled ? '0 4px 16px rgba(37,99,235,0.08)' : '0 2px 8px rgba(0,0,0,0.02)'
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
                 <div style={{
                   width: '44px', height: '44px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  background: s.isEnabled ? 'rgba(99,102,241,0.2)' : 'rgba(51,65,85,0.5)',
+                  background: s.isEnabled ? '#eff6ff' : '#f1f5f9',
                 }}>
-                  <FileText size={20} color={s.isEnabled ? '#a5b4fc' : '#64748b'} />
+                  <FileText size={20} color={s.isEnabled ? '#2563eb' : '#64748b'} />
                 </div>
                 <div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <span style={{ fontWeight: 700, fontSize: '1rem', color: '#f1f5f9' }}>{s.weekLabel}</span>
+                    <span style={{ fontWeight: 700, fontSize: '1rem', color: '#0f172a' }}>{s.weekLabel}</span>
                     {s.isEnabled && (
-                      <span style={{ background: 'rgba(99,102,241,0.2)', color: '#a5b4fc', border: '1px solid rgba(99,102,241,0.4)', padding: '2px 10px', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 600 }}>
+                      <span style={{ background: '#ecfdf5', color: '#047857', border: '1px solid #a7f3d0', padding: '2px 10px', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 700 }}>
                         ✓ 사용중
                       </span>
                     )}
                   </div>
-                  <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '3px' }}>
+                  <div style={{ fontSize: '0.8rem', color: '#475569', marginTop: '3px', fontWeight: 500 }}>
                     적용: {s.startYear}년 {s.startMonth}월 {s.startWeekOfMonth}주차부터 · 생성자: {s.createdBy || '-'} · {new Date(s.createdAt).toLocaleDateString('ko-KR')}
                   </div>
                 </div>
               </div>
               <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                <button onClick={() => handleToggleEnabled(s)} style={{ padding: '7px 14px', background: s.isEnabled ? 'rgba(245,158,11,0.15)' : 'rgba(16,185,129,0.15)', border: `1px solid ${s.isEnabled ? 'rgba(245,158,11,0.3)' : 'rgba(16,185,129,0.3)'}`, borderRadius: '8px', color: s.isEnabled ? '#fcd34d' : '#6ee7b7', cursor: 'pointer', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                <button onClick={() => handleToggleEnabled(s)} style={{ padding: '7px 14px', background: s.isEnabled ? '#fffbeb' : '#ecfdf5', border: `1px solid ${s.isEnabled ? '#fde68a' : '#a7f3d0'}`, borderRadius: '8px', color: s.isEnabled ? '#b45309' : '#047857', cursor: 'pointer', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '5px', fontWeight: 700, fontFamily: 'inherit' }}>
                   {s.isEnabled ? <><ToggleRight size={14} /> 사용 중지</> : <><ToggleLeft size={14} /> 사용</>}
                 </button>
-                <button onClick={() => openEditBuilder(s)} style={{ padding: '7px 12px', background: 'rgba(99,102,241,0.15)', border: '1px solid rgba(99,102,241,0.3)', borderRadius: '8px', color: '#a5b4fc', cursor: 'pointer' }}>
+                <button onClick={() => openEditBuilder(s)} style={{ padding: '7px 12px', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '8px', color: '#2563eb', cursor: 'pointer', fontFamily: 'inherit' }}>
                   <Edit2 size={14} />
                 </button>
-                <button onClick={() => handleDelete(s.schemaId)} style={{ padding: '7px 12px', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: '8px', color: '#fca5a5', cursor: 'pointer' }}>
+                <button onClick={() => handleDelete(s.schemaId)} style={{ padding: '7px 12px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '8px', color: '#dc2626', cursor: 'pointer', fontFamily: 'inherit' }}>
                   <Trash2 size={14} />
                 </button>
               </div>
@@ -277,14 +277,19 @@ export const AdminWeeklyReportSchemaPage: React.FC = () => {
 
       {/* ── Form Builder 모달 ─────────────────────────────────────── */}
       {showBuilder && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 1000, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '24px', overflowY: 'auto' }}>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '24px', overflowY: 'auto' }}>
           <div style={{ background: '#0f172a', border: '1px solid rgba(99,102,241,0.3)', borderRadius: '20px', width: '100%', maxWidth: '960px', boxShadow: '0 25px 60px rgba(0,0,0,0.5)' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '24px 28px', borderBottom: '1px solid rgba(51,65,85,0.5)' }}>
               <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 700, color: '#f1f5f9' }}>
                 {editingSchema ? '양식 수정' : '새 양식 만들기'}
               </h2>
               <div style={{ display: 'flex', gap: '8px' }}>
-                <button onClick={() => setShowJsonPreview(!showJsonPreview)} style={{ padding: '7px 14px', background: 'rgba(51,65,85,0.5)', border: '1px solid rgba(71,85,105,0.5)', borderRadius: '8px', color: '#94a3b8', cursor: 'pointer', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                <button onClick={() => setPreviewMode(m => m === 'form' ? 'none' : 'form')}
+                  style={{ padding: '7px 14px', background: previewMode === 'form' ? 'rgba(99,102,241,0.25)' : 'rgba(51,65,85,0.5)', border: `1px solid ${previewMode === 'form' ? 'rgba(99,102,241,0.6)' : 'rgba(71,85,105,0.5)'}`, borderRadius: '8px', color: previewMode === 'form' ? '#c7d2fe' : '#94a3b8', cursor: 'pointer', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                  <Smartphone size={13} /> 폼 미리보기
+                </button>
+                <button onClick={() => setPreviewMode(m => m === 'json' ? 'none' : 'json')}
+                  style={{ padding: '7px 14px', background: previewMode === 'json' ? 'rgba(99,102,241,0.25)' : 'rgba(51,65,85,0.5)', border: `1px solid ${previewMode === 'json' ? 'rgba(99,102,241,0.6)' : 'rgba(71,85,105,0.5)'}`, borderRadius: '8px', color: previewMode === 'json' ? '#c7d2fe' : '#94a3b8', cursor: 'pointer', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '5px' }}>
                   <Eye size={13} /> JSON 미리보기
                 </button>
                 <button onClick={() => setShowBuilder(false)} style={{ padding: '7px 12px', background: 'rgba(51,65,85,0.5)', border: '1px solid rgba(71,85,105,0.5)', borderRadius: '8px', color: '#94a3b8', cursor: 'pointer' }}>
@@ -293,7 +298,7 @@ export const AdminWeeklyReportSchemaPage: React.FC = () => {
               </div>
             </div>
 
-            <div style={{ padding: '24px 28px', display: 'grid', gridTemplateColumns: showJsonPreview ? '1fr 1fr' : '1fr', gap: '24px' }}>
+            <div style={{ padding: '24px 28px', display: 'grid', gridTemplateColumns: previewMode !== 'none' ? '1fr 1fr' : '1fr', gap: '24px' }}>
               <div>
                 {/* 적용 시작 주차 설정 */}
                 <div style={{ marginBottom: '24px', background: 'rgba(30,41,59,0.6)', borderRadius: '12px', padding: '18px' }}>
@@ -348,27 +353,46 @@ export const AdminWeeklyReportSchemaPage: React.FC = () => {
                               {section.title}
                             </div>
 
-                            {/* grouped_table: leaf 컬럼(라벨 + 그룹라벨) 편집 */}
+                            {/* grouped_table: leaf 컬럼(라벨 + 그룹라벨 + 변수명 + 계산식) 편집 */}
                             {section.type === 'grouped_table' && section.leafColumns && (
                               <div>
                                 <div style={{ fontSize: '0.75rem', color: '#64748b', marginBottom: '6px' }}>컬럼 (그룹라벨을 같게 입력하면 연속된 컬럼끼리 상단에 병합됩니다)</div>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                                  {section.leafColumns.map((leaf, leafIdx) => (
-                                    <div key={leafIdx} style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-                                      <input value={leaf.groupLabel || ''} placeholder="그룹라벨 (선택)"
-                                        onChange={e => updateLeafGroup(pageIdx, secIdx, leafIdx, e.target.value)}
-                                        style={{ ...inputSm, width: '140px' }} />
-                                      <input value={leaf.label} placeholder="컬럼 라벨"
-                                        onChange={e => updateLeafLabel(pageIdx, secIdx, leafIdx, e.target.value)}
-                                        style={{ ...inputSm, flex: 1 }} />
-                                      {section.leafColumns!.length > 1 && (
-                                        <button onClick={() => removeLeafColumn(pageIdx, secIdx, leafIdx)}
-                                          style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: '6px', color: '#f87171', cursor: 'pointer', padding: '6px' }}>
-                                          <X size={12} />
-                                        </button>
-                                      )}
-                                    </div>
-                                  ))}
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                                  {section.leafColumns.map((leaf, leafIdx) => {
+                                    const otherKeys = section.leafColumns!.filter((_, i) => i !== leafIdx).map(l => l.key).filter(Boolean);
+                                    return (
+                                      <div key={leafIdx} style={{ background: 'rgba(30,41,59,0.4)', borderRadius: '8px', padding: '8px', border: '1px solid rgba(51,65,85,0.4)' }}>
+                                        <div style={{ display: 'flex', gap: '6px', alignItems: 'center', marginBottom: '6px' }}>
+                                          <input value={leaf.groupLabel || ''} placeholder="그룹라벨 (선택)"
+                                            onChange={e => updateLeafGroup(pageIdx, secIdx, leafIdx, e.target.value)}
+                                            style={{ ...inputSm, width: '140px' }} />
+                                          <input value={leaf.label} placeholder="컬럼 라벨"
+                                            onChange={e => updateLeafLabel(pageIdx, secIdx, leafIdx, e.target.value)}
+                                            style={{ ...inputSm, flex: 1 }} />
+                                          {section.leafColumns!.length > 1 && (
+                                            <button onClick={() => removeLeafColumn(pageIdx, secIdx, leafIdx)}
+                                              style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: '6px', color: '#f87171', cursor: 'pointer', padding: '6px' }}>
+                                              <X size={12} />
+                                            </button>
+                                          )}
+                                        </div>
+                                        <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                                          <input value={leaf.key} placeholder="변수명"
+                                            onChange={e => updateLeafKey(pageIdx, secIdx, leafIdx, e.target.value)}
+                                            title="계산식에서 이 컬럼을 참조할 때 쓰는 변수명"
+                                            style={{ ...inputSm, width: '140px', color: '#a5b4fc', fontFamily: 'monospace', fontSize: '0.8rem' }} />
+                                          <input value={leaf.formula || ''} placeholder="계산식 (선택, 예: offline_count / total_members * 100)"
+                                            onChange={e => updateLeafFormula(pageIdx, secIdx, leafIdx, e.target.value)}
+                                            style={{ ...inputSm, flex: 1, fontFamily: 'monospace', fontSize: '0.8rem' }} />
+                                        </div>
+                                        {otherKeys.length > 0 && (
+                                          <div style={{ fontSize: '0.7rem', color: '#64748b', marginTop: '4px' }}>
+                                            사용 가능한 변수: {otherKeys.map(k => <code key={k} style={{ background: 'rgba(99,102,241,0.15)', color: '#a5b4fc', padding: '1px 5px', borderRadius: '4px', marginRight: '4px' }}>{k}</code>)}
+                                          </div>
+                                        )}
+                                      </div>
+                                    );
+                                  })}
                                 </div>
                                 <button onClick={() => addLeafColumn(pageIdx, secIdx)} style={{ marginTop: '8px', padding: '6px 12px', background: 'rgba(99,102,241,0.1)', border: '1px dashed rgba(99,102,241,0.3)', borderRadius: '6px', color: '#818cf8', cursor: 'pointer', fontSize: '0.75rem' }}>
                                   + 컬럼 추가
@@ -400,37 +424,18 @@ export const AdminWeeklyReportSchemaPage: React.FC = () => {
                               </div>
                             )}
 
-                            {/* notes_board: 카드 편집 */}
-                            {section.type === 'notes_board' && section.cards && (
+                            {/* notes_board: 카드는 사용자가 화면에서 직접 추가 — 관리자는 최대 개수만 설정 */}
+                            {section.type === 'notes_board' && (
                               <div>
-                                <div style={{ fontSize: '0.75rem', color: '#64748b', marginBottom: '6px' }}>카드 (사진+텍스트 입력 또는 숫자 입력)</div>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                                  {section.cards.map((card, cardIdx) => (
-                                    <div key={card.cardId} style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-                                      <input value={card.title} placeholder="카드 제목"
-                                        onChange={e => updateCard(pageIdx, secIdx, cardIdx, { title: e.target.value })}
-                                        style={{ ...inputSm, flex: 1 }} />
-                                      <input value={card.subtitle || ''} placeholder="부제목 (선택)"
-                                        onChange={e => updateCard(pageIdx, secIdx, cardIdx, { subtitle: e.target.value })}
-                                        style={{ ...inputSm, width: '140px' }} />
-                                      <select value={card.inputType}
-                                        onChange={e => updateCard(pageIdx, secIdx, cardIdx, { inputType: e.target.value as NotesBoardCard['inputType'] })}
-                                        style={{ ...inputSm, width: '120px' }}>
-                                        <option value="photo_text">사진+텍스트</option>
-                                        <option value="number">숫자</option>
-                                      </select>
-                                      {section.cards!.length > 1 && (
-                                        <button onClick={() => removeCard(pageIdx, secIdx, cardIdx)}
-                                          style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: '6px', color: '#f87171', cursor: 'pointer', padding: '6px' }}>
-                                          <X size={12} />
-                                        </button>
-                                      )}
-                                    </div>
-                                  ))}
+                                <div style={{ fontSize: '0.75rem', color: '#64748b', marginBottom: '8px' }}>
+                                  개별 카드(제목·내용·사진)는 관리자가 미리 지정하지 않고, 사용자가 화면에서 "카드 추가" 버튼으로 자유롭게 추가·삭제합니다.
                                 </div>
-                                <button onClick={() => addCard(pageIdx, secIdx)} style={{ marginTop: '8px', padding: '6px 12px', background: 'rgba(99,102,241,0.1)', border: '1px dashed rgba(99,102,241,0.3)', borderRadius: '6px', color: '#818cf8', cursor: 'pointer', fontSize: '0.75rem' }}>
-                                  + 카드 추가
-                                </button>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                  <label style={{ fontSize: '0.75rem', color: '#94a3b8' }}>사용자가 추가할 수 있는 최대 카드 수</label>
+                                  <input type="number" min={1} max={30} value={section.maxCards ?? 10}
+                                    onChange={e => updateMaxCards(pageIdx, secIdx, Number(e.target.value))}
+                                    style={{ ...inputSm, width: '70px' }} />
+                                </div>
                               </div>
                             )}
                           </div>
@@ -441,12 +446,21 @@ export const AdminWeeklyReportSchemaPage: React.FC = () => {
                 ))}
               </div>
 
-              {showJsonPreview && (
+              {previewMode === 'json' && (
                 <div style={{ background: 'rgba(15,23,42,0.8)', borderRadius: '12px', padding: '16px', border: '1px solid rgba(51,65,85,0.4)' }}>
                   <div style={{ fontSize: '0.75rem', color: '#64748b', marginBottom: '8px' }}>JSON Schema 미리보기</div>
                   <pre style={{ color: '#86efac', fontSize: '0.72rem', overflowY: 'auto', maxHeight: '500px', margin: 0, lineHeight: 1.5 }}>
                     {JSON.stringify(formData.schema, null, 2)}
                   </pre>
+                </div>
+              )}
+
+              {previewMode === 'form' && (
+                <div style={{ background: '#f8fafc', borderRadius: '12px', padding: '16px', border: '1px solid rgba(51,65,85,0.4)', maxHeight: '620px', overflowY: 'auto' }}>
+                  <div style={{ fontSize: '0.75rem', color: '#64748b', marginBottom: '10px' }}>
+                    사용자에게 실제로 보이는 화면과 동일합니다 (직접 입력해볼 수 있으며, 여기서 입력한 값은 저장되지 않습니다).
+                  </div>
+                  <FormPreview schema={formData.schema} />
                 </div>
               )}
             </div>
@@ -462,6 +476,131 @@ export const AdminWeeklyReportSchemaPage: React.FC = () => {
           </div>
         </div>
       )}
+    </div>
+  );
+};
+
+// ─── 폼 미리보기 ───────────────────────────────────────────────────
+// 사용자 입력 화면(WeeklyReportPage)과 동일한 PageRenderer를 재사용해, 관리자가 화면에서
+// 직접 입력해보며 확인할 수 있도록 한다. 여기서 입력한 값은 어디에도 저장되지 않는다.
+const MOCK_CHURCHES: ChurchOption[] = [{ churchId: -1, name: '(미리보기 교회)', country: '-', jipa: '-', gubun: '교회' }];
+
+const FormPreview: React.FC<{ schema: FormSchema }> = ({ schema }) => {
+  const [page, setPage] = useState(0);
+  const [data, setData] = useState<Record<string, any>>({});
+  const [churchId, setChurchId] = useState<number | null>(-1);
+  const [notesPhotos, setNotesPhotos] = useState<Record<string, Record<string, File[]>>>({});
+  const [notesPhotoPreviews, setNotesPhotoPreviews] = useState<Record<string, Record<string, string[]>>>({});
+
+  const pages = schema.pages || [];
+  const clampedPage = Math.min(page, Math.max(0, pages.length - 1));
+
+  const updateField = (key: string, value: any) => setData(prev => ({ ...prev, [key]: value }));
+  const updateGroupedCell = (sid: string, leafKey: string, val: string) =>
+    setData(prev => ({ ...prev, [sid]: { ...(prev[sid] || {}), [leafKey]: val } }));
+  const updateDynamicTableRow = (sid: string, rowIdx: number, col: string, val: string) =>
+    setData(prev => {
+      const rows = [...(prev[sid] || [{}])];
+      while (rows.length <= rowIdx) rows.push({});
+      rows[rowIdx] = { ...rows[rowIdx], [col]: val };
+      return { ...prev, [sid]: rows };
+    });
+  const addDynamicTableRow = (sid: string, cols: string[]) =>
+    setData(prev => {
+      const rows = [...(prev[sid] || [])];
+      const empty: Record<string, string> = {};
+      cols.forEach(c => { empty[c] = ''; });
+      rows.push(empty);
+      return { ...prev, [sid]: rows };
+    });
+  const removeDynamicTableRow = (sid: string, rowIdx: number) =>
+    setData(prev => {
+      const rows = [...(prev[sid] || [])];
+      rows.splice(rowIdx, 1);
+      return { ...prev, [sid]: rows };
+    });
+  const addNotesCard = (sid: string, maxCards?: number) =>
+    setData(prev => {
+      const cards: NotesCardEntry[] = [...(prev[sid] || [])];
+      if (maxCards && cards.length >= maxCards) return prev;
+      cards.push({ cardId: generateCardId(), title: '', value: '', photoPaths: [] });
+      return { ...prev, [sid]: cards };
+    });
+  const removeNotesCard = (sid: string, cardId: string) => {
+    setData(prev => ({ ...prev, [sid]: (prev[sid] || []).filter((c: NotesCardEntry) => c.cardId !== cardId) }));
+    setNotesPhotos(prev => { const m = { ...(prev[sid] || {}) }; delete m[cardId]; return { ...prev, [sid]: m }; });
+    setNotesPhotoPreviews(prev => { const m = { ...(prev[sid] || {}) }; delete m[cardId]; return { ...prev, [sid]: m }; });
+  };
+  const updateNotesCardField = (sid: string, cardId: string, field: 'title' | 'value', val: string) =>
+    setData(prev => ({ ...prev, [sid]: (prev[sid] || []).map((c: NotesCardEntry) => c.cardId === cardId ? { ...c, [field]: val } : c) }));
+  const addNotesCardPhotos = (sid: string, cardId: string, files: FileList | null) => {
+    if (!files) return;
+    const newFiles = Array.from(files).filter(f => f.type.startsWith('image/'));
+    setNotesPhotos(prev => {
+      const sectionMap = { ...(prev[sid] || {}) };
+      const merged = [...(sectionMap[cardId] || []), ...newFiles].slice(0, 6);
+      sectionMap[cardId] = merged;
+      setNotesPhotoPreviews(pv => {
+        const pvSection = { ...(pv[sid] || {}) };
+        pvSection[cardId] = merged.map(f => URL.createObjectURL(f));
+        return { ...pv, [sid]: pvSection };
+      });
+      return { ...prev, [sid]: sectionMap };
+    });
+  };
+  const removeNotesCardPhoto = (sid: string, cardId: string, idx: number) => {
+    setNotesPhotos(prev => {
+      const sectionMap = { ...(prev[sid] || {}) };
+      const filtered = (sectionMap[cardId] || []).filter((_, i) => i !== idx);
+      sectionMap[cardId] = filtered;
+      setNotesPhotoPreviews(pv => {
+        const pvSection = { ...(pv[sid] || {}) };
+        pvSection[cardId] = filtered.map(f => URL.createObjectURL(f));
+        return { ...pv, [sid]: pvSection };
+      });
+      return { ...prev, [sid]: sectionMap };
+    });
+  };
+
+  if (pages.length === 0) {
+    return <div style={{ color: '#94a3b8', fontSize: '0.85rem' }}>페이지가 없습니다.</div>;
+  }
+
+  const previewInputStyle: React.CSSProperties = { background: '#ffffff', border: '1.5px solid #cbd5e1', borderRadius: '8px', padding: '8px 10px', color: '#0f172a', fontSize: '0.85rem', width: '100%', boxSizing: 'border-box' };
+  const previewNumInputStyle: React.CSSProperties = { ...previewInputStyle, textAlign: 'center', padding: '6px 4px' };
+
+  return (
+    <div>
+      <div style={{ display: 'flex', gap: '6px', marginBottom: '14px' }}>
+        {pages.map((p, i) => (
+          <button key={p.pageId} onClick={() => setPage(i)}
+            style={{ flex: 1, padding: '6px', borderRadius: '6px', border: i === clampedPage ? '1px solid #6366f1' : '1px solid #cbd5e1', background: i === clampedPage ? '#eef2ff' : '#ffffff', color: i === clampedPage ? '#4338ca' : '#64748b', fontSize: '0.72rem', fontWeight: 600, cursor: 'pointer' }}>
+            {p.title}
+          </button>
+        ))}
+      </div>
+      <PageRenderer
+        page={pages[clampedPage]}
+        pageIndex={clampedPage}
+        formData={data}
+        churches={MOCK_CHURCHES}
+        selectedChurchId={churchId}
+        onChurchSelect={setChurchId}
+        onUpdateField={updateField}
+        onUpdateGroupedCell={updateGroupedCell}
+        onUpdateDynamicTableRow={updateDynamicTableRow}
+        onAddDynamicTableRow={addDynamicTableRow}
+        onRemoveDynamicTableRow={removeDynamicTableRow}
+        onAddNotesCard={addNotesCard}
+        onRemoveNotesCard={removeNotesCard}
+        onUpdateNotesCardField={updateNotesCardField}
+        onAddNotesCardPhotos={addNotesCardPhotos}
+        onRemoveNotesCardPhoto={removeNotesCardPhoto}
+        notesPhotoPreviews={notesPhotoPreviews}
+        inputStyle={previewInputStyle}
+        numInputStyle={previewNumInputStyle}
+        disabled={false}
+      />
     </div>
   );
 };

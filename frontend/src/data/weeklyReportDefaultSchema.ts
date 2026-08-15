@@ -78,13 +78,7 @@ export const DEFAULT_SCHEMA: FormSchema = {
           sectionId: 'special_notes',
           title: '5. 주간 특이사항',
           type: 'notes_board',
-          cards: [
-            { cardId: 'card1', title: '주요 활동/행사', inputType: 'photo_text' },
-            { cardId: 'card2', title: '전도단 모임', inputType: 'photo_text' },
-            { cardId: 'card3', title: '전도활동', inputType: 'photo_text' },
-            { cardId: 'card4', title: '현안 관련', subtitle: '언론보도(누적)', inputType: 'number' },
-            { cardId: 'card5', title: '현안 관련', subtitle: '탄원서(누적)', inputType: 'number' },
-          ]
+          maxCards: 10
         }
       ]
     }
