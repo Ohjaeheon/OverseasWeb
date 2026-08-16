@@ -91,6 +91,29 @@ public class EvangelismController {
         }
     }
 
+    /** 전도재적(고정값) 계산 기준 시점 — 기본값: 전년도(offsetYears=-1) 12월(month=12).
+     * 관리자가 시스템 설정에서 변경할 수 있으며(PUT /api/v1/admin/configs), 이 엔드포인트는
+     * 진단서 화면을 보는 모든 사용자가 읽을 수 있어야 하므로 admin 경로가 아닌 여기 둔다. */
+    @GetMapping("/config/reg-baseline")
+    public ResponseEntity<Map<String, Object>> getRegBaseline() {
+        int offsetYears = systemConfigRepository.findByConfigKey("evang_reg_baseline_offset_years")
+                .map(c -> parseIntOr(c.getConfigValue(), -1)).orElse(-1);
+        int month = systemConfigRepository.findByConfigKey("evang_reg_baseline_month")
+                .map(c -> parseIntOr(c.getConfigValue(), 12)).orElse(12);
+        Map<String, Object> result = new HashMap<>();
+        result.put("offsetYears", offsetYears);
+        result.put("month", Math.min(12, Math.max(1, month)));
+        return encryptResponse(result);
+    }
+
+    private int parseIntOr(String value, int fallback) {
+        try {
+            return Integer.parseInt(value.trim());
+        } catch (Exception e) {
+            return fallback;
+        }
+    }
+
     @PostMapping("/config/items")
     @Transactional
     public ResponseEntity<Map<String, Object>> saveItemsConfig(@RequestBody Map<String, Object> newConfig) {

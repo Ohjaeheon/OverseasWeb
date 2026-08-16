@@ -31,6 +31,7 @@ export interface ChurchItem {
   gubun: string;
   name: string;
   leaderName?: string;
+  foundingDate?: string;
   flightTime?: string;
   distanceKm?: number;
   timeDiff?: string;

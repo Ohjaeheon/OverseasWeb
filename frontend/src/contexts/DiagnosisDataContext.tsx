@@ -3,6 +3,7 @@ import api from '../services/api';
 import { diagnosisService, DiagnosisRecord } from '../services/diagnosisService';
 import { buildCountryContMap } from '../utils/diagnosisMetrics';
 import { Lang } from '../utils/diagnosisI18n';
+import { filterByAssignedScope } from '../utils/accessScope';
 
 // 지파 고정 색상 팔레트 (EvangelismModule.tsx CHURCH_COLOR_PALETTE와 동일 계열 사용).
 const JIPA_COLOR_PALETTE = [
@@ -27,26 +28,6 @@ interface MembershipMonthlyRow {
   department: string;
   evangIncrease?: number;
   evangDecrease?: number;
-}
-
-function filterByAssignedLocation(records: DiagnosisRecord[]): DiagnosisRecord[] {
-  const userStr = localStorage.getItem('user');
-  if (!userStr) return records;
-  try {
-    const u = JSON.parse(userStr);
-    const role = u.role || 'ROLE_USER';
-    const assignedLocation = u.assignedCountry || '전체';
-    if (role === 'ROLE_ADMIN' || role === 'ADMIN' || role === '관리자' || assignedLocation === '전체') {
-      return records;
-    }
-    return records.filter((r) =>
-      r.name === assignedLocation ||
-      r.country === assignedLocation ||
-      `${r.jipa} · ${r.name}` === assignedLocation
-    );
-  } catch {
-    return records;
-  }
 }
 
 function formatMonth(mStr: string): string {
@@ -74,16 +55,20 @@ function getYearNum(str: string): number {
  * 전도 주간보고서(/evangelism/records)의 최신 실적을 진단 레코드의 4개 전도 지표
  * (evangReg/bibleMonthReg/bibleCumReg/bibleCurAtt)에 덮어써서 병합한다.
  * Ported 1:1 from DiagnosisPage.tsx의 syncEvangelismDbData().
- * 추가로 ①전도 표 전용 지표(찾기/누적찾기/복음방/누적복음방 월·연 합계, 전년도 12월 고정
- * 전도재적)를 계산해 각각 findMonth/findCum/gospelMonth/gospelCum/evangRegFrozen에 채운다.
+ * 추가로 ①전도 표 전용 지표(찾기/누적찾기/복음방/누적복음방 월·연 합계, 관리자가 설정한
+ * 기준 시점(기본값: 전년도 12월) 고정 전도재적)를 계산해 각각
+ * findMonth/findCum/gospelMonth/gospelCum/evangRegFrozen에 채운다.
  */
 async function syncEvangelismDbData(rawRecords: DiagnosisRecord[]): Promise<{ syncedRecords: DiagnosisRecord[]; weeklyRecords: WeeklyRecord[] }> {
   try {
-    const [res, memRes] = await Promise.all([
+    const [res, memRes, baselineRes] = await Promise.all([
       api.get<WeeklyRecord[]>('/evangelism/records').catch(() => ({ data: [] as WeeklyRecord[] })),
       api.get<MembershipMonthlyRow[]>('/membership/records').catch(() => ({ data: [] as MembershipMonthlyRow[] })),
+      api.get<{ offsetYears: number; month: number }>('/evangelism/config/reg-baseline').catch(() => ({ data: { offsetYears: -1, month: 12 } })),
     ]);
     const weeklyRecords = res.data || [];
+    // 전도재적(고정값) 기준 시점 — 관리자 설정(시스템 설정 > 전도재적 기준 시점), 기본값 전년도(-1) 12월.
+    const baseline = baselineRes.data || { offsetYears: -1, month: 12 };
 
     // DB의 calculatedEvangReg 필드는 저장 경로에 따라 갱신이 안 돼 있을 수 있어(내무 화면 자체도 이걸
     // 그대로 믿지 않고 매번 원본 증가/감소값으로 다시 굴려서 보여준다 — MembershipModule.tsx의
@@ -112,7 +97,7 @@ async function syncEvangelismDbData(rawRecords: DiagnosisRecord[]): Promise<{ sy
       let total = 0;
       Object.values(byDept).forEach((monthMap) => {
         let bal = 0;
-        for (let m = 1; m <= 12; m++) {
+        for (let m = 1; m <= baseline.month; m++) {
           const row = monthMap[m];
           if (!row) continue;
           bal = Math.max(0, bal + (row.evangIncrease || 0) - (row.evangDecrease || 0));
@@ -122,7 +107,7 @@ async function syncEvangelismDbData(rawRecords: DiagnosisRecord[]): Promise<{ sy
       yearEndEvangRegCache[cacheKey] = total;
       return total;
     };
-    const frozenEvangRegFor = (church: string, recordYear: number) => yearEndEvangReg(church, recordYear - 1);
+    const frozenEvangRegFor = (church: string, recordYear: number) => yearEndEvangReg(church, recordYear + baseline.offsetYears);
 
     if (weeklyRecords.length === 0) {
       const withFrozen = rawRecords.map((rec) => ({ ...rec, evangRegFrozen: frozenEvangRegFor(rec.name, getYearNum(rec.month)) }));
@@ -256,7 +241,7 @@ export const DiagnosisDataProvider: React.FC<{ children: React.ReactNode; sectio
           diagnosisService.getRecords('all'),
           diagnosisService.getChurches().catch(() => []),
         ]);
-        const filtered = apiRecords ? filterByAssignedLocation(apiRecords) : [];
+        const filtered = apiRecords ? filterByAssignedScope(apiRecords) : [];
         const mapped = filtered.map((r) => ({ ...r, month: formatMonth(r.month) }));
         const { syncedRecords, weeklyRecords: weekly } = await syncEvangelismDbData(mapped);
 

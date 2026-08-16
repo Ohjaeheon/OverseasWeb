@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { adminService } from '../../services/adminService';
-import { Save, Bot, Globe, FileCode } from 'lucide-react';
+import { Save, Bot, Globe, FileCode, CalendarClock } from 'lucide-react';
 
 export const AdminSettingsPage: React.FC = () => {
   const [configs, setConfigs] = useState<any[]>([]);
@@ -12,6 +12,11 @@ export const AdminSettingsPage: React.FC = () => {
   const [itemsJson, setItemsJson] = useState('');
   const [jsonMsg, setJsonMsg] = useState('');
 
+  // 전도재적(고정값) 계산 기준 시점 — 기본값: 전년도(-1) 12월
+  const [baselineOffsetYears, setBaselineOffsetYears] = useState(-1);
+  const [baselineMonth, setBaselineMonth] = useState(12);
+  const [baselineMsg, setBaselineMsg] = useState('');
+
   const loadConfigs = () => {
     adminService.getConfigs().then((data) => {
       setConfigs(data);
@@ -19,6 +24,11 @@ export const AdminSettingsPage: React.FC = () => {
       if (tokenConfig) setBotToken(tokenConfig.configValue);
       const nameConfig = data.find((c: any) => c.configKey === 'TELEGRAM_BOT_USERNAME');
       if (nameConfig) setBotName(nameConfig.configValue);
+
+      const offsetConfig = data.find((c: any) => c.configKey === 'evang_reg_baseline_offset_years');
+      if (offsetConfig) setBaselineOffsetYears(parseInt(offsetConfig.configValue, 10) || -1);
+      const monthConfig = data.find((c: any) => c.configKey === 'evang_reg_baseline_month');
+      if (monthConfig) setBaselineMonth(parseInt(monthConfig.configValue, 10) || 12);
 
       const itemsConfig = data.find((c: any) => c.configKey === 'evangelism_items_by_country');
       if (itemsConfig) {
@@ -77,6 +87,19 @@ export const AdminSettingsPage: React.FC = () => {
       setTimeout(() => setJsonMsg(''), 2000);
     } catch (e: any) {
       alert('올바른 JSON 형식이 아닙니다: ' + e.message);
+    }
+  };
+
+  const handleSaveBaseline = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      await adminService.updateConfig('evang_reg_baseline_offset_years', String(baselineOffsetYears), '전도재적(고정값) 기준 연도 오프셋 (예: -1 = 전년도, 0 = 당해년도)');
+      await adminService.updateConfig('evang_reg_baseline_month', String(baselineMonth), '전도재적(고정값) 기준 월 (1-12)');
+      setBaselineMsg('전도재적 기준 시점이 저장되었습니다. 전도 화면에 바로 반영됩니다.');
+      loadConfigs();
+      setTimeout(() => setBaselineMsg(''), 2000);
+    } catch (e: any) {
+      alert(e.message || '저장 실패');
     }
   };
 
@@ -208,6 +231,57 @@ export const AdminSettingsPage: React.FC = () => {
             <div style={{ marginTop: 'auto', paddingTop: '20px' }}>
               <button type="submit" className="btn-primary" style={{ width: '100%', padding: '12px', justifyContent: 'center' }}>
                 <Save size={18} /> 설정 저장하기
+              </button>
+            </div>
+          </form>
+        </div>
+
+        {/* Panel 1.5: 전도재적(고정값) 기준 시점 설정 */}
+        <div className="glass-panel" style={{ flex: '1 1 400px', padding: '28px', borderRadius: '12px', display: 'flex', flexDirection: 'column' }}>
+          <h3 style={{ fontSize: '1.15rem', fontWeight: 700, color: 'white', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <CalendarClock size={22} color="#f59e0b" /> 전도재적(고정값) 기준 시점
+          </h3>
+          <p style={{ color: '#94a3b8', fontSize: '0.78rem', marginBottom: '16px' }}>
+            ①전도 상세표의 "전도재적"은 내무 증감 데이터를 특정 시점까지 롤링해 고정한 값입니다.
+            기본값은 <b>전년도 12월</b>이며, 필요 시 기준 연도·월을 바꿀 수 있습니다.
+          </p>
+
+          {baselineMsg && <div style={{ background: 'rgba(16,185,129,0.2)', color: '#34d399', padding: '10px', borderRadius: '8px', marginBottom: '16px', fontSize: '0.85rem' }}>{baselineMsg}</div>}
+
+          <form onSubmit={handleSaveBaseline} style={{ display: 'flex', flexDirection: 'column', gap: '20px', flex: 1 }}>
+            <div>
+              <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: '#cbd5e1', marginBottom: '8px' }}>
+                기준 연도 오프셋 (예: -1 = 전년도, 0 = 당해년도, -2 = 재작년)
+              </label>
+              <input
+                type="number"
+                value={baselineOffsetYears}
+                onChange={(e) => setBaselineOffsetYears(parseInt(e.target.value, 10) || 0)}
+                style={{
+                  width: '100%', padding: '12px', background: 'rgba(255,255,255,0.05)',
+                  border: '1px solid var(--navy-border)', borderRadius: '8px', color: 'white', fontSize: '0.9rem',
+                }}
+              />
+            </div>
+
+            <div>
+              <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: '#cbd5e1', marginBottom: '8px' }}>
+                기준 월 (1-12)
+              </label>
+              <input
+                type="number" min={1} max={12}
+                value={baselineMonth}
+                onChange={(e) => setBaselineMonth(Math.min(12, Math.max(1, parseInt(e.target.value, 10) || 12)))}
+                style={{
+                  width: '100%', padding: '12px', background: 'rgba(255,255,255,0.05)',
+                  border: '1px solid var(--navy-border)', borderRadius: '8px', color: 'white', fontSize: '0.9rem',
+                }}
+              />
+            </div>
+
+            <div style={{ marginTop: 'auto', paddingTop: '20px' }}>
+              <button type="submit" className="btn-primary" style={{ width: '100%', padding: '12px', justifyContent: 'center' }}>
+                <Save size={18} /> 기준 시점 저장하기
               </button>
             </div>
           </form>

@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { useDiagnosisData } from '../../../contexts/DiagnosisDataContext';
+import { useMetricColumnConfig } from '../../../contexts/MetricColumnConfigContext';
+import { resolveCustomColumns } from '../../../utils/metricColumnEval';
 import {
-  CATS, buildRows, recordsFor, aggregate, metricVal, fmtVal, rate, fmt, pct, MetricDef, AggregateResult,
+  buildRows, recordsFor, aggregate, metricVal, fmtVal, rate, fmt, pct, MetricDef, AggregateResult,
   getMonthNumFromStr,
 } from '../../../utils/diagnosisMetrics';
 import { P1ChartDashboard } from '../P1ChartDashboard';
@@ -119,6 +121,7 @@ interface ProcessCategoryPageProps {
 /** 신앙 프로세스 카테고리(전도/센터/예배) 대시보드. Ported 1:1 from renderP1() + renderKPI()/buildUI()의 구분칩. */
 export const ProcessCategoryPage: React.FC<ProcessCategoryPageProps> = ({ categories, sectionKey }) => {
   const { records, months, month, gubun, jipaOrder, jipaColors, countryContMap } = useDiagnosisData();
+  const { getColumnsFor, getCustomColsFor } = useMetricColumnConfig();
   const [cat, setCat] = useState(categories[0]);
   const [group, setGroup] = useState<'개별' | '지파별' | '대륙별'>('지파별');
   const [sortIdx, setSortIdx] = useState<number | null>(null);
@@ -126,7 +129,8 @@ export const ProcessCategoryPage: React.FC<ProcessCategoryPageProps> = ({ catego
   const [target, setTarget] = useState<DetailTarget | null>(null);
 
   if (!month) return null;
-  const catDef = CATS[cat] || [];
+  const catDef = getColumnsFor(cat);
+  const customCols = getCustomColsFor(cat);
   const recs = recordsFor(records, month, gubun);
   const rows = buildRows(records, month, gubun, group, jipaOrder, jipaColors, countryContMap);
   const gl = cat === '①전도' && group === '개별' ? '국가명' : (group === '개별' ? (gubun === '전체' ? '대상' : gubun) : group.replace('별', ''));
@@ -137,6 +141,23 @@ export const ProcessCategoryPage: React.FC<ProcessCategoryPageProps> = ({ catego
   const effDir = sortIdx == null ? (group === '개별' ? 1 : -1) : sortDir;
   const pm = catDef[Math.max(0, si - 1)];
 
+  // 커스텀 컬럼 중 "다른 시점(월) 값 고정"이 켜진 게 있으면, 그 시점의 같은 묶음(그룹) 집계를
+  // 찾아서 넘겨준다. 페이지에서 조회 중인 월과 무관하게 항상 같은 (연,월)이므로 buildRows
+  // 재호출 비용을 아끼려고 (연,월) 조합별로 이 렌더 안에서만 캐시.
+  const frozenRowsCache: Record<string, ReturnType<typeof buildRows>> = {};
+  const getFrozenRowsFor = (freezeYear: number, freezeMonth: number) => {
+    const key = `${freezeYear}_${freezeMonth}`;
+    if (!(key in frozenRowsCache)) {
+      const targetMonth = `${freezeYear}년 ${freezeMonth}월`;
+      frozenRowsCache[key] = buildRows(records, targetMonth, gubun, group, jipaOrder, jipaColors, countryContMap);
+    }
+    return frozenRowsCache[key];
+  };
+  const getFrozenAggForGroup = (groupName: string) => (freezeYear: number, freezeMonth: number): AggregateResult | null => {
+    const match = getFrozenRowsFor(freezeYear, freezeMonth).find((r) => r.name === groupName);
+    return match ? match.agg : null;
+  };
+  if (customCols.length) rows.forEach((g) => { (g.agg as any).__customValues = resolveCustomColumns(g.agg, customCols, getFrozenAggForGroup(g.name)); });
   const tdata = rows.map((g) => ({ g, cells: catDef.map((m) => metricVal(g.agg, m)) }));
   tdata.sort((a, b) => {
     if (si === 0) {
@@ -152,6 +173,14 @@ export const ProcessCategoryPage: React.FC<ProcessCategoryPageProps> = ({ catego
   });
 
   const totAgg = aggregate(recs);
+  if (customCols.length) {
+    const getFrozenAggForTotal = (freezeYear: number, freezeMonth: number): AggregateResult | null => {
+      const targetMonth = `${freezeYear}년 ${freezeMonth}월`;
+      const frozenRecs = recordsFor(records, targetMonth, gubun);
+      return frozenRecs.length ? aggregate(frozenRecs) : null;
+    };
+    (totAgg as any).__customValues = resolveCustomColumns(totAgg, customCols, getFrozenAggForTotal);
+  }
   const cpm = si > 0 ? pm : (catDef.find((m) => m.primary) || catDef[0]);
 
   const onSortClick = (i: number) => { if (sortIdx === i) setSortDir((d) => d * -1); else { setSortIdx(i); setSortDir(i === 0 ? 1 : -1); } };

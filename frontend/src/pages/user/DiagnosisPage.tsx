@@ -16,6 +16,7 @@ import { CalendarPage } from '../../components/user/CalendarPage';
 import { OrganizationPage } from '../../components/user/OrganizationPage';
 
 import { DiagnosisDataProvider } from '../../contexts/DiagnosisDataContext';
+import { MetricColumnConfigProvider } from '../../contexts/MetricColumnConfigContext';
 import { DiagnosisShell } from '../../components/user/diagnosis/DiagnosisShell';
 import { HomePage } from '../../components/user/diagnosis/HomePage';
 import { DiagPage } from '../../components/user/diagnosis/DiagPage';
@@ -255,10 +256,12 @@ export const DiagnosisPage: React.FC<DiagnosisPageProps> = ({ section = 'home', 
   // access.ok가 아니면 renderContent()를 아예 호출하지 않는다 — externalUrl/forceLogout 같은 드문
   // 경우만 위 useEffect가 곧이어 처리한다.
   return (
-    <DiagnosisDataProvider section={section}>
-      <DiagnosisShell showAdminBtn={showAdminBtn} showBackdoorBtn={showBackdoorBtn}>
-        {access.ok ? renderContent() : null}
-      </DiagnosisShell>
-    </DiagnosisDataProvider>
+    <MetricColumnConfigProvider>
+      <DiagnosisDataProvider section={section}>
+        <DiagnosisShell showAdminBtn={showAdminBtn} showBackdoorBtn={showBackdoorBtn}>
+          {access.ok ? renderContent() : null}
+        </DiagnosisShell>
+      </DiagnosisDataProvider>
+    </MetricColumnConfigProvider>
   );
 };

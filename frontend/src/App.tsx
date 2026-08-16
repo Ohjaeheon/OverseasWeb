@@ -31,8 +31,11 @@ import { AdminEvangelismReportTemplatePage } from './pages/admin/AdminEvangelism
 import { AdminMembershipBulkPage } from './pages/admin/AdminMembershipBulkPage';
 import { AdminWeeklyReportSchemaPage } from './pages/admin/AdminWeeklyReportSchemaPage';
 import { AdminWeeklyReportStatusPage } from './pages/admin/AdminWeeklyReportStatusPage';
+import { AdminMetricColumnConfigPage } from './pages/admin/AdminMetricColumnConfigPage';
+import { AdminOverseasBoardManualPage } from './pages/admin/AdminOverseasBoardManualPage';
 
 import { roleService } from './services/roleService';
+import { CountryFlagProvider } from './contexts/CountryFlagContext';
 import { TelegramLifecycleHandler } from './components/TelegramLifecycleHandler';
 import { BackdoorIpSettingPage } from './pages/admin/BackdoorIpSettingPage';
 import { authService } from './services/authService';
@@ -111,6 +114,7 @@ export const App: React.FC = () => {
   return (
     <BrowserRouter basename="/OverseasPortal">
       <TelegramLifecycleHandler />
+      <CountryFlagProvider>
       <Routes>
         {/* User Routes (Diagnosis Portal Sub-views with Explicit Route Links) */}
         <Route path="/" element={<DiagnosisPage section="home" />} />
@@ -170,6 +174,8 @@ export const App: React.FC = () => {
             <Route path="membership-bulk" element={<AdminMembershipBulkPage />} />
             <Route path="weekly-report-status" element={<AdminWeeklyReportStatusPage />} />
             <Route path="weekly-report-schema" element={<AdminWeeklyReportSchemaPage />} />
+            <Route path="dashboard-config" element={<AdminMetricColumnConfigPage />} />
+            <Route path="overseas-board-manual" element={<AdminOverseasBoardManualPage />} />
 
             {/* 회원 및 권한 */}
             <Route path="users" element={<AdminUserPage />} />
@@ -192,6 +198,7 @@ export const App: React.FC = () => {
         {/* Fallback Route */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+      </CountryFlagProvider>
     </BrowserRouter>
   );
 };

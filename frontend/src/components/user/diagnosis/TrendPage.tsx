@@ -7,17 +7,17 @@ const SERIES_PALETTE = ['#2f54eb', '#16b9c9', '#e0922e', '#16a34a', '#d7005b', '
 interface TrendMetric extends MetricDef { g: string; }
 
 const TREND_INT: TrendMetric[] = [
-  { k: 'registered', l: '현재적', t: 'int', g: '성도' }, { k: 'newAdmit', l: '입교(월)', t: 'int', g: '성도' }, { k: 'evangReg', l: '전도재적', t: 'int', g: '성도' },
-  { k: 'bibleCumReg', l: '가개강 누적등록', t: 'int', g: '센터' }, { k: 'centerMonthTotal', l: '센터 월등록', t: 'int', g: '센터' },
-  { k: 'centerCumReg', l: '센터 누적등록', t: 'int', g: '센터' }, { k: 'centerMonthGrad', l: '월종강', t: 'int', g: '센터' }, { k: 'centerCumGrad', l: '누적종강', t: 'int', g: '센터' },
-  { k: 'prevNewAdmitCnt', l: '전월입교자수', t: 'int', g: '예배' }, { k: (a) => (a as any).newAttTotal, l: '전월입교자 총출석', t: 'int', g: '예배' }, { k: 'attTotal', l: '전성도 총출석', t: 'int', g: '예배' },
-  { k: (a) => (+a.absLongManage || 0) + (+a.absLongUnmanage || 0), l: '장기결석(관리대상)', t: 'int', g: '예배' },
+  { id: 'registered', k: 'registered', l: '현재적', t: 'int', g: '성도' }, { id: 'newAdmit', k: 'newAdmit', l: '입교(월)', t: 'int', g: '성도' }, { id: 'evangReg', k: 'evangReg', l: '전도재적', t: 'int', g: '성도' },
+  { id: 'bibleCumReg', k: 'bibleCumReg', l: '가개강 누적등록', t: 'int', g: '센터' }, { id: 'centerMonthTotal', k: 'centerMonthTotal', l: '센터 월등록', t: 'int', g: '센터' },
+  { id: 'centerCumReg', k: 'centerCumReg', l: '센터 누적등록', t: 'int', g: '센터' }, { id: 'centerMonthGrad', k: 'centerMonthGrad', l: '월종강', t: 'int', g: '센터' }, { id: 'centerCumGrad', k: 'centerCumGrad', l: '누적종강', t: 'int', g: '센터' },
+  { id: 'prevNewAdmitCnt', k: 'prevNewAdmitCnt', l: '전월입교자수', t: 'int', g: '예배' }, { id: 'newAttTotal', k: (a) => (a as any).newAttTotal, l: '전월입교자 총출석', t: 'int', g: '예배' }, { id: 'attTotal', k: 'attTotal', l: '전성도 총출석', t: 'int', g: '예배' },
+  { id: 'absLongTotal', k: (a) => (+a.absLongManage || 0) + (+a.absLongUnmanage || 0), l: '장기결석(관리대상)', t: 'int', g: '예배' },
 ];
 const TREND_PCT: TrendMetric[] = [
-  { k: (a) => rate(a.attTotal, a.attReg), l: '전성도 출석율', t: 'pct', g: '예배' }, { k: (a) => rate((a as any).newAttTotal, a.prevNewAdmitCnt), l: '전월입교자 출석율', t: 'pct', g: '예배' },
-  { k: (a) => rate(a.centerMonthTotal, a.evangReg), l: '센터 월등록율', t: 'pct', g: '센터' }, { k: (a) => rate(a.centerMonthGrad, a.centerTotMonthReg), l: '월 종강율', t: 'pct', g: '센터' },
-  { k: (a) => rate(a.cumNewAdmit, a.retroReg), l: '입교율(누적)', t: 'pct', g: '성도' }, { k: (a) => rate(a.catE + a.catM + a.catH, a.ctwkE + a.ctwkM + a.ctwkH), l: '초중고 출석율', t: 'pct', g: '센터' },
-  { k: (a) => rate(a.bibleCumReg, a.evangReg), l: '가개강 등록율', t: 'pct', g: '센터' },
+  { id: 'rate_attTotal_attReg', k: (a) => rate(a.attTotal, a.attReg), l: '전성도 출석율', t: 'pct', g: '예배' }, { id: 'rate_newAttTotal_prevNewAdmitCnt', k: (a) => rate((a as any).newAttTotal, a.prevNewAdmitCnt), l: '전월입교자 출석율', t: 'pct', g: '예배' },
+  { id: 'rate_centerMonthTotal_evangReg', k: (a) => rate(a.centerMonthTotal, a.evangReg), l: '센터 월등록율', t: 'pct', g: '센터' }, { id: 'rate_centerMonthGrad_centerTotMonthReg', k: (a) => rate(a.centerMonthGrad, a.centerTotMonthReg), l: '월 종강율', t: 'pct', g: '센터' },
+  { id: 'rate_cumNewAdmit_retroReg', k: (a) => rate(a.cumNewAdmit, a.retroReg), l: '입교율(누적)', t: 'pct', g: '성도' }, { id: 'rate_cat_total_ctwk_total', k: (a) => rate(a.catE + a.catM + a.catH, a.ctwkE + a.ctwkM + a.ctwkH), l: '초중고 출석율', t: 'pct', g: '센터' },
+  { id: 'rate_bibleCumReg_evangReg', k: (a) => rate(a.bibleCumReg, a.evangReg), l: '가개강 등록율', t: 'pct', g: '센터' },
 ];
 const CATG: [string, string][] = [['성도', '#2563eb'], ['센터', '#7c3aed'], ['예배', '#16a34a']];
 

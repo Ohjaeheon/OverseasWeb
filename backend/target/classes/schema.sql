@@ -10,6 +10,7 @@ CREATE TABLE IF NOT EXISTS overseas.churches (
     gubun VARCHAR(50) NOT NULL,
     name VARCHAR(150) NOT NULL,
     leader_name VARCHAR(100),
+    founding_date DATE,
     flight_time VARCHAR(50),
     distance_km INT,
     time_diff VARCHAR(100),
@@ -29,6 +30,7 @@ COMMENT ON COLUMN overseas.churches.country IS '국가명 (한국어)';
 COMMENT ON COLUMN overseas.churches.jipa IS '소속 지파명';
 COMMENT ON COLUMN overseas.churches.gubun IS '구분 (지교회, 개척교회, 복음방 등)';
 COMMENT ON COLUMN overseas.churches.name IS '교회/단체명';
+COMMENT ON COLUMN overseas.churches.founding_date IS '설립일 (그레고리력 저장, 신천지력 = 연도 - 1983년으로 환산 표시)';
 COMMENT ON COLUMN overseas.churches.lat IS '위도 (Latitude)';
 COMMENT ON COLUMN overseas.churches.lon IS '경도 (Longitude)';
 COMMENT ON COLUMN overseas.churches.is_active IS '활성화 여부';
@@ -517,4 +519,59 @@ COMMENT ON COLUMN overseas.evangelism_report_field_mapping.field_key IS '필드 
 COMMENT ON COLUMN overseas.evangelism_report_field_mapping.column_letter IS '템플릿 시트 내 열 문자 (예: D, E, G)';
 COMMENT ON COLUMN overseas.evangelism_report_field_mapping.data_source IS '데이터 소스 (MEMBERSHIP_PREV_DEC, EVANGELISM_MONTHLY_ADMIT, EVANGELISM_YTD_ADMIT, EVANGELISM_MONTHLY_TEACHER, NONE)';
 COMMENT ON COLUMN overseas.evangelism_report_field_mapping.is_enabled IS '이 필드를 실제로 채울지 여부 (보류 항목은 false)';
+
+-- 23. 진단 상세표 카테고리별 컬럼(지표)/수식 구성 설정 테이블
+CREATE TABLE IF NOT EXISTS overseas.metric_column_configs (
+    config_id     BIGSERIAL PRIMARY KEY,
+    category_key  VARCHAR(50) NOT NULL UNIQUE,
+    columns_json  TEXT NOT NULL,
+    updated_by    VARCHAR(100),
+    updated_at    TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+COMMENT ON TABLE overseas.metric_column_configs IS '진단 상세표 카테고리별 컬럼(지표)/수식 구성 설정 (JSON)';
+COMMENT ON COLUMN overseas.metric_column_configs.category_key IS '대상 카테고리 키 (diagnosisMetrics.ts의 CATS 키, 예: ①전도, ②센터)';
+COMMENT ON COLUMN overseas.metric_column_configs.columns_json IS '컬럼 구성 JSON 배열 (system/custom 컬럼 정의, 순서/라벨/수식 포함)';
+COMMENT ON COLUMN overseas.metric_column_configs.updated_by IS '마지막 수정 관리자 username';
+
+-- 24. 해외선교부 현황판 - 등록/종강 수기입력 지표 테이블 (실데이터 연동 전 임시)
+CREATE TABLE IF NOT EXISTS overseas.home_dashboard_manual_metrics (
+    id                  BIGSERIAL PRIMARY KEY,
+    church_id           BIGINT NOT NULL REFERENCES overseas.churches(church_id),
+    year_month          VARCHAR(7) NOT NULL,
+    registration_count  INT,
+    registration_rate   NUMERIC(5, 2),
+    graduation_count    INT,
+    graduation_rate     NUMERIC(5, 2),
+    student_pre_open    INT,
+    student_elementary  INT,
+    student_middle      INT,
+    student_high        INT,
+    updated_by          VARCHAR(100),
+    updated_at          TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT uq_home_dashboard_manual_church_month UNIQUE (church_id, year_month)
+);
+
+COMMENT ON TABLE overseas.home_dashboard_manual_metrics IS '해외선교부 현황판 - 등록/종강 수기입력 지표 (월별)';
+COMMENT ON COLUMN overseas.home_dashboard_manual_metrics.year_month IS '대상 연월 (형식: YYYY-MM)';
+COMMENT ON COLUMN overseas.home_dashboard_manual_metrics.registration_count IS '등록 (가개강 이후 정식 등록 인원)';
+COMMENT ON COLUMN overseas.home_dashboard_manual_metrics.registration_rate IS '가개강대비 등록률 (%, 수기입력)';
+COMMENT ON COLUMN overseas.home_dashboard_manual_metrics.graduation_count IS '종강수';
+COMMENT ON COLUMN overseas.home_dashboard_manual_metrics.graduation_rate IS '등록대비 종강률 (%, 수기입력)';
+COMMENT ON COLUMN overseas.home_dashboard_manual_metrics.student_pre_open IS '수강생현황 - 가개강 인원 (수기입력)';
+COMMENT ON COLUMN overseas.home_dashboard_manual_metrics.student_elementary IS '수강생현황 - 초등 인원 (수기입력)';
+COMMENT ON COLUMN overseas.home_dashboard_manual_metrics.student_middle IS '수강생현황 - 중등 인원 (수기입력)';
+COMMENT ON COLUMN overseas.home_dashboard_manual_metrics.student_high IS '수강생현황 - 고등 인원 (수기입력)';
+
+-- 25. 관리자 등록 국가별 국기 이미지 테이블
+CREATE TABLE IF NOT EXISTS overseas.country_flags (
+    country         VARCHAR(100) PRIMARY KEY,
+    image_data_url  TEXT NOT NULL,
+    updated_by      VARCHAR(100),
+    updated_at      TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+COMMENT ON TABLE overseas.country_flags IS '관리자 등록 국가별 국기 이미지 (내장 기본 국기보다 우선)';
+COMMENT ON COLUMN overseas.country_flags.image_data_url IS '국기 이미지 (data URL, base64)';
+
 

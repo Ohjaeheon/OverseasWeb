@@ -7,6 +7,7 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.ZonedDateTime;
 
 /**
@@ -51,6 +52,10 @@ public class Church {
     @Column(name = "leader_name", length = 100)
     @Comment("담임/담당자 이름")
     private String leaderName;
+
+    @Column(name = "founding_date")
+    @Comment("설립일 (그레고리력 저장, 화면에는 신천지력으로 환산 표시: 신년 = 그레고리력 연도 - 1983)")
+    private LocalDate foundingDate;
 
     @Column(name = "flight_time", length = 50)
     @Comment("한국(인천) 기준 직항 소요시간 (예: 6.3시간)")

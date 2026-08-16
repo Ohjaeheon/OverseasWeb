@@ -30,99 +30,116 @@ export function getYearNumFromStr(mStr: string | null | undefined): number {
 // CATS 지표 접근자는 원자료(DiagnosisRecord)가 아니라 aggregate()의 결과(AggregateResult)를 대상으로 한다
 // (단일 레코드 그룹도 항상 aggregate([r])을 거쳐서 넘어옴 — CENTERWK 파생 필드(catE/catM/catH)까지 포함하기 위함).
 export interface MetricDef {
+  id: string;
   k: string | ((a: AggregateResult) => number | null);
   l: string;
   t: 'int' | 'pct';
   primary?: boolean;
   signed?: boolean;
+  /** 인접한 컬럼끼리 표 헤더에서 하나로 묶어 보여줄 그룹명 (예: "재적"). 없으면 단독 컬럼으로 표시. */
+  group?: string;
 }
 
 // 서브탭 = 신앙프로세스/총회 점검 5영역 흐름 순(전도→센터→내무→예배). 종합은 요약(맨 앞).
+// 각 항목의 id는 관리자 설정(메뉴 관리)에서 system 컬럼을 참조/재정의할 때 쓰는 안정적인 키다.
 export const CATS: Record<string, MetricDef[]> = {
   "종합": [
-    { k: "registered", l: "현재적", t: "int", primary: true },
-    { k: "newAdmit", l: "입교(월)", t: "int" },
-    { k: r => rate(r.attTotal, r.attReg), l: "전성도 출석율", t: "pct" },
-    { k: r => rate(r.newAttTotal, r.prevNewAdmitCnt), l: "전월입교자 출석율", t: "pct" },
-    { k: r => rate(r.centerMonthTotal, r.evangReg), l: "센터 월등록율", t: "pct" },
-    { k: r => rate(r.centerMonthGrad, r.centerTotMonthReg), l: "월 종강율", t: "pct" },
-    { k: r => rate(r.cumNewAdmit, r.retroReg), l: "입교율(누적)", t: "pct" },
-    { k: "evangReg", l: "전도재적", t: "int" },
-    { k: "centerCumReg", l: "센터 누적등록", t: "int" },
+    { id: "registered", k: "registered", l: "현재적", t: "int", primary: true },
+    { id: "newAdmit", k: "newAdmit", l: "입교(월)", t: "int" },
+    { id: "rate_attTotal_attReg", k: r => rate(r.attTotal, r.attReg), l: "전성도 출석율", t: "pct" },
+    { id: "rate_newAttTotal_prevNewAdmitCnt", k: r => rate(r.newAttTotal, r.prevNewAdmitCnt), l: "전월입교자 출석율", t: "pct" },
+    { id: "rate_centerMonthTotal_evangReg", k: r => rate(r.centerMonthTotal, r.evangReg), l: "센터 월등록율", t: "pct" },
+    { id: "rate_centerMonthGrad_centerTotMonthReg", k: r => rate(r.centerMonthGrad, r.centerTotMonthReg), l: "월 종강율", t: "pct" },
+    { id: "rate_cumNewAdmit_retroReg", k: r => rate(r.cumNewAdmit, r.retroReg), l: "입교율(누적)", t: "pct" },
+    { id: "evangReg", k: "evangReg", l: "전도재적", t: "int" },
+    { id: "centerCumReg", k: "centerCumReg", l: "센터 누적등록", t: "int" },
   ],
   "①전도": [
-    { k: "evangRegFrozen", l: "전도재적", t: "int", primary: true },
-    { k: "findMonth", l: "찾기", t: "int" },
-    { k: "findCum", l: "누적찾기", t: "int" },
-    { k: "gospelMonth", l: "복음방", t: "int" },
-    { k: r => rate(r.gospelMonth, r.evangRegFrozen), l: "복음방율", t: "pct" },
-    { k: "gospelCum", l: "누적복음방", t: "int" },
-    { k: r => rate(r.gospelCum, r.evangRegFrozen), l: "누적복음방율", t: "pct" },
-    { k: "bibleMonthReg", l: "등록", t: "int" },
-    { k: r => rate(r.bibleMonthReg, r.evangRegFrozen), l: "등록율", t: "pct" },
-    { k: "bibleCumReg", l: "누적등록", t: "int" },
-    { k: r => rate(r.bibleCumReg, r.evangRegFrozen), l: "누적등록율", t: "pct" },
+    { id: "evangRegFrozen", k: "evangRegFrozen", l: "전도재적", t: "int", primary: true },
+    { id: "findMonth", k: "findMonth", l: "찾기", t: "int" },
+    { id: "findCum", k: "findCum", l: "누적찾기", t: "int" },
+    { id: "gospelMonth", k: "gospelMonth", l: "복음방", t: "int" },
+    { id: "rate_gospelMonth_evangRegFrozen", k: r => rate(r.gospelMonth, r.evangRegFrozen), l: "복음방율", t: "pct" },
+    { id: "gospelCum", k: "gospelCum", l: "누적복음방", t: "int" },
+    { id: "rate_gospelCum_evangRegFrozen", k: r => rate(r.gospelCum, r.evangRegFrozen), l: "누적복음방율", t: "pct" },
+    { id: "bibleMonthReg", k: "bibleMonthReg", l: "등록", t: "int" },
+    { id: "rate_bibleMonthReg_evangRegFrozen", k: r => rate(r.bibleMonthReg, r.evangRegFrozen), l: "등록율", t: "pct" },
+    { id: "bibleCumReg", k: "bibleCumReg", l: "누적등록", t: "int" },
+    { id: "rate_bibleCumReg_evangRegFrozen", k: r => rate(r.bibleCumReg, r.evangRegFrozen), l: "누적등록율", t: "pct" },
   ],
   "②센터": [
-    { k: "evangReg", l: "전도재적", t: "int" },
-    { k: "centerMonthOn", l: "월등록(대면)", t: "int" },
-    { k: "centerMonthOff", l: "월등록(비대면)", t: "int" },
-    { k: "centerMonthTotal", l: "월등록수", t: "int", primary: true },
-    { k: r => rate(r.centerMonthTotal, r.evangReg), l: "월등록율", t: "pct" },
-    { k: "centerCumOn", l: "누적등록(대면)", t: "int" },
-    { k: r => rate(r.centerCumOn, r.evangReg), l: "누적등록율(대면)", t: "pct" },
-    { k: "centerCumOff", l: "누적등록(비대면)", t: "int" },
-    { k: r => rate(r.centerCumOff, r.evangReg), l: "누적등록(비대면율)", t: "pct" },
-    { k: "centerCumReg", l: "누적등록수", t: "int" },
-    { k: r => rate(r.centerCumReg, r.evangReg), l: "누적등록율", t: "pct" },
-    { k: "centerMonthGrad", l: "월종강수", t: "int" },
-    { k: r => rate(r.centerMonthGrad, r.centerTotMonthReg), l: "월종강율", t: "pct" },
-    { k: "centerCumGrad", l: "누적종강수", t: "int" },
-    { k: r => rate(r.centerCumGrad, r.centerTotCumReg), l: "누적종강율", t: "pct" },
-    { k: a => a.catE, l: "초등출석수", t: "int" },
-    { k: a => a.catM, l: "중등출석수", t: "int" },
-    { k: a => a.catH, l: "고등출석수", t: "int" },
-    { k: a => rate(a.catE, a.ctwkE), l: "초등출석율", t: "pct" },
-    { k: a => rate(a.catM, a.ctwkM), l: "중등출석율", t: "pct" },
-    { k: a => rate(a.catH, a.ctwkH), l: "고등출석율", t: "pct" },
-    { k: a => rate(a.catE + a.catM + a.catH, a.ctwkE + a.ctwkM + a.ctwkH), l: "전체출석율", t: "pct" },
+    { id: "evangReg", k: "evangReg", l: "전도재적", t: "int" },
+    { id: "centerMonthOn", k: "centerMonthOn", l: "월등록(대면)", t: "int" },
+    { id: "centerMonthOff", k: "centerMonthOff", l: "월등록(비대면)", t: "int" },
+    { id: "centerMonthTotal", k: "centerMonthTotal", l: "월등록수", t: "int", primary: true },
+    { id: "rate_centerMonthTotal_evangReg", k: r => rate(r.centerMonthTotal, r.evangReg), l: "월등록율", t: "pct" },
+    { id: "centerCumOn", k: "centerCumOn", l: "누적등록(대면)", t: "int" },
+    { id: "rate_centerCumOn_evangReg", k: r => rate(r.centerCumOn, r.evangReg), l: "누적등록율(대면)", t: "pct" },
+    { id: "centerCumOff", k: "centerCumOff", l: "누적등록(비대면)", t: "int" },
+    { id: "rate_centerCumOff_evangReg", k: r => rate(r.centerCumOff, r.evangReg), l: "누적등록(비대면율)", t: "pct" },
+    { id: "centerCumReg", k: "centerCumReg", l: "누적등록수", t: "int" },
+    { id: "rate_centerCumReg_evangReg", k: r => rate(r.centerCumReg, r.evangReg), l: "누적등록율", t: "pct" },
+    { id: "centerMonthGrad", k: "centerMonthGrad", l: "월종강수", t: "int" },
+    { id: "rate_centerMonthGrad_centerTotMonthReg", k: r => rate(r.centerMonthGrad, r.centerTotMonthReg), l: "월종강율", t: "pct" },
+    { id: "centerCumGrad", k: "centerCumGrad", l: "누적종강수", t: "int" },
+    { id: "rate_centerCumGrad_centerTotCumReg", k: r => rate(r.centerCumGrad, r.centerTotCumReg), l: "누적종강율", t: "pct" },
+    { id: "catE", k: a => a.catE, l: "초등출석수", t: "int" },
+    { id: "catM", k: a => a.catM, l: "중등출석수", t: "int" },
+    { id: "catH", k: a => a.catH, l: "고등출석수", t: "int" },
+    { id: "rate_catE_ctwkE", k: a => rate(a.catE, a.ctwkE), l: "초등출석율", t: "pct" },
+    { id: "rate_catM_ctwkM", k: a => rate(a.catM, a.ctwkM), l: "중등출석율", t: "pct" },
+    { id: "rate_catH_ctwkH", k: a => rate(a.catH, a.ctwkH), l: "고등출석율", t: "pct" },
+    { id: "rate_cat_total_ctwk_total", k: a => rate(a.catE + a.catM + a.catH, a.ctwkE + a.ctwkM + a.ctwkH), l: "전체출석율", t: "pct" },
   ],
   "③내무": [
-    { k: "registered", l: "현재적", t: "int", primary: true },
-    { k: "regChange", l: "재적증가수", t: "int", signed: true },
-    { k: r => rate(r.regChange, r.retroReg), l: "재적증가율", t: "pct" },
-    { k: "newAdmit", l: "당월입교", t: "int" },
-    { k: r => rate(r.newAdmit, r.retroReg), l: "당월입교율", t: "pct" },
-    { k: "cumNewAdmit", l: "누적입교수", t: "int" },
-    { k: r => rate(r.cumNewAdmit, r.retroReg), l: "누적입교율", t: "pct" },
-    { k: "discipline", l: "사고", t: "int" },
-    { k: "cumDiscipline", l: "누적사고수", t: "int" },
+    { id: "registered", k: "registered", l: "현재적", t: "int", primary: true },
+    { id: "regChange", k: "regChange", l: "재적증가수", t: "int", signed: true },
+    { id: "rate_regChange_retroReg", k: r => rate(r.regChange, r.retroReg), l: "재적증가율", t: "pct" },
+    { id: "newAdmit", k: "newAdmit", l: "당월입교", t: "int" },
+    { id: "rate_newAdmit_retroReg", k: r => rate(r.newAdmit, r.retroReg), l: "당월입교율", t: "pct" },
+    { id: "cumNewAdmit", k: "cumNewAdmit", l: "누적입교수", t: "int" },
+    { id: "rate_cumNewAdmit_retroReg", k: r => rate(r.cumNewAdmit, r.retroReg), l: "누적입교율", t: "pct" },
+    { id: "discipline", k: "discipline", l: "사고", t: "int" },
+    { id: "cumDiscipline", k: "cumDiscipline", l: "누적사고수", t: "int" },
   ],
   "④예배·전월입교자": [
-    { k: "prevNewAdmitCnt", l: "전월입교자수", t: "int", primary: true },
-    { k: "newAttOnsite", l: "대면(정식)", t: "int" },
-    { k: "newAttOnline", l: "온라인(정식)", t: "int" },
-    { k: "newAttEtc", l: "기타(정식외)", t: "int" },
-    { k: "newAttTotal", l: "출석수", t: "int" },
-    { k: r => rate(r.newAttTotal, r.prevNewAdmitCnt), l: "출석율", t: "pct" },
+    { id: "prevNewAdmitCnt", k: "prevNewAdmitCnt", l: "전월입교자수", t: "int", primary: true },
+    { id: "newAttOnsite", k: "newAttOnsite", l: "대면(정식)", t: "int" },
+    { id: "newAttOnline", k: "newAttOnline", l: "온라인(정식)", t: "int" },
+    { id: "newAttEtc", k: "newAttEtc", l: "기타(정식외)", t: "int" },
+    { id: "newAttTotal", k: "newAttTotal", l: "출석수", t: "int" },
+    { id: "rate_newAttTotal_prevNewAdmitCnt", k: r => rate(r.newAttTotal, r.prevNewAdmitCnt), l: "출석율", t: "pct" },
   ],
   "④예배·전성도": [
-    { k: "attReg", l: "출결재적", t: "int", primary: true },
-    { k: "attOnsite", l: "대면(정식)", t: "int" },
-    { k: r => rate(r.attOnsite, r.attReg), l: "대면율", t: "pct" },
-    { k: "attOnline", l: "온라인(정식)", t: "int" },
-    { k: r => rate(r.attOnline, r.attReg), l: "온라인율", t: "pct" },
-    { k: "attEtc", l: "기타(정식외)", t: "int" },
-    { k: r => rate(r.attEtc, r.attReg), l: "기타율", t: "pct" },
-    { k: "attTotal", l: "출석수", t: "int" },
-    { k: r => rate(r.attTotal, r.attReg), l: "출석율", t: "pct" },
+    { id: "attReg", k: "attReg", l: "출결재적", t: "int", primary: true },
+    { id: "attOnsite", k: "attOnsite", l: "대면(정식)", t: "int" },
+    { id: "rate_attOnsite_attReg", k: r => rate(r.attOnsite, r.attReg), l: "대면율", t: "pct" },
+    { id: "attOnline", k: "attOnline", l: "온라인(정식)", t: "int" },
+    { id: "rate_attOnline_attReg", k: r => rate(r.attOnline, r.attReg), l: "온라인율", t: "pct" },
+    { id: "attEtc", k: "attEtc", l: "기타(정식외)", t: "int" },
+    { id: "rate_attEtc_attReg", k: r => rate(r.attEtc, r.attReg), l: "기타율", t: "pct" },
+    { id: "attTotal", k: "attTotal", l: "출석수", t: "int" },
+    { id: "rate_attTotal_attReg", k: r => rate(r.attTotal, r.attReg), l: "출석율", t: "pct" },
   ],
   "④예배·결석": [
-    { k: "absOnce", l: "일회성결석", t: "int" },
-    { k: "absLongManage", l: "장기결석(관리가능)", t: "int" },
-    { k: "absLongUnmanage", l: "장기결석(관리불가능)", t: "int" },
-    { k: "absTotal", l: "결석수", t: "int", primary: true },
-    { k: r => rate(r.absTotal, r.attReg), l: "결석율", t: "pct" },
+    { id: "absOnce", k: "absOnce", l: "일회성결석", t: "int" },
+    { id: "absLongManage", k: "absLongManage", l: "장기결석(관리가능)", t: "int" },
+    { id: "absLongUnmanage", k: "absLongUnmanage", l: "장기결석(관리불가능)", t: "int" },
+    { id: "absTotal", k: "absTotal", l: "결석수", t: "int", primary: true },
+    { id: "rate_absTotal_attReg", k: r => rate(r.absTotal, r.attReg), l: "결석율", t: "pct" },
+  ],
+  "해외선교부 현황판": [
+    { id: "prevYearEndReg", k: "prevYearEndReg", l: "전년말재적", t: "int", group: "재적" },
+    { id: "currentReg", k: "currentReg", l: "현재적", t: "int", primary: true, group: "재적" },
+    { id: "preOpen", k: "preOpen", l: "가개강", t: "int" },
+    { id: "registrationCount", k: "registrationCount", l: "등록", t: "int" },
+    { id: "registrationRate", k: a => (a.registrationRate == null ? null : a.registrationRate / 100), l: "가개강대비등록률", t: "pct" },
+    { id: "graduationCount", k: "graduationCount", l: "종강수", t: "int" },
+    { id: "graduationRate", k: a => (a.graduationRate == null ? null : a.graduationRate / 100), l: "등록대비종강률", t: "pct" },
+    { id: "studentPreOpen", k: "studentPreOpen", l: "가개강", t: "int", group: "수강생현황" },
+    { id: "studentElementary", k: "studentElementary", l: "초등", t: "int", group: "수강생현황" },
+    { id: "studentMiddle", k: "studentMiddle", l: "중등", t: "int", group: "수강생현황" },
+    { id: "studentHigh", k: "studentHigh", l: "고등", t: "int", group: "수강생현황" },
   ],
 };
 export const CAT_NAMES = Object.keys(CATS);
@@ -138,7 +155,8 @@ export function fmtVal(v: number | null, m: MetricDef): string {
 // 일부 필드(retroReg/prevReg/newAttOnsite/newAttOnline/newAttEtc/newAttTotal/centerTotCumReg)는
 // 백엔드 /diagnosis/records 응답에 아직 없다(레거시 앱에서도 항상 undefined였던 기존 결함 — 그대로 이식,
 // 임의로 대체 필드를 추정해 넣지 않는다). 그래서 keyof DiagnosisRecord가 아닌 string[]로 느슨하게 둔다.
-const SUM_FIELDS: string[] = [
+// 관리자 컬럼/수식 설정 화면에서 "원본 필드" 선택지로도 노출되므로 export.
+export const SUM_FIELDS: string[] = [
   "yearStartReg", "retroReg", "prevReg", "newAdmit", "transIn", "transOut", "moveIn", "moveOut",
   "discipline", "dupReg", "registered", "regChange", "cumNewAdmit", "cumDiscipline", "prevNewAdmitCnt",
   "newAttOnsite", "newAttOnline", "newAttEtc", "newAttTotal", "attReg", "attOnsite", "attOnline", "attEtc",
@@ -148,6 +166,45 @@ const SUM_FIELDS: string[] = [
   "centerTotCumReg", "centerMonthGrad", "centerCumGrad", "centerAttElem",
   "centerAttMid", "centerAttHigh", "absOnce", "absLongManage", "absLongUnmanage",
 ];
+
+// 관리자 컬럼/수식 설정에서 "원본 필드(변수)"로 고를 수 있는 전체 목록.
+// SUM_FIELDS(교회 원자료 합산값) + CENTERWK에서 파생되는 초/중/고 출석 관련 필드.
+export const RAW_FIELD_KEYS: string[] = [
+  ...SUM_FIELDS, 'catE', 'catM', 'catH', 'ctwkE', 'ctwkM', 'ctwkH',
+  'prevYearEndReg', 'currentReg', 'preOpen', 'registrationCount', 'registrationRate', 'graduationCount', 'graduationRate',
+  'studentPreOpen', 'studentElementary', 'studentMiddle', 'studentHigh',
+];
+
+// 원본 필드 키 -> 한글 라벨. 관리자 화면(메뉴 관리)에서 영문 키만 보고는 뭔지 알기 어려워
+// 드롭다운/수식 힌트에 같이 보여주기 위한 것으로, 계산 로직에는 영향을 주지 않는다.
+export const RAW_FIELD_LABELS: Record<string, string> = {
+  yearStartReg: '연초재적', retroReg: '소급재적(비율 기준)', prevReg: '전월재적',
+  newAdmit: '당월입교', transIn: '전입', transOut: '전출', moveIn: '이동(입)', moveOut: '이동(출)',
+  discipline: '사고(당월)', dupReg: '중복재적', registered: '현재적', regChange: '재적증가수',
+  cumNewAdmit: '누적입교수', cumDiscipline: '누적사고수', prevNewAdmitCnt: '전월입교자수',
+  newAttOnsite: '전월입교자 대면출석', newAttOnline: '전월입교자 온라인출석', newAttEtc: '전월입교자 기타출석',
+  newAttTotal: '전월입교자 총출석', attReg: '출결재적', attOnsite: '대면출석(정식)', attOnline: '온라인출석(정식)',
+  attEtc: '기타출석(정식외)', attTotal: '전성도 총출석', absTotal: '결석수', evangReg: '전도재적',
+  bibleMonthReg: '가개강 당월등록', bibleCumReg: '가개강 누적등록', bibleCurAtt: '복음방 현재출석수',
+  findMonth: '당월 찾기', findCum: '누적 찾기', gospelMonth: '당월 복음방', gospelCum: '누적 복음방',
+  evangRegFrozen: '전도재적(고정값)', centerMonthOn: '센터 월등록(대면)', centerMonthOff: '센터 월등록(비대면)',
+  centerMonthTotal: '센터 월등록수', centerTotMonthReg: '센터 월등록 대상수', centerCumOn: '센터 누적등록(대면)',
+  centerCumOff: '센터 누적등록(비대면)', centerCumReg: '센터 누적등록수', centerTotCumReg: '센터 누적등록 대상수',
+  centerMonthGrad: '센터 월종강수', centerCumGrad: '센터 누적종강수',
+  centerAttElem: '센터출석(초등, 레코드)', centerAttMid: '센터출석(중등, 레코드)', centerAttHigh: '센터출석(고등, 레코드)',
+  absOnce: '일회성결석', absLongManage: '장기결석(관리가능)', absLongUnmanage: '장기결석(관리불가능)',
+  catE: '초등출석수(주간보고)', catM: '중등출석수(주간보고)', catH: '고등출석수(주간보고)',
+  ctwkE: '초등 등록대상(주간보고)', ctwkM: '중등 등록대상(주간보고)', ctwkH: '고등 등록대상(주간보고)',
+  prevYearEndReg: '전년말재적', currentReg: '현재적(현황판)', preOpen: '가개강',
+  registrationCount: '등록', registrationRate: '가개강대비등록률(비율)', graduationCount: '종강수', graduationRate: '등록대비종강률(비율)',
+  studentPreOpen: '수강생현황 가개강', studentElementary: '수강생현황 초등', studentMiddle: '수강생현황 중등', studentHigh: '수강생현황 고등',
+};
+
+// 백엔드 응답에 아직 연결되지 않아 항상 0/undefined인 필드(위 SUM_FIELDS 주석 참고) —
+// 관리자가 이 필드를 고르면 값이 항상 비어 보일 수 있어 화면에 경고로 표시한다.
+export const RAW_FIELD_UNRELIABLE: Set<string> = new Set([
+  'retroReg', 'prevReg', 'newAttOnsite', 'newAttOnline', 'newAttEtc', 'newAttTotal', 'centerTotCumReg',
+]);
 
 export interface AggregateResult {
   count: number;

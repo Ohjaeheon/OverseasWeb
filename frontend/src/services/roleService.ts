@@ -74,6 +74,8 @@ export const DEFAULT_MENUS: { menuKey: string; menuName: string; category: strin
   { menuKey: 'evangelism_bulk', menuName: '📊 전도 가개강 데이터 전체관리', category: '⚙️ 관리자 전용 (adminsetting)', path: '/adminsetting/evangelism-bulk' },
   { menuKey: 'evangelism_bulk_report_template', menuName: '   ㄴ 월말보고서 양식관리', category: '⚙️ 관리자 전용 (adminsetting)', path: '/adminsetting/evangelism-bulk/report-template' },
   { menuKey: 'membership_bulk', menuName: '👥 내무 데이터 전체관리', category: '⚙️ 관리자 전용 (adminsetting)', path: '/adminsetting/membership-bulk' },
+  { menuKey: 'overseas_board_manual', menuName: '📥 현황판 등록·종강 수기입력', category: '⚙️ 관리자 전용 (adminsetting)', path: '/adminsetting/overseas-board-manual' },
+  { menuKey: 'dashboard_config', menuName: '🗂️ 메뉴 관리 (상세표·수식 설정)', category: '⚙️ 관리자 전용 (adminsetting)', path: '/adminsetting/dashboard-config' },
   { menuKey: 'users', menuName: '🌍 회원 및 담당 범위 관리', category: '⚙️ 관리자 전용 (adminsetting)', path: '/adminsetting/users' },
   { menuKey: 'roles', menuName: '📈 권한 그룹 및 회원 할당', category: '⚙️ 관리자 전용 (adminsetting)', path: '/adminsetting/roles' },
   { menuKey: 'perm', menuName: '🔑 권한별 접근 메뉴 설정', category: '⚙️ 관리자 전용 (adminsetting)', path: '/adminsetting/permissions' },

@@ -3,6 +3,8 @@ import { adminService, ChurchItem } from '../../services/adminService';
 import { diagnosisService } from '../../services/diagnosisService';
 import defaultChurchesData from '../../assets/defaultChurches.json';
 import { Plus, Search, Edit2, Trash2, Globe, Building2, MapPin, Flag, X, Clock } from 'lucide-react';
+import { formatFoundingDate, isoToShinDate, shinDateToIso, shinYearFromGregorianYear } from '../../utils/shinCalendar';
+import { CountryFlagInlineUpload } from '../../components/admin/CountryFlagInlineUpload';
 
 const COUNTRY_INFO: Record<string, { lang: string; rel: string }> = {
   "일본": { lang: "일본어", rel: "신토·불교" },
@@ -441,6 +443,7 @@ export const AdminFaithPage: React.FC = () => {
               <th style={{ padding: '14px 18px', fontWeight: 700 }}>정렬 순서</th>
               <th style={{ padding: '14px 18px', fontWeight: 700 }}>대륙 / 국가</th>
               <th style={{ padding: '14px 18px', fontWeight: 700 }}>담임 / 담당자</th>
+              <th style={{ padding: '14px 18px', fontWeight: 700 }}>설립일</th>
               <th style={{ padding: '14px 18px', fontWeight: 700 }}>거리 · 실시간 현지 시각 및 시차</th>
               <th style={{ padding: '14px 18px', fontWeight: 700 }}>현지 언어 / 주요 종교</th>
               <th style={{ padding: '14px 18px', fontWeight: 700, textAlign: 'right' }}>관리</th>
@@ -505,6 +508,9 @@ export const AdminFaithPage: React.FC = () => {
                     </td>
                     <td style={{ padding: '14px 18px', color: '#475569' }}>
                       {item.leaderName || '사역자 미지정'}
+                    </td>
+                    <td style={{ padding: '14px 18px', color: '#475569', fontSize: '0.82rem', whiteSpace: 'nowrap' }}>
+                      {formatFoundingDate(item.foundingDate)}
                     </td>
                     <td style={{ padding: '14px 18px', color: '#64748b', fontSize: '0.82rem' }}>
                       ✈️ 직항 약 <b>{item.flightTime || locInfo.flightTime}</b> ({item.distanceKm || locInfo.distanceKm} km)
@@ -719,6 +725,8 @@ export const AdminFaithPage: React.FC = () => {
                 </div>
               </div>
 
+              <CountryFlagInlineUpload country={formData.country} />
+
               <div>
                 <label style={{ display: 'block', fontSize: '0.82rem', color: '#64748b', marginBottom: '6px', fontWeight: 600 }}>담임 / 담당 사역자 이름</label>
                 <input
@@ -728,6 +736,55 @@ export const AdminFaithPage: React.FC = () => {
                   onChange={(e) => setFormData({ ...formData, leaderName: e.target.value })}
                   style={{ width: '100%', padding: '10px', background: '#f8fafc', border: '1px solid #dbe2ef', borderRadius: '8px', color: '#1f2a44' }}
                 />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '0.82rem', color: '#64748b', marginBottom: '6px', fontWeight: 600 }}>
+                  설립일 (신천지력) {formData.foundingDate && <span style={{ color: '#2563eb', fontWeight: 700 }}>— {formatFoundingDate(formData.foundingDate)}</span>}
+                </label>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px' }}>
+                  {(() => {
+                    const shin = isoToShinDate(formData.foundingDate) || { shinYear: shinYearFromGregorianYear(new Date().getFullYear()), month: 1, day: 1 };
+                    const updateShin = (patch: Partial<typeof shin>) => {
+                      const next = { ...shin, ...patch };
+                      setFormData({ ...formData, foundingDate: shinDateToIso(next.shinYear, next.month, next.day) || undefined });
+                    };
+                    return (
+                      <>
+                        <div>
+                          <label style={{ display: 'block', fontSize: '0.72rem', color: '#94a3b8', marginBottom: '4px' }}>신 O년</label>
+                          <input
+                            type="number"
+                            placeholder="예: 43"
+                            value={formData.foundingDate ? shin.shinYear : ''}
+                            onChange={(e) => updateShin({ shinYear: parseInt(e.target.value, 10) || undefined as any })}
+                            style={{ width: '100%', padding: '10px', background: '#f8fafc', border: '1px solid #dbe2ef', borderRadius: '8px', color: '#1f2a44' }}
+                          />
+                        </div>
+                        <div>
+                          <label style={{ display: 'block', fontSize: '0.72rem', color: '#94a3b8', marginBottom: '4px' }}>월</label>
+                          <select
+                            value={shin.month}
+                            onChange={(e) => updateShin({ month: parseInt(e.target.value, 10) })}
+                            style={{ width: '100%', padding: '10px', background: '#f8fafc', border: '1px solid #dbe2ef', borderRadius: '8px', color: '#1f2a44' }}
+                          >
+                            {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => <option key={m} value={m}>{m}월</option>)}
+                          </select>
+                        </div>
+                        <div>
+                          <label style={{ display: 'block', fontSize: '0.72rem', color: '#94a3b8', marginBottom: '4px' }}>일</label>
+                          <select
+                            value={shin.day}
+                            onChange={(e) => updateShin({ day: parseInt(e.target.value, 10) })}
+                            style={{ width: '100%', padding: '10px', background: '#f8fafc', border: '1px solid #dbe2ef', borderRadius: '8px', color: '#1f2a44' }}
+                          >
+                            {Array.from({ length: 31 }, (_, i) => i + 1).map((d) => <option key={d} value={d}>{d}일</option>)}
+                          </select>
+                        </div>
+                      </>
+                    );
+                  })()}
+                </div>
               </div>
 
               {/* Distance & Time Diff Details */}

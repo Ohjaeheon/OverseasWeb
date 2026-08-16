@@ -59,6 +59,8 @@ const RAW_SIDEBAR: SidebarItem[] = [
     ]
   },
   { s: "membership_bulk", ico: "👥", label: "내무 데이터 전체관리", path: "/adminsetting/membership-bulk" },
+  { s: "overseas_board_manual", ico: "📥", label: "현황판 등록·종강 수기입력", path: "/adminsetting/overseas-board-manual" },
+  { s: "dashboard_config", ico: "🗂️", label: "메뉴 관리 (상세표·수식 설정)", path: "/adminsetting/dashboard-config" },
 
   { grp: "회원 및 권한" },
   { s: "users", ico: "🌍", label: "회원 관리", path: "/adminsetting/users" },

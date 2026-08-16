@@ -50,6 +50,54 @@ public class DataInitializer implements CommandLineRunner {
             // overseas.churches 컬럼 추가 및 해선부 노드 처리
             jdbcTemplate.execute("ALTER TABLE overseas.churches ADD COLUMN IF NOT EXISTS is_exposed BOOLEAN DEFAULT TRUE;");
             jdbcTemplate.execute("ALTER TABLE overseas.churches ADD COLUMN IF NOT EXISTS is_org_only BOOLEAN DEFAULT FALSE;");
+            jdbcTemplate.execute("ALTER TABLE overseas.churches ADD COLUMN IF NOT EXISTS founding_date DATE;");
+
+            // 해외선교부 현황판 - 등록/종강 수기입력 지표 테이블 (실데이터 연동 전 임시)
+            jdbcTemplate.execute("CREATE TABLE IF NOT EXISTS overseas.home_dashboard_manual_metrics (" +
+                    "id BIGSERIAL PRIMARY KEY, " +
+                    "church_id BIGINT NOT NULL REFERENCES overseas.churches(church_id), " +
+                    "year_month VARCHAR(7) NOT NULL, " +
+                    "registration_count INT, " +
+                    "registration_rate NUMERIC(5, 2), " +
+                    "graduation_count INT, " +
+                    "graduation_rate NUMERIC(5, 2), " +
+                    "updated_by VARCHAR(100), " +
+                    "updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP, " +
+                    "CONSTRAINT uq_home_dashboard_manual_church_month UNIQUE (church_id, year_month)" +
+                    ");");
+            jdbcTemplate.execute("ALTER TABLE overseas.home_dashboard_manual_metrics ADD COLUMN IF NOT EXISTS student_pre_open INT;");
+            jdbcTemplate.execute("ALTER TABLE overseas.home_dashboard_manual_metrics ADD COLUMN IF NOT EXISTS student_elementary INT;");
+            jdbcTemplate.execute("ALTER TABLE overseas.home_dashboard_manual_metrics ADD COLUMN IF NOT EXISTS student_middle INT;");
+            jdbcTemplate.execute("ALTER TABLE overseas.home_dashboard_manual_metrics ADD COLUMN IF NOT EXISTS student_high INT;");
+
+            // 관리자 등록 국가별 국기 이미지 테이블
+            jdbcTemplate.execute("CREATE TABLE IF NOT EXISTS overseas.country_flags (" +
+                    "country VARCHAR(100) PRIMARY KEY, " +
+                    "image_data_url TEXT NOT NULL, " +
+                    "updated_by VARCHAR(100), " +
+                    "updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP" +
+                    ");");
+
+            // 해외선교부 현황판 카테고리의 기본 컬럼/수식 구성 시드 (이미 관리자가 저장했으면 건드리지 않음)
+            String overseasBoardColumnsJson = """
+                    [
+                      {"kind":"system","systemId":"prevYearEndReg","enabled":true,"order":0},
+                      {"kind":"system","systemId":"currentReg","enabled":true,"order":1},
+                      {"kind":"custom","uid":"seed_growth_rate","id":"growthRate","label":"증가율","valueType":"pct","sourceType":"formula","formula":"currentReg / prevYearEndReg","group":"재적","enabled":true,"order":2},
+                      {"kind":"system","systemId":"preOpen","enabled":true,"order":3},
+                      {"kind":"system","systemId":"registrationCount","enabled":true,"order":4},
+                      {"kind":"system","systemId":"registrationRate","enabled":true,"order":5},
+                      {"kind":"system","systemId":"graduationCount","enabled":true,"order":6},
+                      {"kind":"system","systemId":"graduationRate","enabled":true,"order":7},
+                      {"kind":"system","systemId":"studentPreOpen","enabled":true,"order":8},
+                      {"kind":"system","systemId":"studentElementary","enabled":true,"order":9},
+                      {"kind":"system","systemId":"studentMiddle","enabled":true,"order":10},
+                      {"kind":"system","systemId":"studentHigh","enabled":true,"order":11}
+                    ]
+                    """;
+            jdbcTemplate.update(
+                    "INSERT INTO overseas.metric_column_configs (category_key, columns_json) VALUES (?, ?) ON CONFLICT (category_key) DO NOTHING",
+                    "해외선교부 현황판", overseasBoardColumnsJson);
 
             // 해선부 본부 노드 (ID = 0L) 등록 및 조직도 전용 설정
             jdbcTemplate.execute("INSERT INTO overseas.churches (church_id, continent, country, jipa, gubun, name, leader_name, flight_time, distance_km, time_diff, language, religion, is_active, is_exposed, is_org_only) " +
