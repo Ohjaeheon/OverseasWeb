@@ -1,4 +1,5 @@
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\domain\FileDownloadLog.java
+E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\domain\SimulationChartSettings.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\repository\MetricColumnConfigRepository.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\controller\CalendarEventController.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\domain\LoginLog.java
@@ -17,7 +18,9 @@ E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\repository\Evang
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\repository\FileUploadLogRepository.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\service\HomeDashboardService.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\OverseasPortalApplication.java
+E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\domain\SimulationBaseRegistered.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\util\WeekUtil.java
+E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\repository\SimulationBaseRegisteredRepository.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\controller\EvangelismController.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\exception\GlobalExceptionHandler.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\repository\WeeklyReportSubmissionRepository.java
@@ -35,6 +38,7 @@ E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\service\Telegram
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\repository\WorshipRegionMappingRepository.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\domain\AccessLog.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\repository\I18nDictionaryRepository.java
+E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\repository\SimulationChartSettingsRepository.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\controller\MetricColumnConfigController.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\repository\EvangelismWeeklyRecordRepository.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\config\MenuPermissionInterceptor.java
@@ -49,8 +53,10 @@ E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\domain\HomeDashb
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\repository\WorshipTemplateRepository.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\repository\MembershipMonthlyRecordRepository.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\service\HomeDashboardManualMetricService.java
+E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\repository\SimulationInputRepository.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\dto\LedgerSaveRequest.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\repository\UserRepository.java
+E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\controller\SimulationController.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\controller\WeeklyReportSchemaController.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\controller\BusinessLedgerController.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\controller\BusinessBoardController.java
@@ -81,6 +87,7 @@ E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\repository\Count
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\repository\EvangelismReportTemplateRepository.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\domain\CountryFlag.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\controller\MembershipController.java
+E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\domain\SimulationInput.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\repository\WeeklyWorshipHistoryRepository.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\service\WeeklyWorshipService.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\domain\BusinessBoardAttachment.java
@@ -107,6 +114,7 @@ E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\controller\Weekl
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\domain\MembershipMonthlyRecord.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\repository\SystemConfigRepository.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\domain\User.java
+E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\repository\SimulationMonthlyDataRepository.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\repository\BusinessBoardPostRepository.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\repository\EvangelismMonthlyActivityRepository.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\repository\FileDownloadLogRepository.java
@@ -117,5 +125,6 @@ E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\controller\Evang
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\security\SessionManager.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\controller\CountryFlagController.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\controller\DiagnosisController.java
+E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\domain\SimulationMonthlyData.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\repository\MembershipEditRequestRepository.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\repository\CalendarEventRepository.java

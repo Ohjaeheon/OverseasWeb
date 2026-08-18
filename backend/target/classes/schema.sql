@@ -575,3 +575,49 @@ COMMENT ON TABLE overseas.country_flags IS '관리자 등록 국가별 국기 �
 COMMENT ON COLUMN overseas.country_flags.image_data_url IS '국기 이미지 (data URL, base64)';
 
 
+
+-- 26. 등수예상 시뮬레이션 - 기준 재적 테이블 (연도별 기준값)
+CREATE TABLE IF NOT EXISTS overseas.simulation_base_registered (
+    sim_year        INT NOT NULL,
+    center_name     VARCHAR(100) NOT NULL,
+    base_registered INT NOT NULL DEFAULT 0,
+    use_prev_auto   BOOLEAN DEFAULT FALSE,  -- TRUE: 전전년말 자동, FALSE: 직접입력
+    updated_by      VARCHAR(100),
+    updated_at      TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (sim_year, center_name)
+);
+
+COMMENT ON TABLE overseas.simulation_base_registered IS '등수예상 시뮬레이션 연도별 기준 재적수';
+COMMENT ON COLUMN overseas.simulation_base_registered.use_prev_auto IS 'TRUE: 전년말 재적 자동 계산, FALSE: 직접 입력';
+
+-- 27. 등수예상 시뮬레이션 - 월별 데이터 (실적 및 예상)
+CREATE TABLE IF NOT EXISTS overseas.simulation_monthly_data (
+    id              BIGSERIAL PRIMARY KEY,
+    sim_year        INT NOT NULL,
+    center_name     VARCHAR(100) NOT NULL,
+    month_num       INT NOT NULL,           -- 1~12
+    registered      INT,                    -- 월말 재적수 (실적)
+    reg_count       INT,                    -- 월 등록수 (실적)
+    grad_count      INT,                    -- 월 종강수 (실적)
+    growth_rate     NUMERIC(6,2),           -- 성장율 % (예상 입력 또는 역산)
+    reg_rate        NUMERIC(6,2),           -- 등록율 % (예상 입력)
+    grad_rate       NUMERIC(6,2),           -- 종강율 % (예상 입력)
+    is_forecast     BOOLEAN DEFAULT FALSE,  -- TRUE: 예상 데이터
+    note            TEXT,
+    updated_by      VARCHAR(100),
+    updated_at      TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT uq_sim_monthly UNIQUE (sim_year, center_name, month_num)
+);
+
+COMMENT ON TABLE overseas.simulation_monthly_data IS '등수예상 시뮬레이션 연도별 월별 실적/예상 데이터';
+COMMENT ON COLUMN overseas.simulation_monthly_data.is_forecast IS 'TRUE: 예상 입력값, FALSE: 실적 데이터';
+
+-- 28. 등수예상 시뮬레이션 - 차트 설정 저장
+CREATE TABLE IF NOT EXISTS overseas.simulation_chart_settings (
+    settings_key    VARCHAR(100) PRIMARY KEY,
+    settings_value  TEXT NOT NULL,
+    updated_by      VARCHAR(100),
+    updated_at      TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+COMMENT ON TABLE overseas.simulation_chart_settings IS '등수예상 시뮬레이션 차트/표시 설정 저장';

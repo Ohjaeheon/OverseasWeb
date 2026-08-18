@@ -33,6 +33,9 @@ import { AdminWeeklyReportSchemaPage } from './pages/admin/AdminWeeklyReportSche
 import { AdminWeeklyReportStatusPage } from './pages/admin/AdminWeeklyReportStatusPage';
 import { AdminMetricColumnConfigPage } from './pages/admin/AdminMetricColumnConfigPage';
 import { AdminOverseasBoardManualPage } from './pages/admin/AdminOverseasBoardManualPage';
+import { AdminSimulationCenterPage } from './pages/admin/AdminSimulationCenterPage';
+import { AdminSimulationTerminationPage } from './pages/admin/AdminSimulationTerminationPage';
+import { AdminSimulationGrowthPage } from './pages/admin/AdminSimulationGrowthPage';
 
 import { roleService } from './services/roleService';
 import { CountryFlagProvider } from './contexts/CountryFlagContext';
@@ -176,6 +179,11 @@ export const App: React.FC = () => {
             <Route path="weekly-report-schema" element={<AdminWeeklyReportSchemaPage />} />
             <Route path="dashboard-config" element={<AdminMetricColumnConfigPage />} />
             <Route path="overseas-board-manual" element={<AdminOverseasBoardManualPage />} />
+
+            {/* 등수예상 시뮬레이션 */}
+            <Route path="simulation/center" element={<AdminSimulationCenterPage />} />
+            <Route path="simulation/termination" element={<AdminSimulationTerminationPage />} />
+            <Route path="simulation/growth" element={<AdminSimulationGrowthPage />} />
 
             {/* 회원 및 권한 */}
             <Route path="users" element={<AdminUserPage />} />
