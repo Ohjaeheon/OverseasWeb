@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import { useDiagnosisData } from '../../../contexts/DiagnosisDataContext';
 import { DiagnosisRecord } from '../../../services/diagnosisService';
-import { aggregate, AggregateResult, rate, fmt, pct, contOf } from '../../../utils/diagnosisMetrics';
+import { aggregate, AggregateResult, MetricDef, rate, fmt, pct, contOf } from '../../../utils/diagnosisMetrics';
 import { CONT_KO, CONT_COLORS } from '../../../utils/diagnosisI18n';
+import { useMetricColumnConfig } from '../../../contexts/MetricColumnConfigContext';
+import { resolveCustomColumns } from '../../../utils/metricColumnEval';
 
 // 국가별 IANA 타임존(현지시각 계산용) / 현지 언어·종교. Ported 1:1 from diagnosisEngine.js
 // (COUNTRY_IANA/ianaFor/tzParts/tzOffsetH/computeTime/COUNTRY_INFO).
@@ -248,41 +250,16 @@ export const EntityCompactPanel: React.FC<EntityCompactPanelProps> = ({ name, on
   );
 };
 
-interface DetailMetricDef { key: string | ((a: AggregateResult) => number | null); label: string; type: 'int' | 'sint' | 'pct'; }
-
-const DETAIL_GROUPS: [string, DetailMetricDef[]][] = [
-  ['성도 재적·이동', [
-    { key: 'registered', label: '현재적', type: 'int' }, { key: 'yearStartReg', label: '올해초재적', type: 'int' }, { key: 'prevReg', label: '전월재적', type: 'int' },
-    { key: 'newAdmit', label: '입교', type: 'int' }, { key: 'transIn', label: '전입', type: 'int' }, { key: 'transOut', label: '전출', type: 'int' },
-    { key: 'moveIn', label: '교회이동(전입)', type: 'int' }, { key: 'moveOut', label: '교회이동(전출)', type: 'int' },
-    { key: 'discipline', label: '사고', type: 'int' }, { key: 'regChange', label: '재적증가수', type: 'sint' },
-  ]],
-  ['전월입교자 예배출석 (한 달간)', [
-    { key: 'prevNewAdmitCnt', label: '전월입교자수', type: 'int' }, { key: 'newAttOnsite', label: '대면출석', type: 'int' },
-    { key: 'newAttOnline', label: '온라인출석', type: 'int' }, { key: 'newAttEtc', label: '기타출석', type: 'int' }, { key: 'newAttTotal', label: '총출석', type: 'int' },
-    { key: (a) => rate(a.newAttTotal, a.prevNewAdmitCnt), label: '출석율', type: 'pct' },
-  ]],
-  ['전성도 예배 출결', [
-    { key: 'attReg', label: '출결재적', type: 'int' }, { key: 'attOnsite', label: '대면', type: 'int' }, { key: 'attOnline', label: '온라인', type: 'int' },
-    { key: 'attEtc', label: '기타', type: 'int' }, { key: 'attTotal', label: '총출석', type: 'int' }, { key: (a) => rate(a.attTotal, a.attReg), label: '출석율', type: 'pct' },
-    { key: 'absTotal', label: '총결석', type: 'int' }, { key: (a) => rate(a.absTotal, a.attReg), label: '결석율', type: 'pct' },
-    { key: 'absOnce', label: '일회성결석', type: 'int' }, { key: 'absLongManage', label: '장기결석(관리가능)', type: 'int' }, { key: 'absLongUnmanage', label: '장기결석(관리불가)', type: 'int' },
-  ]],
-  ['전도재적 대비 가개강', [
-    { key: 'evangReg', label: '전도재적', type: 'int' }, { key: 'bibleMonthReg', label: '가개강 월등록', type: 'int' },
-    { key: 'bibleCumReg', label: '가개강 누적등록', type: 'int' }, { key: (a) => rate(a.bibleCumReg, a.evangReg), label: '등록율', type: 'pct' },
-    { key: 'bibleCurAtt', label: '가개강 현재출석', type: 'int' },
-  ]],
-  ['센터(교육) 등록·종강·출석', [
-    { key: 'centerMonthTotal', label: '월등록 총', type: 'int' }, { key: 'centerMonthOn', label: '월등록(대면)', type: 'int' }, { key: 'centerMonthOff', label: '월등록(비대면)', type: 'int' },
-    { key: 'centerTotMonthReg', label: '총월등록수(종강분모)', type: 'int' }, { key: 'centerCumReg', label: '누적등록', type: 'int' }, { key: 'centerMonthGrad', label: '월종강', type: 'int' },
-    { key: (a) => rate(a.centerMonthGrad, a.centerTotMonthReg), label: '월 종강율', type: 'pct' },
-    { key: 'centerCumGrad', label: '누적종강', type: 'int' }, { key: (a) => rate(a.centerCumGrad, a.centerTotCumReg), label: '누적 종강율', type: 'pct' },
-    { key: (a) => a.catE, label: '현출석(초)', type: 'int' }, { key: (a) => a.catM, label: '현출석(중)', type: 'int' }, { key: (a) => a.catH, label: '현출석(고)', type: 'int' },
-  ]],
+/** 카테고리 키(관리자 설정 대상) → 모달 섹션 제목. 제목 자체는 관리자 설정 대상이 아니라 고정. */
+const DETAIL_GROUP_CATS: [string, string][] = [
+  ['⑤진단서·성도재적이동', '성도 재적·이동'],
+  ['⑤진단서·전월입교자예배출석', '전월입교자 예배출석 (한 달간)'],
+  ['⑤진단서·전성도예배출결', '전성도 예배 출결'],
+  ['⑤진단서·전도재적대비가개강', '전도재적 대비 가개강'],
+  ['⑤진단서·센터등록종강출석', '센터(교육) 등록·종강·출석'],
 ];
 
-function metricGet(a: AggregateResult | undefined, key: DetailMetricDef['key']): number | null {
+function metricGet(a: AggregateResult | undefined, key: MetricDef['k']): number | null {
   if (!a) return 0;
   return typeof key === 'function' ? key(a) : (a[key] ?? 0);
 }
@@ -334,6 +311,7 @@ interface EntityDetailModalProps {
 /** "전체 상세 보기" 클릭 시 뜨는 확장 모달(월별 미니추이 포함). Ported 1:1 from openDetail(). */
 export const EntityDetailModal: React.FC<EntityDetailModalProps> = ({ target, gubun, onClose }) => {
   const { records, months, month, jipaColors, countryContMap } = useDiagnosisData();
+  const { getColumnsFor, getCustomColsFor } = useMetricColumnConfig();
   const [cmp, setCmp] = useState<'first' | 'prev'>('first');
 
   if (!target) return null;
@@ -355,6 +333,19 @@ export const EntityDetailModal: React.FC<EntityDetailModalProps> = ({ target, gu
 
   const perMonth: Record<string, AggregateResult> = {};
   months.forEach((mn) => { perMonth[mn] = aggregate(recsAll.filter((r) => r.month === mn)); });
+
+  // 관리자 설정(메뉴 관리)에서 카테고리별로 컬럼 노출/라벨/순서/커스텀(수식) 컬럼을 재정의할 수 있다.
+  const detailGroups: [string, MetricDef[]][] = DETAIL_GROUP_CATS.map(([cat, title]) => [title, getColumnsFor(cat)]);
+  const customColsByCat = DETAIL_GROUP_CATS.map(([cat]) => getCustomColsFor(cat)).filter((cols) => cols.length > 0);
+  if (customColsByCat.length) {
+    months.forEach((mn) => {
+      const agg = perMonth[mn];
+      let merged: Record<string, number | null> = (agg as any).__customValues || {};
+      customColsByCat.forEach((cols) => { merged = { ...merged, ...resolveCustomColumns(agg, cols) }; });
+      (agg as any).__customValues = merged;
+    });
+  }
+
   const cur = perMonth[month];
   const mi = months.indexOf(month);
   const baseIdx = cmp === 'prev' ? (mi > 0 ? mi - 1 : null) : (mi > 0 ? 0 : null);
@@ -415,11 +406,12 @@ export const EntityDetailModal: React.FC<EntityDetailModalProps> = ({ target, gu
           <span style={{ fontSize: 12, color: 'var(--muted)' }}>{month} {baseIdx == null ? '(기준월이라 비교 대상 없음)' : 'vs ' + months[baseIdx]}</span>
         </div>
 
-        {DETAIL_GROUPS.map(([title, mets]) => (
+        {detailGroups.map(([title, mets]) => (
           <div className="msec" key={title}>
             <h4>{title}</h4>
             <div className="mgrid">
               {mets.map((m, mi2) => {
+                const mType: 'int' | 'sint' | 'pct' = m.signed ? 'sint' : m.t;
                 let targetMonthKeys: string[] = [];
                 if (cmp === 'prev') {
                   const prevNum = curMonthNum > 1 ? curMonthNum - 1 : 1;
@@ -432,34 +424,34 @@ export const EntityDetailModal: React.FC<EntityDetailModalProps> = ({ target, gu
                   const foundMn = months.find((mn) => parseMonthNum(mn) === mNum);
                   let val = 0;
                   if (foundMn && perMonth[foundMn] && perMonth[foundMn].count > 0) {
-                    const rawV = metricGet(perMonth[foundMn], m.key);
+                    const rawV = metricGet(perMonth[foundMn], m.k);
                     val = (rawV != null && !isNaN(rawV)) ? rawV : 0;
                   } else if (mNum === curMonthNum && cur) {
-                    const rawV = metricGet(cur, m.key);
+                    const rawV = metricGet(cur, m.k);
                     val = (rawV != null && !isNaN(rawV)) ? rawV : 0;
                   }
                   return { m: mKey, v: val };
                 });
                 const fMonths = fm.map((p) => p.m), series = fm.map((p) => p.v);
                 const hasCur = perMonth[month] && perMonth[month].count > 0;
-                const cv = hasCur ? metricGet(cur, m.key) : (fm.length ? fm[fm.length - 1].v : null);
-                const disp = (cv == null) ? '-' : (m.type === 'pct' ? pct(cv) : ((m.type === 'sint' && cv > 0 ? '+' : '') + fmt(cv)));
+                const cv = hasCur ? metricGet(cur, m.k) : (fm.length ? fm[fm.length - 1].v : null);
+                const disp = (cv == null) ? '-' : (mType === 'pct' ? pct(cv) : ((mType === 'sint' && cv > 0 ? '+' : '') + fmt(cv)));
                 const baseM = fm.length > 0 ? fm[0].m : null;
                 const baseVal = fm.length > 0 ? fm[0].v : null;
                 let badge: React.ReactNode = null;
                 if (baseVal != null && cv != null) {
                   const d = cv - baseVal;
-                  const dtxt = m.type === 'pct' ? ((d >= 0 ? '+' : '') + (d * 100).toFixed(1) + '%p') : ((d >= 0 ? '+' : '') + fmt(d));
+                  const dtxt = mType === 'pct' ? ((d >= 0 ? '+' : '') + (d * 100).toFixed(1) + '%p') : ((d >= 0 ? '+' : '') + fmt(d));
                   const cls = d > 0 ? 'pos' : (d < 0 ? 'neg' : ''), arr = d > 0 ? '▲' : (d < 0 ? '▼' : '–');
                   badge = <span className={cls} style={{ fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap' }} title={`${baseLbl} 대비`}>{arr} {dtxt}</span>;
                 }
                 return (
                   <div className="mcell" key={mi2}>
-                    <div className="l">{m.label}</div>
+                    <div className="l">{m.l}</div>
                     <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 6 }}>
                       <span className="v">{disp}</span>{badge}
                     </div>
-                    <MiniTrend series={series} monthsArr={fMonths} color={color} type={m.type} curMonth={month} baseMonth={baseM} />
+                    {m.showChart !== false && <MiniTrend series={series} monthsArr={fMonths} color={color} type={mType} curMonth={month} baseMonth={baseM} />}
                   </div>
                 );
               })}

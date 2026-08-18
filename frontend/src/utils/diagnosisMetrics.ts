@@ -38,6 +38,8 @@ export interface MetricDef {
   signed?: boolean;
   /** 인접한 컬럼끼리 표 헤더에서 하나로 묶어 보여줄 그룹명 (예: "재적"). 없으면 단독 컬럼으로 표시. */
   group?: string;
+  /** 진단서 상세보기 모달의 미니 그래프(스파크라인) 표시 여부. false면 숫자만 보이고 그래프는 숨김. 기본값 true. */
+  showChart?: boolean;
 }
 
 // 서브탭 = 신앙프로세스/총회 점검 5영역 흐름 순(전도→센터→내무→예배). 종합은 요약(맨 앞).
@@ -127,6 +129,60 @@ export const CATS: Record<string, MetricDef[]> = {
     { id: "absLongUnmanage", k: "absLongUnmanage", l: "장기결석(관리불가능)", t: "int" },
     { id: "absTotal", k: "absTotal", l: "결석수", t: "int", primary: true },
     { id: "rate_absTotal_attReg", k: r => rate(r.absTotal, r.attReg), l: "결석율", t: "pct" },
+  ],
+  "⑤진단서·성도재적이동": [
+    { id: "registered", k: "registered", l: "현재적", t: "int", primary: true },
+    { id: "yearStartReg", k: "yearStartReg", l: "올해초재적", t: "int" },
+    { id: "prevReg", k: "prevReg", l: "전월재적", t: "int" },
+    { id: "newAdmit", k: "newAdmit", l: "입교", t: "int" },
+    { id: "transIn", k: "transIn", l: "전입", t: "int" },
+    { id: "transOut", k: "transOut", l: "전출", t: "int" },
+    { id: "moveIn", k: "moveIn", l: "교회이동(전입)", t: "int" },
+    { id: "moveOut", k: "moveOut", l: "교회이동(전출)", t: "int" },
+    { id: "discipline", k: "discipline", l: "사고", t: "int" },
+    { id: "regChange", k: "regChange", l: "재적증가수", t: "int", signed: true },
+  ],
+  "⑤진단서·전월입교자예배출석": [
+    { id: "prevNewAdmitCnt", k: "prevNewAdmitCnt", l: "전월입교자수", t: "int", primary: true },
+    { id: "newAttOnsite", k: "newAttOnsite", l: "대면출석", t: "int" },
+    { id: "newAttOnline", k: "newAttOnline", l: "온라인출석", t: "int" },
+    { id: "newAttEtc", k: "newAttEtc", l: "기타출석", t: "int" },
+    { id: "newAttTotal", k: "newAttTotal", l: "총출석", t: "int" },
+    { id: "rate_newAttTotal_prevNewAdmitCnt", k: r => rate(r.newAttTotal, r.prevNewAdmitCnt), l: "출석율", t: "pct" },
+  ],
+  "⑤진단서·전성도예배출결": [
+    { id: "attReg", k: "attReg", l: "출결재적", t: "int", primary: true },
+    { id: "attOnsite", k: "attOnsite", l: "대면", t: "int" },
+    { id: "attOnline", k: "attOnline", l: "온라인", t: "int" },
+    { id: "attEtc", k: "attEtc", l: "기타", t: "int" },
+    { id: "attTotal", k: "attTotal", l: "총출석", t: "int" },
+    { id: "rate_attTotal_attReg", k: r => rate(r.attTotal, r.attReg), l: "출석율", t: "pct" },
+    { id: "absTotal", k: "absTotal", l: "총결석", t: "int" },
+    { id: "rate_absTotal_attReg", k: r => rate(r.absTotal, r.attReg), l: "결석율", t: "pct" },
+    { id: "absOnce", k: "absOnce", l: "일회성결석", t: "int" },
+    { id: "absLongManage", k: "absLongManage", l: "장기결석(관리가능)", t: "int" },
+    { id: "absLongUnmanage", k: "absLongUnmanage", l: "장기결석(관리불가)", t: "int" },
+  ],
+  "⑤진단서·전도재적대비가개강": [
+    { id: "evangReg", k: "evangReg", l: "전도재적", t: "int", primary: true },
+    { id: "bibleMonthReg", k: "bibleMonthReg", l: "가개강 월등록", t: "int" },
+    { id: "bibleCumReg", k: "bibleCumReg", l: "가개강 누적등록", t: "int" },
+    { id: "rate_bibleCumReg_evangReg", k: r => rate(r.bibleCumReg, r.evangReg), l: "등록율", t: "pct" },
+    { id: "bibleCurAtt", k: "bibleCurAtt", l: "가개강 현재출석", t: "int" },
+  ],
+  "⑤진단서·센터등록종강출석": [
+    { id: "centerMonthTotal", k: "centerMonthTotal", l: "월등록 총", t: "int", primary: true },
+    { id: "centerMonthOn", k: "centerMonthOn", l: "월등록(대면)", t: "int" },
+    { id: "centerMonthOff", k: "centerMonthOff", l: "월등록(비대면)", t: "int" },
+    { id: "centerTotMonthReg", k: "centerTotMonthReg", l: "총월등록수(종강분모)", t: "int" },
+    { id: "centerCumReg", k: "centerCumReg", l: "누적등록", t: "int" },
+    { id: "centerMonthGrad", k: "centerMonthGrad", l: "월종강", t: "int" },
+    { id: "rate_centerMonthGrad_centerTotMonthReg", k: r => rate(r.centerMonthGrad, r.centerTotMonthReg), l: "월 종강율", t: "pct" },
+    { id: "centerCumGrad", k: "centerCumGrad", l: "누적종강", t: "int" },
+    { id: "rate_centerCumGrad_centerTotCumReg", k: r => rate(r.centerCumGrad, r.centerTotCumReg), l: "누적 종강율", t: "pct" },
+    { id: "catE", k: a => a.catE, l: "현출석(초)", t: "int" },
+    { id: "catM", k: a => a.catM, l: "현출석(중)", t: "int" },
+    { id: "catH", k: a => a.catH, l: "현출석(고)", t: "int" },
   ],
   "해외선교부 현황판": [
     { id: "prevYearEndReg", k: "prevYearEndReg", l: "전년말재적", t: "int", group: "재적" },

@@ -9,6 +9,10 @@ export interface SystemColumnOverride {
   systemId: string; // diagnosisMetrics.ts CATS[cat][].id 참조
   label?: string;
   primary?: boolean;
+  /** 인접한 컬럼끼리 표 헤더에서 하나로 묶어 보여줄 그룹명 (예: "재적"). 지정 안 하면 원본 지표의 기본 group을 사용. */
+  group?: string;
+  /** 진단서 상세보기 모달의 미니 그래프 표시 여부. 지정 안 하면 원본 지표의 기본값(true)을 사용. */
+  showChart?: boolean;
   enabled: boolean;
   order: number;
 }
@@ -33,6 +37,8 @@ export interface CustomColumnConfig {
   freezeMonth?: number; // 1-12
   /** 인접한 컬럼끼리 표 헤더에서 하나로 묶어 보여줄 그룹명 (예: "재적"). 없으면 단독 컬럼으로 표시. */
   group?: string;
+  /** 진단서 상세보기 모달의 미니 그래프 표시 여부. 기본값 true. */
+  showChart?: boolean;
   enabled: boolean;
   order: number;
 }
@@ -119,6 +125,8 @@ export function mergeColumnConfig(
           ...base,
           l: entry.label ?? base.l,
           primary: entry.primary ?? base.primary,
+          group: entry.group ?? base.group,
+          showChart: entry.showChart ?? base.showChart,
         },
       });
     } else {
@@ -138,6 +146,7 @@ export function mergeColumnConfig(
           primary: entry.primary,
           signed: entry.signed,
           group: entry.group,
+          showChart: entry.showChart,
         },
       });
     }

@@ -129,6 +129,7 @@ public class AdminService {
         if (updated.getContinent() != null) church.setContinent(updated.getContinent());
         if (updated.getCountry() != null) church.setCountry(updated.getCountry());
         if (updated.getLeaderName() != null) church.setLeaderName(updated.getLeaderName());
+        if (updated.getFoundingDate() != null) church.setFoundingDate(updated.getFoundingDate());
         if (updated.getFlightTime() != null) church.setFlightTime(updated.getFlightTime());
         if (updated.getDistanceKm() != null) church.setDistanceKm(updated.getDistanceKm());
         if (updated.getTimeDiff() != null) church.setTimeDiff(updated.getTimeDiff());

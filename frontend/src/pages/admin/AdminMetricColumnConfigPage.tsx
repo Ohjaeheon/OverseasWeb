@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Plus, Trash2, Save, RotateCcw, ArrowUp, ArrowDown, Star, ToggleLeft, ToggleRight } from 'lucide-react';
+import { Plus, Trash2, Save, RotateCcw, ArrowUp, ArrowDown, Star, ToggleLeft, ToggleRight, LineChart } from 'lucide-react';
 import { CATS, CAT_NAMES, RAW_FIELD_KEYS, RAW_FIELD_LABELS, RAW_FIELD_UNRELIABLE, MetricDef } from '../../utils/diagnosisMetrics';
 import { extractFormulaVariables } from '../../utils/formulaEval';
 import { ColumnConfigEntry, SystemColumnOverride, CustomColumnConfig } from '../../utils/metricColumnEval';
@@ -161,6 +161,7 @@ export const AdminMetricColumnConfigPage: React.FC = () => {
         <div style={{ color: '#64748b', fontSize: '0.85rem', marginTop: 4 }}>
           전도·센터·예배 페이지 상세표에 표시할 컬럼의 순서/노출/라벨을 조정하고, 원본 필드나 수식으로 새 컬럼(변수)을 추가합니다.
           카테고리에 설정을 저장하지 않으면 기존 기본 컬럼 구성이 그대로 사용됩니다.
+          같은 상위그룹명을 가진 인접한 컬럼끼리는 표에서 하나의 상위 헤더(예: "재적")로 묶여 표시됩니다.
         </div>
       </div>
 
@@ -204,6 +205,7 @@ export const AdminMetricColumnConfigPage: React.FC = () => {
             const base = isSystem ? defsById.get((entry as SystemColumnOverride).systemId) : undefined;
             if (isSystem && !base) return null; // 소스에서 제거된 지표 참조 — 표시하지 않음
             const label = isSystem ? ((entry as SystemColumnOverride).label ?? base!.l) : (entry as CustomColumnConfig).label;
+            const showChart = (isSystem ? (entry as SystemColumnOverride).showChart ?? base!.showChart : (entry as CustomColumnConfig).showChart) !== false;
             const key = entryKey(entry);
 
             return (
@@ -228,6 +230,14 @@ export const AdminMetricColumnConfigPage: React.FC = () => {
                     style={{ ...inputSm, flex: 1, minWidth: 120 }}
                   />
 
+                  <input
+                    value={(isSystem ? (entry as SystemColumnOverride).group ?? base!.group : (entry as CustomColumnConfig).group) || ''}
+                    placeholder="상위그룹(선택)"
+                    title="같은 상위그룹명을 가진 인접 컬럼끼리 표 헤더에서 하나로 묶여 표시됩니다. 비우면 단독 컬럼."
+                    onChange={(e) => updateEntry(key, { group: e.target.value || undefined } as any)}
+                    style={{ ...inputSm, width: 140 }}
+                  />
+
                   <button
                     onClick={() => setPrimary(key)}
                     title="기본 정렬 기준 컬럼으로 지정"
@@ -239,6 +249,16 @@ export const AdminMetricColumnConfigPage: React.FC = () => {
                   <button onClick={() => updateEntry(key, { enabled: !entry.enabled } as any)} style={iconBtnStyle} title={entry.enabled ? '노출 중 (클릭 시 숨김)' : '숨김 (클릭 시 노출)'}>
                     {entry.enabled ? <ToggleRight size={20} color="#16a34a" /> : <ToggleLeft size={20} color="#94a3b8" />}
                   </button>
+
+                  {cat.startsWith('⑤진단서·') && (
+                    <button
+                      onClick={() => updateEntry(key, { showChart: !showChart } as any)}
+                      style={{ ...iconBtnStyle, color: showChart ? '#2563eb' : '#cbd5e1' }}
+                      title={showChart ? '진단서 상세보기의 미니 그래프 표시 중 (클릭 시 숨김, 숫자는 유지)' : '미니 그래프 숨김 (클릭 시 표시)'}
+                    >
+                      <LineChart size={16} />
+                    </button>
+                  )}
 
                   {!isSystem && (
                     <button onClick={() => removeCustom(key)} style={{ ...iconBtnStyle, color: '#ef4444' }} title="삭제">

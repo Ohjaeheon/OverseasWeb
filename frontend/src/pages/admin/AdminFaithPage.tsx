@@ -452,13 +452,13 @@ export const AdminFaithPage: React.FC = () => {
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={9} style={{ padding: '30px', textAlign: 'center', color: '#6b7a99' }}>
+                <td colSpan={10} style={{ padding: '30px', textAlign: 'center', color: '#6b7a99' }}>
                   데이터를 불러오는 중입니다...
                 </td>
               </tr>
             ) : filteredChurches.length === 0 ? (
               <tr>
-                <td colSpan={9} style={{ padding: '30px', textAlign: 'center', color: '#6b7a99' }}>
+                <td colSpan={10} style={{ padding: '30px', textAlign: 'center', color: '#6b7a99' }}>
                   등록된 교회/지역 데이터가 없습니다.
                 </td>
               </tr>
@@ -499,6 +499,42 @@ export const AdminFaithPage: React.FC = () => {
                     </td>
                     <td style={{ padding: '14px 18px', fontWeight: 700, color: '#1f2a44' }}>
                       {displayName}
+                    </td>
+                    <td style={{ padding: '14px 18px', textAlign: 'center' }}>
+                      <div style={{ display: 'flex', gap: '6px', justifyContent: 'center' }}>
+                        <button
+                          onClick={() => handleToggleExposed(item)}
+                          title={isExposed ? '일반 데이터 페이지에 노출 중 (클릭 시 숨김)' : '일반 데이터 페이지에서 숨김 (클릭 시 노출)'}
+                          style={{
+                            border: isExposed ? '1px solid #93c5fd' : '1px solid #e2e8f0',
+                            background: isExposed ? '#dbeafe' : '#f1f5f9',
+                            color: isExposed ? '#1d4ed8' : '#94a3b8',
+                            borderRadius: '6px',
+                            padding: '4px 8px',
+                            fontSize: '0.76rem',
+                            fontWeight: 700,
+                            cursor: 'pointer'
+                          }}
+                        >
+                          🌐 {isExposed ? '노출' : '미노출'}
+                        </button>
+                        <button
+                          onClick={() => handleToggleOrgOnly(item)}
+                          title={isOrgOnly ? '조직도에만 노출 (데이터 모듈 미노출)' : '데이터 모듈에도 노출'}
+                          style={{
+                            border: isOrgOnly ? '1px solid #86efac' : '1px solid #e2e8f0',
+                            background: isOrgOnly ? '#dcfce7' : '#f1f5f9',
+                            color: isOrgOnly ? '#15803d' : '#94a3b8',
+                            borderRadius: '6px',
+                            padding: '4px 8px',
+                            fontSize: '0.76rem',
+                            fontWeight: 700,
+                            cursor: 'pointer'
+                          }}
+                        >
+                          🌳 {isOrgOnly ? '조직도만' : '일반'}
+                        </button>
+                      </div>
                     </td>
                     <td style={{ padding: '14px 18px', fontWeight: 700, color: '#2563eb' }}>
                       {item.sortOrder != null ? item.sortOrder : '-'}
