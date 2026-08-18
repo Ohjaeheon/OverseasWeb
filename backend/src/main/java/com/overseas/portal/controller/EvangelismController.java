@@ -114,6 +114,18 @@ public class EvangelismController {
         }
     }
 
+    /** 전도 커스텀 그래프 대시보드에 사용자가 추가할 수 있는 최대 그래프 개수 — 기본값 10.
+     * 관리자가 시스템 설정(/adminsetting/settings)에서 변경할 수 있으며, 이 엔드포인트는
+     * 전도 화면을 보는 모든 사용자가 읽을 수 있어야 하므로 admin 경로가 아닌 여기 둔다. */
+    @GetMapping("/config/chart-max-count")
+    public ResponseEntity<Map<String, Object>> getChartMaxCount() {
+        int maxCount = systemConfigRepository.findByConfigKey("evangelism_chart_max_count")
+                .map(c -> parseIntOr(c.getConfigValue(), 10)).orElse(10);
+        Map<String, Object> result = new HashMap<>();
+        result.put("maxCount", Math.max(1, maxCount));
+        return encryptResponse(result);
+    }
+
     @PostMapping("/config/items")
     @Transactional
     public ResponseEntity<Map<String, Object>> saveItemsConfig(@RequestBody Map<String, Object> newConfig) {

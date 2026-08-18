@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { adminService } from '../../services/adminService';
-import { Save, Bot, Globe, FileCode, CalendarClock } from 'lucide-react';
+import { Save, Bot, Globe, FileCode, CalendarClock, LayoutGrid } from 'lucide-react';
 
 export const AdminSettingsPage: React.FC = () => {
   const [configs, setConfigs] = useState<any[]>([]);
@@ -17,6 +17,10 @@ export const AdminSettingsPage: React.FC = () => {
   const [baselineMonth, setBaselineMonth] = useState(12);
   const [baselineMsg, setBaselineMsg] = useState('');
 
+  // 화면 표시 설정 (표 형태) — 전도 커스텀 그래프 최대 개수, 기본값 10
+  const [maxChartCount, setMaxChartCount] = useState(10);
+  const [displayMsg, setDisplayMsg] = useState('');
+
   const loadConfigs = () => {
     adminService.getConfigs().then((data) => {
       setConfigs(data);
@@ -29,6 +33,9 @@ export const AdminSettingsPage: React.FC = () => {
       if (offsetConfig) setBaselineOffsetYears(parseInt(offsetConfig.configValue, 10) || -1);
       const monthConfig = data.find((c: any) => c.configKey === 'evang_reg_baseline_month');
       if (monthConfig) setBaselineMonth(parseInt(monthConfig.configValue, 10) || 12);
+
+      const maxChartConfig = data.find((c: any) => c.configKey === 'evangelism_chart_max_count');
+      if (maxChartConfig) setMaxChartCount(parseInt(maxChartConfig.configValue, 10) || 10);
 
       const itemsConfig = data.find((c: any) => c.configKey === 'evangelism_items_by_country');
       if (itemsConfig) {
@@ -98,6 +105,18 @@ export const AdminSettingsPage: React.FC = () => {
       setBaselineMsg('전도재적 기준 시점이 저장되었습니다. 전도 화면에 바로 반영됩니다.');
       loadConfigs();
       setTimeout(() => setBaselineMsg(''), 2000);
+    } catch (e: any) {
+      alert(e.message || '저장 실패');
+    }
+  };
+
+  const handleSaveDisplaySettings = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      await adminService.updateConfig('evangelism_chart_max_count', String(Math.max(1, maxChartCount)), '전도 커스텀 그래프 대시보드(/evangelism)에서 사용자가 추가할 수 있는 최대 그래프 개수');
+      setDisplayMsg('화면 표시 설정이 저장되었습니다.');
+      loadConfigs();
+      setTimeout(() => setDisplayMsg(''), 2000);
     } catch (e: any) {
       alert(e.message || '저장 실패');
     }
@@ -282,6 +301,55 @@ export const AdminSettingsPage: React.FC = () => {
             <div style={{ marginTop: 'auto', paddingTop: '20px' }}>
               <button type="submit" className="btn-primary" style={{ width: '100%', padding: '12px', justifyContent: 'center' }}>
                 <Save size={18} /> 기준 시점 저장하기
+              </button>
+            </div>
+          </form>
+        </div>
+
+        {/* Panel 1.7: 화면 표시 설정 (표 형태) */}
+        <div className="glass-panel" style={{ flex: '1 1 480px', padding: '28px', borderRadius: '12px', display: 'flex', flexDirection: 'column' }}>
+          <h3 style={{ fontSize: '1.15rem', fontWeight: 700, color: 'white', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <LayoutGrid size={22} color="#a855f7" /> 화면 표시 설정
+          </h3>
+          <p style={{ color: '#94a3b8', fontSize: '0.78rem', marginBottom: '16px' }}>
+            사용자 화면의 표시 개수 등을 제어하는 설정입니다.
+          </p>
+
+          {displayMsg && <div style={{ background: 'rgba(16,185,129,0.2)', color: '#34d399', padding: '10px', borderRadius: '8px', marginBottom: '16px', fontSize: '0.85rem' }}>{displayMsg}</div>}
+
+          <form onSubmit={handleSaveDisplaySettings} style={{ display: 'flex', flexDirection: 'column', gap: '16px', flex: 1 }}>
+            <div style={{ overflowX: 'auto', border: '1px solid var(--navy-border)', borderRadius: '8px' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+                <thead>
+                  <tr style={{ background: 'rgba(255,255,255,0.05)' }}>
+                    <th style={{ textAlign: 'left', padding: '10px 12px', color: '#cbd5e1', fontWeight: 700 }}>설정 항목</th>
+                    <th style={{ textAlign: 'left', padding: '10px 12px', color: '#cbd5e1', fontWeight: 700 }}>설명</th>
+                    <th style={{ textAlign: 'left', padding: '10px 12px', color: '#cbd5e1', fontWeight: 700, width: '110px' }}>값</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td style={{ padding: '10px 12px', color: 'white', fontWeight: 600, borderTop: '1px solid var(--navy-border)' }}>전도 커스텀 그래프 최대 개수</td>
+                    <td style={{ padding: '10px 12px', color: '#94a3b8', borderTop: '1px solid var(--navy-border)' }}>/evangelism 커스텀 그래프 대시보드에서 추가할 수 있는 최대 그래프 개수</td>
+                    <td style={{ padding: '10px 12px', borderTop: '1px solid var(--navy-border)' }}>
+                      <input
+                        type="number" min={1} max={50}
+                        value={maxChartCount}
+                        onChange={(e) => setMaxChartCount(Math.max(1, parseInt(e.target.value, 10) || 1))}
+                        style={{
+                          width: '100%', padding: '8px', background: 'rgba(255,255,255,0.05)',
+                          border: '1px solid var(--navy-border)', borderRadius: '6px', color: 'white', fontSize: '0.9rem',
+                        }}
+                      />
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div style={{ marginTop: 'auto', paddingTop: '4px' }}>
+              <button type="submit" className="btn-primary" style={{ width: '100%', padding: '12px', justifyContent: 'center' }}>
+                <Save size={18} /> 표시 설정 저장하기
               </button>
             </div>
           </form>

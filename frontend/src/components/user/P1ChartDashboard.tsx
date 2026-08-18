@@ -1,9 +1,15 @@
 /**
  * P1ChartDashboard – /OverseasPortal/evangelism 메인 대시보드 및 ProcessCategoryPage(센터/예배)에서
- * 직접 <P1ChartDashboard /> 로 렌더링되는 커스텀 그래프 컴포넌트
+ * 직접 <P1ChartDashboard /> 로 렌더링되는 커스텀 그래프 컴포넌트 (recharts 기반)
  */
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import {
+  ResponsiveContainer, BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
+  RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
+  XAxis, YAxis, CartesianGrid, Tooltip, Legend,
+} from 'recharts';
 import api from '../../services/api';
+import { useMetricColumnConfig } from '../../contexts/MetricColumnConfigContext';
 
 const CHURCH_COLOR_PALETTE = [
   '#2563eb', '#16a34a', '#dc2626', '#9333ea', '#ea580c',
@@ -15,6 +21,14 @@ const DATA_KEY_LABELS: Record<string, string> = {
   gospel: '복음방', gospelDrop: '복음방탈락',
   admit: '개강', admitDrop: '개강탈락'
 };
+
+// 관리자 페이지(adminsetting/dashboard-config)의 "①전도" 카테고리에서 켜고 끌 수 있는
+// 지표(diagnosisMetrics.ts CATS['①전도'][].id)와, 이 그래프가 쓰는 원자료 키의 대응 관계.
+// 대응되는 관리자 설정 항목이 없는 탈락(drop) 계열 키는 항상 선택 가능하게 둔다.
+const DATA_KEY_TO_METRIC_ID: Record<string, string> = {
+  reg: 'evangRegFrozen', find: 'findMonth', gospel: 'gospelMonth', admit: 'bibleMonthReg'
+};
+const EVANGELISM_CATEGORY = '①전도';
 
 const DEPARTMENTS_ALL = ['교역자', '자문회', '장년회', '부녀회', '청년회'];
 
@@ -52,6 +66,18 @@ async function saveChartConfigsToDb(configs: ChartConfig[]): Promise<void> {
 // 메인 컴포넌트
 // ============================================================
 export function P1ChartDashboard() {
+  const { getColumnsFor } = useMetricColumnConfig();
+
+  // 관리자가 dashboard-config에서 활성화한 "①전도" 지표만 그래프 데이터 항목으로 노출한다.
+  // 대응되는 관리자 설정이 없는 탈락(drop) 계열 키는 항상 노출한다.
+  const availableDataKeys = useMemo(() => {
+    const enabledIds = new Set(getColumnsFor(EVANGELISM_CATEGORY).map(d => d.id));
+    return Object.keys(DATA_KEY_LABELS).filter(k => {
+      const metricId = DATA_KEY_TO_METRIC_ID[k];
+      return !metricId || enabledIds.has(metricId);
+    });
+  }, [getColumnsFor]);
+
   const [chartConfigs, setChartConfigs] = useState<ChartConfig[]>([]);
   const [isEditMode, setIsEditMode] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -59,9 +85,7 @@ export function P1ChartDashboard() {
   const [availableChurches, setAvailableChurches] = useState<ChurchInfo[]>([]);
   const [churchRecords, setChurchRecords] = useState<Record<string, Record<string, Record<string, Record<string, number>>>>>({});
 
-  const selectedYear = (() => {
-    try { return (window as any).ST?.year || `${new Date().getFullYear()}년`; } catch { return `${new Date().getFullYear()}년`; }
-  })();
+  const selectedYear = `${new Date().getFullYear()}년`;
 
   const [mTitle, setMTitle] = useState('');
   const [mChartType, setMChartType] = useState<'bar' | 'line' | 'pie' | 'radar'>('bar');
@@ -70,22 +94,19 @@ export function P1ChartDashboard() {
   const [mDataKeys, setMDataKeys] = useState<string[]>(['find']);
   const [mWeekRange, setMWeekRange] = useState<'current' | 'month' | 'all'>('all');
 
+  // 관리자페이지 > 시스템 설정(/adminsetting/settings)에서 조정 가능한 최대 그래프 개수. 기본값 10.
+  const [maxChartCount, setMaxChartCount] = useState(10);
+
   useEffect(() => {
     fetchChartConfigsFromDb().then(setChartConfigs);
-    const tryGetChurches = () => {
-      const data = (window as any).DATA;
-      if (data && Array.isArray(data.records) && data.records.length > 0) {
-        const names = Array.from(new Set<string>(data.records.map((r: any) => r.name as string)));
-        setAvailableChurches(names.map((n, i) => ({ id: i, name: n })));
-      } else {
-        api.get<any[]>('/admin/churches').then(res => {
-          if (Array.isArray(res.data)) {
-            setAvailableChurches(res.data.map((c: any) => ({ id: c.churchId || c.id, name: c.name || c.churchName })));
-          }
-        }).catch(() => {});
+    api.get<any[]>('/admin/churches').then(res => {
+      if (Array.isArray(res.data)) {
+        setAvailableChurches(res.data.map((c: any) => ({ id: c.churchId || c.id, name: c.name || c.churchName })));
       }
-    };
-    setTimeout(tryGetChurches, 800);
+    }).catch(() => {});
+    api.get<{ maxCount: number }>('/evangelism/config/chart-max-count').then(res => {
+      if (res.data && Number.isFinite(res.data.maxCount)) setMaxChartCount(res.data.maxCount);
+    }).catch(() => {});
   }, []);
 
   const fetchChurchRecords = useCallback(async (churches: string[]) => {
@@ -127,14 +148,14 @@ export function P1ChartDashboard() {
 
   const openAdd = () => {
     setEditingChart(null); setMTitle('새 그래프'); setMChartType('bar');
-    setMChurches([]); setMChurchColors({}); setMDataKeys(['find']); setMWeekRange('all');
+    setMChurches([]); setMChurchColors({}); setMDataKeys([availableDataKeys[0] || 'find']); setMWeekRange('all');
     setIsModalOpen(true);
   };
 
   const openEdit = (chart: ChartConfig) => {
     setEditingChart(chart); setMTitle(chart.title); setMChartType(chart.chartType);
     setMChurches([...chart.churches]); setMChurchColors({ ...chart.churchColors });
-    setMDataKeys([...chart.dataKeys]); setMWeekRange(chart.weekRange);
+    setMDataKeys(chart.dataKeys.filter(k => availableDataKeys.includes(k))); setMWeekRange(chart.weekRange);
     setIsModalOpen(true);
   };
 
@@ -160,20 +181,15 @@ export function P1ChartDashboard() {
     setChartConfigs(updated); saveChartConfigsToDb(updated); setIsModalOpen(false);
   };
 
-  const getAllWeeks = (): string[] => {
-    try {
-      const data = (window as any).DATA;
-      if (data && Array.isArray(data.weeklyRecords)) {
-        return Array.from(new Set<string>(data.weeklyRecords.map((r: any) => r.weekKey as string))).sort();
-      }
-    } catch {}
-    return [];
-  };
-
-  const getWeeksForChart = (chart: ChartConfig): string[] => {
-    const all = getAllWeeks();
-    if (chart.weekRange === 'current') return all.slice(-1);
-    if (chart.weekRange === 'month') { const m = new Date().getMonth() + 1; return all.filter(w => w.startsWith(`${m}월`)); }
+  const getWeeksForChart = (churches: string[], weekRange: ChartConfig['weekRange']): string[] => {
+    const weekSet = new Set<string>();
+    churches.forEach(ch => {
+      const rec = churchRecords[ch];
+      if (rec) Object.keys(rec).forEach(w => weekSet.add(w));
+    });
+    const all = Array.from(weekSet).sort();
+    if (weekRange === 'current') return all.slice(-1);
+    if (weekRange === 'month') { const m = new Date().getMonth() + 1; return all.filter(w => w.startsWith(`${m}월`)); }
     return all;
   };
 
@@ -189,11 +205,11 @@ export function P1ChartDashboard() {
           </div>
           <div>
             <div style={{ fontWeight: 800, fontSize: '1.15rem', color: '#0f172a' }}>커스텀 그래프 대시보드</div>
-            <div style={{ fontSize: '0.82rem', color: '#64748b' }}>최대 6개 · 사용자별 DB 커스텀 저장</div>
+            <div style={{ fontSize: '0.82rem', color: '#64748b' }}>최대 {maxChartCount}개 · 사용자별 DB 커스텀 저장</div>
           </div>
         </div>
         <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-          {isEditMode && chartConfigs.length < 6 && (
+          {isEditMode && chartConfigs.length < maxChartCount && (
             <button onClick={openAdd} style={{ padding: '9px 18px', borderRadius: '10px', border: 'none', background: 'linear-gradient(135deg, #2563eb, #1d4ed8)', color: '#fff', fontWeight: 800, fontSize: '0.92rem', cursor: 'pointer', boxShadow: '0 4px 14px rgba(37,99,235,0.3)' }}>
               + 그래프 추가
             </button>
@@ -218,7 +234,8 @@ export function P1ChartDashboard() {
           {chartConfigs.map(chart => (
             <ChartCard
               key={chart.id} chart={chart} isEditMode={isEditMode}
-              churchRecords={churchRecords} getWeeks={() => getWeeksForChart(chart)}
+              churchRecords={churchRecords} availableDataKeys={availableDataKeys}
+              getWeeks={(churches) => getWeeksForChart(churches, chart.weekRange)}
               getTotal={getChurchWeekTotal} onFetch={fetchChurchRecords}
               onEdit={() => openEdit(chart)} onDelete={() => handleDelete(chart.id)}
             />
@@ -270,12 +287,14 @@ export function P1ChartDashboard() {
                 {availableChurches.length === 0 && <p style={{ fontSize: '0.82rem', color: '#94a3b8', margin: '6px 0 0' }}>교회 목록 로딩 중…</p>}
               </div>
               <div>
-                <label style={{ display: 'block', fontSize: '0.88rem', fontWeight: 800, color: '#334155', marginBottom: '8px' }}>📋 데이터 항목 <span style={{ fontWeight: 500, color: '#64748b' }}>(다중 선택)</span></label>
+                <label style={{ display: 'block', fontSize: '0.88rem', fontWeight: 800, color: '#334155', marginBottom: '8px' }}>📋 데이터 항목 <span style={{ fontWeight: 500, color: '#64748b' }}>(다중 선택 · 관리자페이지 &gt; 메뉴 관리에서 활성화한 항목만 표시)</span></label>
                 <div style={{ display: 'flex', gap: '7px', flexWrap: 'wrap' }}>
-                  {Object.entries(DATA_KEY_LABELS).map(([key, label]) => {
+                  {availableDataKeys.map(key => {
+                    const label = DATA_KEY_LABELS[key];
                     const checked = mDataKeys.includes(key);
                     return <button key={key} onClick={() => setMDataKeys(prev => checked ? prev.filter(k => k !== key) : [...prev, key])} style={{ padding: '7px 14px', borderRadius: '8px', cursor: 'pointer', border: checked ? '2px solid #2563eb' : '1.5px solid #e2e8f0', background: checked ? '#eff6ff' : '#f8fafc', color: checked ? '#2563eb' : '#64748b', fontWeight: checked ? 800 : 500, fontSize: '0.85rem' }}>{label}</button>;
                   })}
+                  {availableDataKeys.length === 0 && <p style={{ fontSize: '0.82rem', color: '#94a3b8', margin: 0 }}>관리자페이지 &gt; 메뉴 관리(상세표·수식 설정)에서 "①전도" 항목을 먼저 활성화해 주세요.</p>}
                 </div>
               </div>
               <div>
@@ -304,19 +323,22 @@ export function P1ChartDashboard() {
 interface ChartCardProps {
   chart: ChartConfig; isEditMode: boolean;
   churchRecords: Record<string, Record<string, Record<string, Record<string, number>>>>;
-  getWeeks: () => string[];
+  availableDataKeys: string[];
+  getWeeks: (churches: string[]) => string[];
   getTotal: (records: Record<string, Record<string, Record<string, number>>>, weekKey: string, dataKey: string) => number;
   onFetch: (churches: string[]) => void;
   onEdit: () => void; onDelete: () => void;
 }
 
-function ChartCard({ chart, isEditMode, churchRecords, getWeeks, getTotal, onFetch, onEdit, onDelete }: ChartCardProps) {
+function ChartCard({ chart, isEditMode, churchRecords, availableDataKeys, getWeeks, getTotal, onFetch, onEdit, onDelete }: ChartCardProps) {
   useEffect(() => {
     const missing = chart.churches.filter(c => !churchRecords[c]);
     if (missing.length > 0) onFetch(missing);
   }, [chart.churches, churchRecords]);
 
-  const weeks = getWeeks();
+  const weeks = getWeeks(chart.churches);
+  // 관리자가 dashboard-config에서 이후에 비활성화한 데이터 항목은 저장된 그래프에서도 제외한다.
+  const activeDataKeys = chart.dataKeys.filter(k => availableDataKeys.includes(k));
   const getTotalForChurch = (church: string, weekKey: string, dataKey: string) => getTotal(churchRecords[church] || {}, weekKey, dataKey);
   const typeLabels: Record<string, string> = { bar: '막대', line: '꺾은선', pie: '원형', radar: '레이더' };
   const weekLabel = { current: '현재주차', month: '이번달', all: '전체기간' }[chart.weekRange];
@@ -334,122 +356,140 @@ function ChartCard({ chart, isEditMode, churchRecords, getWeeks, getTotal, onFet
         <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
           <span style={{ fontSize: '0.78rem', padding: '3px 9px', borderRadius: '6px', background: '#eff6ff', color: '#2563eb', fontWeight: 800 }}>{typeLabels[chart.chartType]}</span>
           <span style={{ fontSize: '0.78rem', padding: '3px 9px', borderRadius: '6px', background: '#f0fdf4', color: '#16a34a', fontWeight: 800 }}>{weekLabel}</span>
-          {chart.dataKeys.map(k => <span key={k} style={{ fontSize: '0.78rem', padding: '3px 9px', borderRadius: '6px', background: '#f8fafc', color: '#475569', border: '1px solid #e2e8f0', fontWeight: 700 }}>{DATA_KEY_LABELS[k] || k}</span>)}
+          {activeDataKeys.map(k => <span key={k} style={{ fontSize: '0.78rem', padding: '3px 9px', borderRadius: '6px', background: '#f8fafc', color: '#475569', border: '1px solid #e2e8f0', fontWeight: 700 }}>{DATA_KEY_LABELS[k] || k}</span>)}
         </div>
       </div>
-      <div style={{ padding: '10px 22px', display: 'flex', gap: '14px', flexWrap: 'wrap', borderBottom: '1px solid #f8fafc' }}>
-        {chart.churches.map(ch => (
-          <div key={ch} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <div style={{ width: '11px', height: '11px', borderRadius: '50%', background: chart.churchColors[ch] || '#2563eb' }} />
-            <span style={{ fontSize: '0.84rem', color: '#334155', fontWeight: 700 }}>{ch}</span>
-          </div>
-        ))}
-      </div>
       <div style={{ padding: '18px 22px 22px' }}>
-        {chart.chartType === 'bar' && <BarSVG chart={chart} weeks={weeks} getTotal={getTotalForChurch} />}
-        {chart.chartType === 'line' && <LineSVG chart={chart} weeks={weeks} getTotal={getTotalForChurch} />}
-        {chart.chartType === 'pie' && <PieSVG chart={chart} weeks={weeks} getTotal={getTotalForChurch} />}
-        {chart.chartType === 'radar' && <RadarSVG chart={chart} weeks={weeks} getTotal={getTotalForChurch} />}
+        {activeDataKeys.length === 0 ? (
+          <div style={{ textAlign: 'center', color: '#94a3b8', padding: '50px 0', fontSize: '0.92rem' }}>선택된 데이터 항목이 관리자 설정에서 비활성화되었습니다.<br />그래프를 수정해 다른 항목을 선택해 주세요.</div>
+        ) : (
+          <>
+            {chart.chartType === 'bar' && <BarSVG chart={chart} dataKeys={activeDataKeys} weeks={weeks} getTotal={getTotalForChurch} />}
+            {chart.chartType === 'line' && <LineSVG chart={chart} dataKeys={activeDataKeys} weeks={weeks} getTotal={getTotalForChurch} />}
+            {chart.chartType === 'pie' && <PieSVG chart={chart} dataKeys={activeDataKeys} weeks={weeks} getTotal={getTotalForChurch} />}
+            {chart.chartType === 'radar' && <RadarSVG chart={chart} dataKeys={activeDataKeys} weeks={weeks} getTotal={getTotalForChurch} />}
+          </>
+        )}
       </div>
     </div>
   );
 }
 
 // ============================================================
-// SVG 차트들 (2열 레이아웃 대형 사이즈 W=600, H=280)
+// recharts 기반 차트 렌더러
 // ============================================================
-const W = 600, H = 280, PL = 54, PR = 16, PT = 14, PB = 52;
-const PW = W - PL - PR, PH = H - PT - PB;
+interface ChartProps {
+  chart: ChartConfig;
+  dataKeys: string[];
+  weeks: string[];
+  getTotal: (church: string, week: string, key: string) => number;
+}
 
-function BarSVG({ chart, weeks, getTotal }: { chart: ChartConfig; weeks: string[]; getTotal: (c: string, w: string, k: string) => number }) {
+function seriesKey(church: string, key: string) { return `${church}__${key}`; }
+// 데이터 항목을 1개만 선택했을 때는 항목명이 굳이 필요 없으므로 교회명만 표시하고,
+// 2개 이상 선택했을 때만 "교회명 · 항목명"으로 구분해 표시한다.
+function seriesName(church: string, key: string, dataKeys: string[]) {
+  return dataKeys.length > 1 ? `${church} · ${DATA_KEY_LABELS[key] || key}` : church;
+}
+
+function BarSVG({ chart, dataKeys, weeks, getTotal }: ChartProps) {
   const dw = weeks.slice(-12);
-  const vals = chart.churches.flatMap(ch => chart.dataKeys.flatMap(k => dw.map(w => getTotal(ch, w, k))));
-  const mx = Math.max(...vals, 1);
-  const bpg = chart.churches.length * chart.dataKeys.length;
-  const gw = PW / Math.max(dw.length, 1);
-  const bw = Math.max(4, (gw - 8) / Math.max(bpg, 1));
-  const ticks = [0, 0.25, 0.5, 0.75, 1].map(r => Math.round(r * mx));
+  const data = dw.map(week => {
+    const row: Record<string, string | number> = { week: week.replace('주차', '주') };
+    chart.churches.forEach(ch => dataKeys.forEach(k => { row[seriesKey(ch, k)] = getTotal(ch, week, k); }));
+    return row;
+  });
+  const series = chart.churches.flatMap(ch => dataKeys.map(k => ({
+    key: seriesKey(ch, k), name: seriesName(ch, k, dataKeys),
+    color: chart.churchColors[ch] || '#2563eb',
+    opacity: dataKeys.length > 1 ? (dataKeys.indexOf(k) === 0 ? 1 : 0.6) : 1,
+  })));
+  const rotateLabels = dw.length > 6;
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: 'auto' }}>
-      {ticks.map((v, i) => { const y = PT + PH - (v / mx) * PH; return <g key={i}><line x1={PL} y1={y} x2={PL + PW} y2={y} stroke="#f1f5f9" strokeWidth="1.2" /><text x={PL - 8} y={y + 4} textAnchor="end" fontSize="12" fill="#64748b" fontWeight="600">{v}</text></g>; })}
-      <line x1={PL} y1={PT} x2={PL} y2={PT + PH} stroke="#cbd5e1" strokeWidth="1.5" />
-      <line x1={PL} y1={PT + PH} x2={PL + PW} y2={PT + PH} stroke="#cbd5e1" strokeWidth="1.5" />
-      {dw.map((week, wi) => {
-        const gx = PL + wi * gw; let bi = 0;
-        return chart.churches.flatMap(ch => chart.dataKeys.map(k => {
-          const val = getTotal(ch, week, k); const bh = (val / mx) * PH; const x = gx + 4 + bi * bw; bi++;
-          const color = chart.churchColors[ch] || '#2563eb'; const op = chart.dataKeys.length > 1 ? (chart.dataKeys.indexOf(k) === 0 ? 1 : 0.65) : 1;
-          return <rect key={`${ch}-${k}-${wi}`} x={x} y={PT + PH - bh} width={bw - 1} height={bh} fill={color} fillOpacity={op} rx="4"><title>{ch} · {DATA_KEY_LABELS[k]}: {val}</title></rect>;
-        }));
-      })}
-      {dw.map((week, wi) => <text key={wi} x={PL + wi * gw + gw / 2} y={PT + PH + 20} textAnchor="middle" fontSize="11.5" fill="#475569" fontWeight="700" transform={dw.length > 6 ? `rotate(-30,${PL + wi * gw + gw / 2},${PT + PH + 20})` : undefined}>{week.replace('주차', '주')}</text>)}
-    </svg>
+    <ResponsiveContainer width="100%" height={280}>
+      <BarChart data={data} margin={{ top: 8, right: 12, left: -8, bottom: rotateLabels ? 34 : 4 }}>
+        <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+        <XAxis dataKey="week" tick={{ fontSize: 11.5, fontWeight: 700, fill: '#475569' }} interval={0}
+          angle={rotateLabels ? -30 : 0} textAnchor={rotateLabels ? 'end' : 'middle'} height={rotateLabels ? 44 : 24} />
+        <YAxis tick={{ fontSize: 12, fontWeight: 600, fill: '#64748b' }} allowDecimals={false} />
+        <Tooltip />
+        <Legend wrapperStyle={{ fontSize: '12px', fontWeight: 700, color: '#334155' }} />
+        {series.map(s => <Bar key={s.key} dataKey={s.key} name={s.name} fill={s.color} fillOpacity={s.opacity} radius={[4, 4, 0, 0]} />)}
+      </BarChart>
+    </ResponsiveContainer>
   );
 }
 
-function LineSVG({ chart, weeks, getTotal }: { chart: ChartConfig; weeks: string[]; getTotal: (c: string, w: string, k: string) => number }) {
+function LineSVG({ chart, dataKeys, weeks, getTotal }: ChartProps) {
   const dw = weeks.slice(-14);
-  const vals = chart.churches.flatMap(ch => chart.dataKeys.flatMap(k => dw.map(w => getTotal(ch, w, k))));
-  const mx = Math.max(...vals, 1);
-  const xOf = (i: number) => PL + (i / Math.max(dw.length - 1, 1)) * PW;
-  const yOf = (v: number) => PT + PH - (v / mx) * PH;
-  const ticks = [0, 0.25, 0.5, 0.75, 1].map(r => Math.round(r * mx));
+  const data = dw.map(week => {
+    const row: Record<string, string | number> = { week: week.replace('주차', '주') };
+    chart.churches.forEach(ch => dataKeys.forEach(k => { row[seriesKey(ch, k)] = getTotal(ch, week, k); }));
+    return row;
+  });
+  const series = chart.churches.flatMap(ch => dataKeys.map((k, ki) => ({
+    key: seriesKey(ch, k), name: seriesName(ch, k, dataKeys),
+    color: chart.churchColors[ch] || '#2563eb', dashed: ki > 0,
+  })));
+  const rotateLabels = dw.length > 6;
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: 'auto' }}>
-      {ticks.map((v, i) => { const y = yOf(v); return <g key={i}><line x1={PL} y1={y} x2={PL + PW} y2={y} stroke="#f1f5f9" strokeWidth="1.2" /><text x={PL - 8} y={y + 4} textAnchor="end" fontSize="12" fill="#64748b" fontWeight="600">{v}</text></g>; })}
-      <line x1={PL} y1={PT} x2={PL} y2={PT + PH} stroke="#cbd5e1" strokeWidth="1.5" />
-      <line x1={PL} y1={PT + PH} x2={PL + PW} y2={PT + PH} stroke="#cbd5e1" strokeWidth="1.5" />
-      {chart.churches.flatMap(ch => chart.dataKeys.map((k, ki) => {
-        const color = chart.churchColors[ch] || '#2563eb';
-        const pts = dw.map((w, i) => `${xOf(i)},${yOf(getTotal(ch, w, k))}`).join(' ');
-        return <g key={`${ch}-${k}`}>
-          <polyline points={pts} fill="none" stroke={color} strokeWidth="3" strokeDasharray={ki > 0 ? '6 4' : undefined} strokeLinecap="round" strokeLinejoin="round" />
-          {dw.map((w, i) => <circle key={i} cx={xOf(i)} cy={yOf(getTotal(ch, w, k))} r="5.5" fill={color} stroke="#fff" strokeWidth="2.5"><title>{ch} · {DATA_KEY_LABELS[k]} [{w}]: {getTotal(ch, w, k)}</title></circle>)}
-        </g>;
-      }))}
-      {dw.map((week, i) => <text key={i} x={xOf(i)} y={PT + PH + 20} textAnchor="middle" fontSize="11.5" fill="#475569" fontWeight="700" transform={dw.length > 6 ? `rotate(-30,${xOf(i)},${PT + PH + 20})` : undefined}>{week.replace('주차', '주')}</text>)}
-    </svg>
+    <ResponsiveContainer width="100%" height={280}>
+      <LineChart data={data} margin={{ top: 8, right: 12, left: -8, bottom: rotateLabels ? 34 : 4 }}>
+        <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+        <XAxis dataKey="week" tick={{ fontSize: 11.5, fontWeight: 700, fill: '#475569' }} interval={0}
+          angle={rotateLabels ? -30 : 0} textAnchor={rotateLabels ? 'end' : 'middle'} height={rotateLabels ? 44 : 24} />
+        <YAxis tick={{ fontSize: 12, fontWeight: 600, fill: '#64748b' }} allowDecimals={false} />
+        <Tooltip />
+        <Legend wrapperStyle={{ fontSize: '12px', fontWeight: 700, color: '#334155' }} />
+        {series.map(s => (
+          <Line key={s.key} type="monotone" dataKey={s.key} name={s.name} stroke={s.color}
+            strokeWidth={3} strokeDasharray={s.dashed ? '6 4' : undefined}
+            dot={{ r: 4.5, fill: s.color, stroke: '#fff', strokeWidth: 2 }} />
+        ))}
+      </LineChart>
+    </ResponsiveContainer>
   );
 }
 
-function PieSVG({ chart, weeks, getTotal }: { chart: ChartConfig; weeks: string[]; getTotal: (c: string, w: string, k: string) => number }) {
-  const cx = 140, cy = 140, r = 115, SW = 600, SH = 280;
-  const slices = chart.churches.flatMap(ch => chart.dataKeys.map(k => ({ label: `${ch} · ${DATA_KEY_LABELS[k] || k}`, value: weeks.reduce((s, w) => s + getTotal(ch, w, k), 0), color: chart.churchColors[ch] || '#2563eb' })));
-  const total = slices.reduce((s, d) => s + d.value, 0) || 1;
-  let ang = -Math.PI / 2;
-  const paths = slices.map(s => {
-    const a = (s.value / total) * 2 * Math.PI, e = ang + a;
-    const x1 = cx + r * Math.cos(ang), y1 = cy + r * Math.sin(ang);
-    const x2 = cx + r * Math.cos(e), y2 = cy + r * Math.sin(e);
-    const d = `M${cx},${cy} L${x1},${y1} A${r},${r} 0 ${a > Math.PI ? 1 : 0},1 ${x2},${y2} Z`;
-    const pct = ((s.value / total) * 100).toFixed(1); ang = e;
-    return { ...s, d, pct };
+function PieSVG({ chart, dataKeys, weeks, getTotal }: ChartProps) {
+  const slices = chart.churches.flatMap(ch => dataKeys.map(k => ({
+    name: seriesName(ch, k, dataKeys),
+    value: weeks.reduce((s, w) => s + getTotal(ch, w, k), 0),
+    color: chart.churchColors[ch] || '#2563eb',
+  })));
+  return (
+    <ResponsiveContainer width="100%" height={280}>
+      <PieChart>
+        <Pie data={slices} dataKey="value" nameKey="name" cx="36%" cy="50%" outerRadius={95} strokeWidth={2.5} stroke="#fff">
+          {slices.map((s, i) => <Cell key={i} fill={s.color} />)}
+        </Pie>
+        <Tooltip formatter={(value: number, name: string) => [value, name]} />
+        <Legend layout="vertical" align="right" verticalAlign="middle" wrapperStyle={{ fontSize: '13px', fontWeight: 700, color: '#334155' }} />
+      </PieChart>
+    </ResponsiveContainer>
+  );
+}
+
+function RadarSVG({ chart, dataKeys, weeks, getTotal }: ChartProps) {
+  if (dataKeys.length < 3) return <div style={{ textAlign: 'center', color: '#94a3b8', padding: '50px 0', fontSize: '1rem' }}>레이더 차트는 데이터 항목 3개 이상이 필요합니다.</div>;
+  const data = dataKeys.map(k => {
+    const row: Record<string, string | number> = { axis: DATA_KEY_LABELS[k] || k };
+    chart.churches.forEach(ch => { row[ch] = weeks.reduce((s, w) => s + getTotal(ch, w, k), 0); });
+    return row;
   });
   return (
-    <svg viewBox={`0 0 ${SW} ${SH}`} style={{ width: '100%', height: 'auto' }}>
-      {paths.map((p, i) => <path key={i} d={p.d} fill={p.color} stroke="#fff" strokeWidth="2.5"><title>{p.label}: {p.value} ({p.pct}%)</title></path>)}
-      {slices.map((s, i) => <g key={i} transform={`translate(290, ${24 + i * 28})`}><rect x="0" y="0" width="15" height="15" fill={s.color} rx="3" /><text x="24" y="13" fontSize="13.5" fill="#334155" fontWeight="700">{s.label.length > 20 ? s.label.slice(0, 20) + '…' : s.label} ({s.value})</text></g>)}
-    </svg>
+    <ResponsiveContainer width="100%" height={280}>
+      <RadarChart data={data} outerRadius={95}>
+        <PolarGrid stroke="#e2e8f0" />
+        <PolarAngleAxis dataKey="axis" tick={{ fontSize: 12, fontWeight: 800, fill: '#334155' }} />
+        <PolarRadiusAxis tick={{ fontSize: 10, fill: '#94a3b8' }} allowDecimals={false} />
+        {chart.churches.map(ch => {
+          const color = chart.churchColors[ch] || '#2563eb';
+          return <Radar key={ch} name={ch} dataKey={ch} stroke={color} fill={color} fillOpacity={0.18} strokeWidth={2.5} />;
+        })}
+        <Legend wrapperStyle={{ fontSize: '13px', fontWeight: 700, color: '#334155' }} />
+        <Tooltip />
+      </RadarChart>
+    </ResponsiveContainer>
   );
 }
-
-function RadarSVG({ chart, weeks, getTotal }: { chart: ChartConfig; weeks: string[]; getTotal: (c: string, w: string, k: string) => number }) {
-  const cx = 160, cy = 140, r = 110, SW = 600, SH = 280;
-  const axes = chart.dataKeys;
-  if (axes.length < 3) return <div style={{ textAlign: 'center', color: '#94a3b8', padding: '50px 0', fontSize: '1rem' }}>레이더 차트는 데이터 항목 3개 이상이 필요합니다.</div>;
-  const n = axes.length;
-  const ang = (i: number) => -Math.PI / 2 + i * (2 * Math.PI / n);
-  const churchData = chart.churches.map(ch => ({ ch, color: chart.churchColors[ch] || '#2563eb', vals: axes.map(k => weeks.reduce((s, w) => s + getTotal(ch, w, k), 0)) }));
-  const mx = Math.max(...churchData.flatMap(d => d.vals), 1);
-  const pt = (i: number, v: number) => ({ x: cx + r * (v / mx) * Math.cos(ang(i)), y: cy + r * (v / mx) * Math.sin(ang(i)) });
-  return (
-    <svg viewBox={`0 0 ${SW} ${SH}`} style={{ width: '100%', height: 'auto' }}>
-      {[0.25, 0.5, 0.75, 1].map(ratio => <polygon key={ratio} points={axes.map((_, i) => `${cx + r * ratio * Math.cos(ang(i))},${cy + r * ratio * Math.sin(ang(i))}`).join(' ')} fill="none" stroke="#e2e8f0" strokeWidth="1.2" />)}
-      {axes.map((_, i) => <line key={i} x1={cx} y1={cy} x2={cx + r * Math.cos(ang(i))} y2={cy + r * Math.sin(ang(i))} stroke="#e2e8f0" strokeWidth="1.2" />)}
-      {churchData.map((d, di) => <polygon key={di} points={d.vals.map((v, i) => { const p = pt(i, v); return `${p.x},${p.y}`; }).join(' ')} fill={d.color} fillOpacity="0.18" stroke={d.color} strokeWidth="2.8"><title>{d.ch}</title></polygon>)}
-      {axes.map((k, i) => { const x = cx + (r + 20) * Math.cos(ang(i)); const y = cy + (r + 20) * Math.sin(ang(i)); return <text key={i} x={x} y={y} textAnchor="middle" dominantBaseline="middle" fontSize="12" fill="#334155" fontWeight="800">{DATA_KEY_LABELS[k] || k}</text>; })}
-      {churchData.map((d, i) => <g key={i} transform={`translate(360, ${24 + i * 28})`}><rect x="0" y="0" width="15" height="15" fill={d.color} rx="3" fillOpacity="0.9" /><text x="24" y="13" fontSize="13.5" fill="#334155" fontWeight="700">{d.ch.length > 12 ? d.ch.slice(0, 12) + '…' : d.ch}</text></g>)}
-    </svg>
-  );
-}
-
