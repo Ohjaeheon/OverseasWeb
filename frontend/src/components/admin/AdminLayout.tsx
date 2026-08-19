@@ -75,7 +75,17 @@ const RAW_SIDEBAR: SidebarItem[] = [
   { s: "login_log", ico: "📥", label: "로그인 로그", path: "/adminsetting/login-logs" },
   { s: "access_log", ico: "📥", label: "접근로그", path: "/adminsetting/access-logs" },
   { s: "file_upload_logs", ico: "📥", label: "파일 업로드 로그", path: "/adminsetting/file-upload-logs" },
-  { s: "file_download_logs", ico: "📥", label: "파일 다운로드 로그", path: "/adminsetting/file-download-logs" }
+  { s: "file_download_logs", ico: "📥", label: "파일 다운로드 로그", path: "/adminsetting/file-download-logs" },
+
+  { grp: "등수예상 시뮬레이션" },
+  {
+    s: "simulation", ico: "🏆", label: "등수예상 시뮬레이션", path: "/adminsetting/simulation/center",
+    children: [
+      { label: "센터예상", path: "/adminsetting/simulation/center" },
+      { label: "종강수예상", path: "/adminsetting/simulation/termination" },
+      { label: "성장율예상", path: "/adminsetting/simulation/growth" },
+    ]
+  }
 ];
 
 export const AdminLayout: React.FC = () => {
