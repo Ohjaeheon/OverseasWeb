@@ -56,7 +56,20 @@ export const DiagnosisTopbar: React.FC<DiagnosisTopbarProps> = ({ onToggleSideba
                 >
                   <span>{it.label}</span>
                   {it.tag && <span className="tag">{it.tag}</span>}
-                  {it.children && <span className="mm-count">{it.children.length}개 하위</span>}
+                  {it.children && <span className="mm-chevron">›</span>}
+                  {it.children && (
+                    <div className="mm-flyout">
+                      {it.children.map((ch) => (
+                        <div
+                          key={ch.path}
+                          className="mm-sub-row"
+                          onClick={(e) => { e.stopPropagation(); navigate(ch.path); }}
+                        >
+                          {ch.label}
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>

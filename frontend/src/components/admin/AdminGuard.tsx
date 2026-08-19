@@ -15,6 +15,7 @@ const ADMIN_ROUTE_MENU_KEYS: Record<string, string> = {
   'membership-bulk': 'membership_bulk',
   'weekly-report-status': 'weekly_report_status',
   'weekly-report-schema': 'weekly_report_schema',
+  'graph-management/board': 'graph_management_board',
   'users': 'users',
   'roles': 'roles',
   'permissions': 'perm',

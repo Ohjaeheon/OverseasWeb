@@ -35,7 +35,7 @@ export const DiagnosisSubNav: React.FC = () => {
 
   return (
     <nav className="subnav">
-      <div className="subnav-head">현재 대그룹<b>{active.major.label}</b></div>
+      <div className="subnav-head"><b>{active.major.label}</b></div>
       {active.major.items.map((it) => {
         const children = visibleChildrenFor(it, userRole);
         const isOn = children.length === 0 && (location.pathname === it.path || location.pathname.startsWith(it.path + '/'));

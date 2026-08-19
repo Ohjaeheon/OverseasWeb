@@ -14,6 +14,7 @@ import { WeeklyReportPage } from './WeeklyReportPage';
 import { UnderConstructionNotice } from '../../components/user/UnderConstructionNotice';
 import { CalendarPage } from '../../components/user/CalendarPage';
 import { OrganizationPage } from '../../components/user/OrganizationPage';
+import { NoticeBoardPage } from '../../components/user/NoticeBoardPage';
 
 import { DiagnosisDataProvider } from '../../contexts/DiagnosisDataContext';
 import { MetricColumnConfigProvider } from '../../contexts/MetricColumnConfigContext';
@@ -41,7 +42,7 @@ function normalizeRole(role: string): string {
 }
 
 const SECTION_TO_MENU_KEY: Record<string, string> = {
-  'home': 'home', 'calendar': 'calendar', 'diag': 'diag', 'inspect': 'inspect', 'funnel': 'funnel',
+  'home': 'home', 'calendar': 'calendar', 'notice': 'notice', 'diag': 'diag', 'inspect': 'inspect', 'funnel': 'funnel',
   'trend': 'trend', 'map': 'map', 'globe': 'globe',
   'evangelism': 'p1', 'evangelism/check': 'p1_check', 'evangelism/aggregate': 'p1_agg', 'evangelism/plan': 'p1_plan', 'evangelism/monthly': 'p1_monthly', 'evangelism/report': 'p1_report',
   'center': 'p2',
@@ -191,7 +192,7 @@ export const DiagnosisPage: React.FC<DiagnosisPageProps> = ({ section = 'home', 
 
     // Record Access Log for User Diagnosis Portal Section Page
     const sectionLabels: Record<string, string> = {
-      home: '🏠 해외 총괄 요약', calendar: '📅 캘린더', diag: '🩺 교회 진단서', inspect: '🚨 점검 (양·질)',
+      home: '🏠 해외 총괄 요약', calendar: '📅 캘린더', notice: '📢 공지사항', diag: '🩺 교회 진단서', inspect: '🚨 점검 (양·질)',
       funnel: '🚦 관문별 통과율', trend: '📈 12개월 추이', map: '🗺️ 지리적 분포 (지도)', globe: '🌐 3D 지구본',
       evangelism: '① 전도 · 가개강 종합 포탈', center: '② 센터', membership: '③ 내무', worship: '④ 예배 · 전성도',
       business: '💼 업무 종합 포탈',
@@ -219,6 +220,7 @@ export const DiagnosisPage: React.FC<DiagnosisPageProps> = ({ section = 'home', 
     if (section === 'profile') return <MyProfilePage />;
     if (section === 'calendar') return <CalendarPage mode="MAIN" />;
     if (section === 'organization') return <OrganizationPage />;
+    if (section === 'notice') return <NoticeBoardPage />;
     if (section === 'business' && tab === 'business_calendar') return <CalendarPage mode="BUSINESS" />;
     if (section === 'evangelism/check' || section === 'evangelism/aggregate' || section === 'evangelism/plan' || section === 'evangelism/monthly' || section === 'evangelism/report') {
       const evangelismTab = section === 'evangelism/aggregate' ? 'aggregate' : section === 'evangelism/plan' ? 'plan' : section === 'evangelism/monthly' ? 'monthly' : section === 'evangelism/report' ? 'report' : 'check';

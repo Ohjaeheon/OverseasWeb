@@ -36,6 +36,7 @@ import { AdminOverseasBoardManualPage } from './pages/admin/AdminOverseasBoardMa
 import { AdminSimulationCenterPage } from './pages/admin/AdminSimulationCenterPage';
 import { AdminSimulationTerminationPage } from './pages/admin/AdminSimulationTerminationPage';
 import { AdminSimulationGrowthPage } from './pages/admin/AdminSimulationGrowthPage';
+import { AdminGraphManagementPage } from './pages/admin/AdminGraphManagementPage';
 
 import { roleService } from './services/roleService';
 import { CountryFlagProvider } from './contexts/CountryFlagContext';
@@ -123,6 +124,7 @@ export const App: React.FC = () => {
         <Route path="/" element={<DiagnosisPage section="home" />} />
         <Route path="/calendar" element={<DiagnosisPage section="calendar" />} />
         <Route path="/organization" element={<DiagnosisPage section="organization" />} />
+        <Route path="/notice" element={<DiagnosisPage section="notice" />} />
         <Route path="/diag" element={<DiagnosisPage section="diag" />} />
         <Route path="/inspect" element={<DiagnosisPage section="inspect" />} />
         <Route path="/funnel" element={<DiagnosisPage section="funnel" />} />
@@ -179,6 +181,7 @@ export const App: React.FC = () => {
             <Route path="weekly-report-schema" element={<AdminWeeklyReportSchemaPage />} />
             <Route path="dashboard-config" element={<AdminMetricColumnConfigPage />} />
             <Route path="overseas-board-manual" element={<AdminOverseasBoardManualPage />} />
+            <Route path="graph-management/board" element={<AdminGraphManagementPage />} />
 
             {/* 등수예상 시뮬레이션 */}
             <Route path="simulation/center" element={<AdminSimulationCenterPage />} />

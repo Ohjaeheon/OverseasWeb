@@ -14,6 +14,8 @@ export const SIDEBAR: SidebarEntry[] = [
   { s: 'home', ico: '🏠', label: '홈 (종합 현황)', path: '/' },
   { s: 'calendar', ico: '📅', label: '캘린더', path: '/calendar' },
   { s: 'organization', ico: '🌳', label: '조직도', path: '/organization' },
+  { grp: '게시판' },
+  { s: 'notice', ico: '📢', label: '공지사항', path: '/notice' },
   { grp: '진 단' },
   { s: 'diag', ico: '🩺', label: '교회 진단서', path: '/diag', tag: '핵심' },
   { s: 'inspect', ico: '🚨', label: '점검 (양·질)', path: '/inspect' },

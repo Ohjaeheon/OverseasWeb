@@ -37,6 +37,7 @@ E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\domain\Evangelis
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\service\TelegramBotPollingService.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\repository\WorshipRegionMappingRepository.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\domain\AccessLog.java
+E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\repository\GraphConfigRepository.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\repository\I18nDictionaryRepository.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\repository\SimulationChartSettingsRepository.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\controller\MetricColumnConfigController.java
@@ -50,6 +51,7 @@ E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\service\AuthServ
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\domain\WeeklyReportSchema.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\domain\WorshipTemplate.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\domain\HomeDashboardManualMetric.java
+E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\domain\GraphConfig.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\repository\WorshipTemplateRepository.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\repository\MembershipMonthlyRecordRepository.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\service\HomeDashboardManualMetricService.java
@@ -80,9 +82,11 @@ E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\domain\WeeklyWor
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\repository\EvangelismReportFieldMappingRepository.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\controller\UserController.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\service\AdminService.java
+E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\controller\GraphConfigController.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\domain\EvangelismMonthlyActivityEditRequest.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\controller\BusinessArchiveController.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\config\WebMvcConfig.java
+E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\service\GraphConfigService.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\repository\CountryFlagRepository.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\repository\EvangelismReportTemplateRepository.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\domain\CountryFlag.java
@@ -105,6 +109,7 @@ E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\repository\Login
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\domain\WeeklyReportSubmission.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\repository\BusinessBoardAttachmentRepository.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\controller\OrganizationChartController.java
+E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\controller\NoticeBoardController.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\controller\HomeDashboardManualMetricController.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\domain\CalendarEvent.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\security\JwtTokenProvider.java

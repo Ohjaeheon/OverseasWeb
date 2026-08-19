@@ -61,6 +61,12 @@ const RAW_SIDEBAR: SidebarItem[] = [
   { s: "membership_bulk", ico: "👥", label: "내무 데이터 전체관리", path: "/adminsetting/membership-bulk" },
   { s: "overseas_board_manual", ico: "📥", label: "현황판 등록·종강 수기입력", path: "/adminsetting/overseas-board-manual" },
   { s: "dashboard_config", ico: "🗂️", label: "메뉴 관리 (상세표·수식 설정)", path: "/adminsetting/dashboard-config" },
+  {
+    s: "graph_management", ico: "📈", label: "그래프 관리", path: "/adminsetting/graph-management/board",
+    children: [
+      { label: "현황판 그래프 관리", path: "/adminsetting/graph-management/board" }
+    ]
+  },
 
   { grp: "회원 및 권한" },
   { s: "users", ico: "🌍", label: "회원 관리", path: "/adminsetting/users" },
@@ -369,7 +375,20 @@ export const AdminLayout: React.FC = () => {
                   <div key={it.s} className="mm-row" onClick={() => it.path && navigate(it.path)}>
                     <span>{it.label}</span>
                     {it.tag && <span className="tag">{it.tag}</span>}
-                    {it.children && <span className="mm-count">{it.children.length}개 하위</span>}
+                    {it.children && <span className="mm-chevron">›</span>}
+                    {it.children && (
+                      <div className="mm-flyout">
+                        {it.children.map((ch) => (
+                          <div
+                            key={ch.path}
+                            className="mm-sub-row"
+                            onClick={(e) => { e.stopPropagation(); navigate(ch.path); }}
+                          >
+                            {ch.label}
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
@@ -436,7 +455,7 @@ export const AdminLayout: React.FC = () => {
         {/* 좌측 서브 내비게이션: 중그룹/소그룹 (데스크톱 전용, 대그룹 진입 시에만 표시) */}
         {activeMajor && (
           <nav className="subnav">
-            <div className="subnav-head">현재 대그룹<b>{activeMajor.major.label}</b></div>
+            <div className="subnav-head"><b>{activeMajor.major.label}</b></div>
             {activeMajor.major.items.map((it) => {
               const children = it.children || [];
               const itKey = it.s || it.path || '';

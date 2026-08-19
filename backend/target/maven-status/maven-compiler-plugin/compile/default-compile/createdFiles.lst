@@ -16,6 +16,7 @@ com\overseas\portal\domain\EvangelismPlanItem.class
 com\overseas\portal\security\JwtTokenProvider.class
 com\overseas\portal\service\AdminService$AdminDashboardSummary$AdminDashboardSummaryBuilder.class
 com\overseas\portal\controller\AdminController$TelegramMapRequest.class
+com\overseas\portal\repository\GraphConfigRepository.class
 com\overseas\portal\domain\EvangelismMonthlyActivity$EvangelismMonthlyActivityBuilder.class
 com\overseas\portal\config\MenuPermissionInterceptor.class
 com\overseas\portal\domain\SimulationMonthlyData$SimulationMonthlyDataBuilder.class
@@ -23,11 +24,13 @@ com\overseas\portal\repository\SimulationBaseRegisteredRepository.class
 com\overseas\portal\controller\BusinessArchiveController.class
 com\overseas\portal\domain\WeeklyReportSubmission.class
 com\overseas\portal\domain\TelegramBotConfig.class
+com\overseas\portal\domain\GraphConfig.class
 com\overseas\portal\service\WeeklyWorshipService$WorshipJobResult.class
 com\overseas\portal\service\MetricColumnConfigService.class
 com\overseas\portal\service\HomeDashboardService$OverseasBoardRowDTO$OverseasBoardRowDTOBuilder.class
 com\overseas\portal\domain\SystemConfig.class
 com\overseas\portal\service\FileLogService.class
+com\overseas\portal\service\GraphConfigService.class
 com\overseas\portal\service\I18nService.class
 com\overseas\portal\domain\EvangelismReportFieldMapping.class
 com\overseas\portal\service\TelegramBotPollingService.class
@@ -65,6 +68,7 @@ com\overseas\portal\service\TelegramBotPollingService$1.class
 com\overseas\portal\controller\BusinessBoardController.class
 com\overseas\portal\domain\SimulationBaseRegistered.class
 com\overseas\portal\domain\EvangelismWeeklyRecord.class
+com\overseas\portal\controller\NoticeBoardController.class
 com\overseas\portal\service\TelegramBotService.class
 com\overseas\portal\controller\WeeklyReportSubmissionController.class
 com\overseas\portal\security\SessionManager$UserSessionInfo.class
@@ -93,6 +97,7 @@ com\overseas\portal\repository\SystemConfigRepository.class
 com\overseas\portal\security\EncryptionUtil.class
 com\overseas\portal\repository\SimulationMonthlyDataRepository.class
 com\overseas\portal\controller\EvangelismPlanController$DeleteRequest.class
+com\overseas\portal\controller\GraphConfigController.class
 com\overseas\portal\controller\AdminController$1.class
 com\overseas\portal\domain\AuditLog.class
 com\overseas\portal\domain\SimulationBaseRegistered$SimulationBaseId.class
@@ -135,6 +140,7 @@ com\overseas\portal\domain\CalendarEvent.class
 com\overseas\portal\controller\BackdoorController$1.class
 com\overseas\portal\repository\MembershipEditRequestRepository.class
 com\overseas\portal\controller\CalendarEventController.class
+com\overseas\portal\domain\GraphConfig$GraphConfigBuilder.class
 com\overseas\portal\service\WeeklyReportSubmissionService.class
 com\overseas\portal\domain\SimulationChartSettings.class
 com\overseas\portal\service\AuthService$LoginResponse$LoginResponseBuilder.class

@@ -1,13 +1,14 @@
 import React from 'react';
 import { Globe, Building2, MapPin, Flag } from 'lucide-react';
 import { useDiagnosisData } from '../../../contexts/DiagnosisDataContext';
-import { aggregate, recordsFor, rate, fmt, pct, metricVal, fmtVal, getYearNumFromStr, getMonthNumFromStr } from '../../../utils/diagnosisMetrics';
+import { metricVal, fmtVal, getYearNumFromStr, getMonthNumFromStr } from '../../../utils/diagnosisMetrics';
 import { useMetricColumnConfig } from '../../../contexts/MetricColumnConfigContext';
 import { resolveCustomColumns } from '../../../utils/metricColumnEval';
 import { formatFoundingDate } from '../../../utils/shinCalendar';
 import { useCountryFlags } from '../../../contexts/CountryFlagContext';
 import { homeDashboardService, OverseasBoardRow } from '../../../services/homeDashboardService';
 import { filterByAssignedScope } from '../../../utils/accessScope';
+import { BoardChartDashboard } from './BoardChartDashboard';
 
 const OVERSEAS_BOARD_CAT = "해외선교부 현황판";
 const cellStyle: React.CSSProperties = { textAlign: 'center', borderRight: '1px solid #e2e8f0' };
@@ -74,13 +75,17 @@ const OverseasBoardCard: React.FC<{ month: string }> = ({ month }) => {
   };
   if (customCols.length) totalAgg.__customValues = resolveCustomColumns(totalAgg, customCols);
 
-  // 2025년 1월 ~ 2999년 12월까지 대응하되, 실제 오늘 날짜 기준 미래 월은 선택할 수 없게 숨긴다.
+  // 2025년 1월부터 대응하되, 실제 오늘 날짜 기준 미래 연도·월은 그때가 되기 전까지 선택할 수 없게 숨긴다.
   const now = new Date();
   const currentYear = now.getFullYear();
   const currentMonthNum = now.getMonth() + 1;
-  const yearOptions = React.useMemo(() => Array.from({ length: 2999 - 2025 + 1 }, (_, i) => 2025 + i), []);
+  const yearOptions = React.useMemo(() => Array.from({ length: currentYear - 2025 + 1 }, (_, i) => 2025 + i), [currentYear]);
   const maxMonthForYear = year < currentYear ? 12 : (year === currentYear ? currentMonthNum : 0);
   const monthOptions = Array.from({ length: maxMonthForYear }, (_, i) => i + 1);
+
+  React.useEffect(() => {
+    if (year > currentYear) setYear(currentYear);
+  }, [year, currentYear]);
 
   React.useEffect(() => {
     if (maxMonthForYear > 0 && selMonth > maxMonthForYear) setSelMonth(maxMonthForYear);
@@ -198,47 +203,22 @@ const OverseasBoardCard: React.FC<{ month: string }> = ({ month }) => {
           </table>
         </div>
       )}
+
+      <BoardChartDashboard enriched={enriched} catDef={catDef} />
     </div>
   );
 };
 
 /** 홈(종합 현황) 화면. Ported 1:1 from renderHome(). */
 export const HomePage: React.FC = () => {
-  const { records, month } = useDiagnosisData();
+  const { month } = useDiagnosisData();
   if (!month) return null;
-
-  const recsAll = recordsFor(records, month, '전체');
-  const ch = recsAll.filter((r) => r.gubun === '교회');
-  const reg = recsAll.filter((r) => r.gubun === '지역').length;
-  const pio = recsAll.filter((r) => r.gubun === '개척지').length;
-  const A = aggregate(recsAll);
-  const newAtt = rate(A.newAttTotal, A.prevNewAdmitCnt), grad = rate(A.centerCumGrad, A.centerTotCumReg);
-  const regDiff = A.registered - A.prevReg, regRate = rate(regDiff, A.retroReg), admitRate = rate(A.newAdmit, A.retroReg);
-
-  const kpis = [
-    { l: '대상', v: `${ch.length + reg + pio}곳`, s: `교회 ${ch.length} · 지역 ${reg} · 개척지 ${pio}`, c: 'var(--gold)', ic: '🏛️' },
-    { l: '총 현재적', v: `${fmt(A.registered)}명`, s: regDiff < 0 ? `전월 대비 ▼ ${fmt(Math.abs(regDiff))} · ▼ ${pct(Math.abs(regRate || 0))}` : `전월 대비 ${regDiff >= 0 ? '+' : ''}${fmt(regDiff)} · ${pct(regRate)}`, c: '#00a0e9', ic: '👥', bad: regDiff < 0 },
-    { l: '당월 입교', v: `${fmt(A.newAdmit)}명`, s: `입교율 ${pct(admitRate)}`, c: '#2ecc71', ic: '🌱' },
-    { l: '전월입교자 예배출석', v: pct(newAtt), s: `실제 출석 ${fmt(A.newAttTotal)}명`, c: '#e39300', ic: '🙏' },
-    { l: '센터 누적 종강', v: pct(grad), s: `누적 종강 ${fmt(A.centerCumGrad)}명`, c: '#7f1084', ic: '🎓' },
-  ];
 
   return (
     <div>
       <div className="hero">
         <h1>전세계 맛디아지파 해외교회의 현황을 한눈에</h1>
         <span className="spirit">✠ 양에 속지 말고 질을 보라 — 확인·점검에서 행함으로</span>
-      </div>
-
-      <div className="kpis k5">
-        {kpis.map((k) => (
-          <div className="kpi" key={k.l}>
-            <div className="k-bar" style={{ background: k.c }} />
-            <div className="k-l">{k.l}</div>
-            <div className="k-v">{k.v}</div>
-            <div className="k-s" style={k.bad ? { color: '#e1503e', fontWeight: 800 } : undefined}>{k.s}</div>
-          </div>
-        ))}
       </div>
 
       <OverseasBoardCard month={month} />

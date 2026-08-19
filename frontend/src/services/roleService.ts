@@ -30,6 +30,7 @@ export const DEFAULT_MENUS: { menuKey: string; menuName: string; category: strin
   { menuKey: 'home', menuName: '🏠 해외 총괄 요약', category: '🖥️ 일반 사용자 진단서 포탈', path: '/' },
   { menuKey: 'calendar', menuName: '📅 캘린더', category: '🖥️ 일반 사용자 진단서 포탈', path: '/calendar' },
   { menuKey: 'organization', menuName: '🌳 조직도', category: '🖥️ 일반 사용자 진단서 포탈', path: '/organization' },
+  { menuKey: 'notice', menuName: '📢 공지사항', category: '🖥️ 일반 사용자 진단서 포탈', path: '/notice' },
   { menuKey: 'diag', menuName: '🩺 교회 진단서', category: '🖥️ 일반 사용자 진단서 포탈', path: '/diag' },
   { menuKey: 'inspect', menuName: '🚨 점검 (양·질)', category: '🖥️ 일반 사용자 진단서 포탈', path: '/inspect' },
   { menuKey: 'funnel', menuName: '🚦 관문별 통과율', category: '🖥️ 일반 사용자 진단서 포탈', path: '/funnel' },
@@ -76,6 +77,8 @@ export const DEFAULT_MENUS: { menuKey: string; menuName: string; category: strin
   { menuKey: 'membership_bulk', menuName: '👥 내무 데이터 전체관리', category: '⚙️ 관리자 전용 (adminsetting)', path: '/adminsetting/membership-bulk' },
   { menuKey: 'overseas_board_manual', menuName: '📥 현황판 등록·종강 수기입력', category: '⚙️ 관리자 전용 (adminsetting)', path: '/adminsetting/overseas-board-manual' },
   { menuKey: 'dashboard_config', menuName: '🗂️ 메뉴 관리 (상세표·수식 설정)', category: '⚙️ 관리자 전용 (adminsetting)', path: '/adminsetting/dashboard-config' },
+  { menuKey: 'graph_management', menuName: '📈 그래프 관리', category: '⚙️ 관리자 전용 (adminsetting)', path: '/adminsetting/graph-management/board' },
+  { menuKey: 'graph_management_board', menuName: '   ㄴ 현황판 그래프 관리', category: '⚙️ 관리자 전용 (adminsetting)', path: '/adminsetting/graph-management/board' },
   { menuKey: 'users', menuName: '🌍 회원 및 담당 범위 관리', category: '⚙️ 관리자 전용 (adminsetting)', path: '/adminsetting/users' },
   { menuKey: 'roles', menuName: '📈 권한 그룹 및 회원 할당', category: '⚙️ 관리자 전용 (adminsetting)', path: '/adminsetting/roles' },
   { menuKey: 'perm', menuName: '🔑 권한별 접근 메뉴 설정', category: '⚙️ 관리자 전용 (adminsetting)', path: '/adminsetting/permissions' },
@@ -93,7 +96,7 @@ export const DEFAULT_MENUS: { menuKey: string; menuName: string; category: strin
 // 관리자가 /adminsetting/permissions에서 아직 명시적으로 저장하지 않은 메뉴×역할 조합의 기본값.
 // ROLE_ADMIN은 항상 전체 허용, 그 외 모든 역할(ROLE_USER 포함)은 이 목록만 기본 허용하고 나머지는 기본 차단한다
 // — "명시적으로 허용하기 전까지는 차단"이 원칙. getMenuPermissions()/canRoleAccessMenu() 양쪽에서 공유.
-const DEFAULT_ALLOWED_MENU_KEYS = ['home', 'diag', 'calendar', 'organization'];
+const DEFAULT_ALLOWED_MENU_KEYS = ['home', 'diag', 'calendar', 'organization', 'notice'];
 function defaultPermFor(roleId: string, menuKey: string): { read: boolean; write: boolean } {
   if (roleId === 'ROLE_ADMIN') return { read: true, write: true };
   return { read: DEFAULT_ALLOWED_MENU_KEYS.includes(menuKey), write: false };
