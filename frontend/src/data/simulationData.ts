@@ -133,3 +133,35 @@ export function calcAvgRate(values: number[], bases: number[]): number {
   const rates = values.map((v, i) => bases[i] ? (v / bases[i]) * 100 : 0);
   return rates.reduce((a, b) => a + b, 0) / rates.length;
 }
+
+// ───────────────────────────────────────────────
+// 예측 유틸 (최소제곱 선형회귀)
+// ───────────────────────────────────────────────
+
+/**
+ * 실적 전체(1~n월)를 최소제곱법으로 적합시켜 기울기/절편을 구한다.
+ * 두 지점(첫달/막달)만 쓰는 방식보다 중간월의 튐(이상치)에 덜 흔들린다.
+ */
+export function linearRegression(values: number[]): { slope: number; intercept: number } {
+  const n = values.length;
+  if (n === 0) return { slope: 0, intercept: 0 };
+  if (n === 1) return { slope: 0, intercept: values[0] };
+  const xs = values.map((_, i) => i + 1); // 1..n (월)
+  const xMean = xs.reduce((a, b) => a + b, 0) / n;
+  const yMean = values.reduce((a, b) => a + b, 0) / n;
+  let num = 0, den = 0;
+  for (let i = 0; i < n; i++) {
+    num += (xs[i] - xMean) * (values[i] - yMean);
+    den += (xs[i] - xMean) * (xs[i] - xMean);
+  }
+  const slope = den !== 0 ? num / den : 0;
+  const intercept = yMean - slope * xMean;
+  return { slope, intercept };
+}
+
+/** 실적 배열(1~n월)을 회귀 적합시켜 targetMonth 시점 값을 예측한다. (음수 방지) */
+export function forecastLinear(values: number[], targetMonth: number): number {
+  const { slope, intercept } = linearRegression(values);
+  const est = intercept + slope * targetMonth;
+  return Math.max(0, Math.round(est));
+}

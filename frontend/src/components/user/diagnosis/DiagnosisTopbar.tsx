@@ -1,9 +1,10 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { sessionService } from '../../../services/sessionService';
 import { telegramService } from '../../../services/telegramService';
 import { roleService } from '../../../services/roleService';
 import { useDiagnosisData } from '../../../contexts/DiagnosisDataContext';
+import { groupSidebar, filterPlainForRole, filterMajorsForRole, findActiveMajor } from './navGroups';
 
 function getCurrentUserRole(): string {
   const userStr = localStorage.getItem('user');
@@ -20,7 +21,14 @@ interface DiagnosisTopbarProps {
 
 export const DiagnosisTopbar: React.FC<DiagnosisTopbarProps> = ({ onToggleSidebar, showAdminBtn, showBackdoorBtn }) => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { lang, setLang } = useDiagnosisData();
+
+  const userRole = getCurrentUserRole();
+  const { plain, majors } = groupSidebar();
+  const iconLinks = filterPlainForRole(plain, userRole).filter((it) => it.s !== 'home');
+  const filteredMajors = filterMajorsForRole(majors, userRole);
+  const active = findActiveMajor(filteredMajors, location.pathname);
 
   return (
     <div className="topbar">
@@ -30,7 +38,37 @@ export const DiagnosisTopbar: React.FC<DiagnosisTopbarProps> = ({ onToggleSideba
         <div className="brand">해외선교부 <b>업무포탈</b></div>
         <div className="brandsub">GLOBAL MISSION DASHBOARD</div>
       </div>
+
+      <div className="navwrap">
+        {filteredMajors.map((m) => (
+          <div
+            key={m.key}
+            className={`navitem${active?.major.key === m.key ? ' active' : ''}`}
+          >
+            <span className="lbl">{m.label}</span>
+            <span className="car">▾</span>
+            <div className="megamenu">
+              {m.items.map((it) => (
+                <div
+                  key={it.s}
+                  className="mm-row"
+                  onClick={() => navigate(it.path)}
+                >
+                  <span>{it.label}</span>
+                  {it.tag && <span className="tag">{it.tag}</span>}
+                  {it.children && <span className="mm-count">{it.children.length}개 하위</span>}
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+
       <span className="spacer" />
+
+      {iconLinks.map((it) => (
+        <button key={it.s} className="ticon" title={it.label} onClick={() => navigate(it.path)}>{it.ico}</button>
+      ))}
 
       <select className="langSel tb-langsel" value={lang} onChange={(e) => setLang(e.target.value as any)} title="Language / 语言 / 言語">
         <option value="ko">한국어</option>

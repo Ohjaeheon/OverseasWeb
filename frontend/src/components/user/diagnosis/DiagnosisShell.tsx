@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { DiagnosisSidebar } from './DiagnosisSidebar';
+import { DiagnosisSubNav } from './DiagnosisSubNav';
 import { DiagnosisTopbar } from './DiagnosisTopbar';
 import { IntroGate } from './IntroGate';
 import { useDiagnosisData } from '../../../contexts/DiagnosisDataContext';
@@ -47,6 +48,7 @@ export const DiagnosisShell: React.FC<DiagnosisShellProps> = ({ showAdminBtn, sh
           showAdminBtn={showAdminBtn}
           showBackdoorBtn={showBackdoorBtn}
         />
+        <DiagnosisSubNav />
         <main className="main">
           {loading ? (
             <div style={{ padding: 60, textAlign: 'center', color: 'var(--muted)' }}>데이터를 불러오는 중입니다...</div>

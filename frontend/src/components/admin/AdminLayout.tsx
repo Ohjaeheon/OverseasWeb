@@ -88,6 +88,37 @@ const RAW_SIDEBAR: SidebarItem[] = [
   }
 ];
 
+interface AdminMajor { key: string; label: string; items: SidebarItem[]; }
+
+/** grp 마커를 경계로 대그룹 단위로 묶는다 — 이미 권한 필터링을 마친 SIDEBAR를 입력으로 받는다. */
+function groupAdminSidebar(list: SidebarItem[]): { majors: AdminMajor[] } {
+  const majors: AdminMajor[] = [];
+  let current: AdminMajor | null = null;
+  for (const entry of list) {
+    if (entry.grp) {
+      current = { key: entry.grp.replace(/\s+/g, ''), label: entry.grp, items: [] };
+      majors.push(current);
+    } else if (current) {
+      current.items.push(entry);
+    }
+  }
+  return { majors };
+}
+
+function findAdminActiveMajor(majors: AdminMajor[], pathname: string): { major: AdminMajor; item: SidebarItem } | null {
+  for (const m of majors) {
+    for (const it of m.items) {
+      if (it.path && (pathname === it.path || pathname.startsWith(it.path + '/'))) return { major: m, item: it };
+      if (it.children) {
+        for (const ch of it.children) {
+          if (pathname === ch.path) return { major: m, item: it };
+        }
+      }
+    }
+  }
+  return null;
+}
+
 export const AdminLayout: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -170,6 +201,14 @@ export const AdminLayout: React.FC = () => {
     return access.read;
   });
 
+  // 데스크톱 상단 대그룹 드롭다운 + 좌측 서브 내비게이션(중그룹/소그룹)용 — 위 SIDEBAR(권한 필터링 완료)를 그대로 재사용
+  const { majors: adminMajors } = groupAdminSidebar(SIDEBAR);
+  const activeMajor = findAdminActiveMajor(adminMajors, location.pathname);
+  const [subOpenItem, setSubOpenItem] = useState<string | null>(activeMajor ? (activeMajor.item.s || activeMajor.item.path || null) : null);
+  useEffect(() => {
+    if (activeMajor) setSubOpenItem(activeMajor.item.s || activeMajor.item.path || null);
+  }, [activeMajor?.item.s, activeMajor?.item.path]);
+
   // URL Direct Access Guard & Access Logging
   useEffect(() => {
     const currentPath = location.pathname;
@@ -242,6 +281,14 @@ export const AdminLayout: React.FC = () => {
           .admin-menu-toggle {
             display: none !important;
           }
+          .admin-sidebar {
+            display: none !important;
+          }
+        }
+        @media (max-width: 991px) {
+          .navwrap, .subnav {
+            display: none !important;
+          }
         }
       ` }} />
 
@@ -282,7 +329,7 @@ export const AdminLayout: React.FC = () => {
 
         {/* Logo */}
         <div
-          onClick={() => navigate('/')}
+          onClick={() => navigate('/adminsetting/dashboard')}
           style={{
             width: '38px',
             height: '38px',
@@ -302,13 +349,32 @@ export const AdminLayout: React.FC = () => {
         </div>
 
         {/* Brand Title */}
-        <div onClick={() => navigate('/')} style={{ cursor: 'pointer' }}>
+        <div onClick={() => navigate('/adminsetting/dashboard')} style={{ cursor: 'pointer' }}>
           <div style={{ fontSize: '1.05rem', fontWeight: 800, color: '#1f2a44', letterSpacing: '-0.3px', lineHeight: 1.2 }}>
             해외선교부 <span style={{ color: '#2563eb' }}>업무포탈</span>
           </div>
           <div style={{ fontSize: '0.65rem', fontWeight: 800, color: '#6b7a99', letterSpacing: '1px', textTransform: 'uppercase', marginTop: '1px' }}>
             GLOBAL MISSION DASHBOARD · ADMIN SYSTEM
           </div>
+        </div>
+
+        {/* 대그룹 드롭다운 내비게이션 (데스크톱 전용, 호버로 열림) — 일반 사용자 포탈과 동일한 .navwrap/.navitem/.megamenu 스타일 재사용 */}
+        <div className="navwrap">
+          {adminMajors.map((m) => (
+            <div key={m.key} className={`navitem${activeMajor?.major.key === m.key ? ' active' : ''}`}>
+              <span className="lbl">{m.label}</span>
+              <span className="car">▾</span>
+              <div className="megamenu">
+                {m.items.map((it) => (
+                  <div key={it.s} className="mm-row" onClick={() => it.path && navigate(it.path)}>
+                    <span>{it.label}</span>
+                    {it.tag && <span className="tag">{it.tag}</span>}
+                    {it.children && <span className="mm-count">{it.children.length}개 하위</span>}
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
         </div>
 
         <div style={{ flex: 1 }} />
@@ -367,7 +433,48 @@ export const AdminLayout: React.FC = () => {
           />
         )}
 
-        {/* Left Navigation Sidebar matching Image 2 */}
+        {/* 좌측 서브 내비게이션: 중그룹/소그룹 (데스크톱 전용, 대그룹 진입 시에만 표시) */}
+        {activeMajor && (
+          <nav className="subnav">
+            <div className="subnav-head">현재 대그룹<b>{activeMajor.major.label}</b></div>
+            {activeMajor.major.items.map((it) => {
+              const children = it.children || [];
+              const itKey = it.s || it.path || '';
+              const isOn = children.length === 0 && !!it.path && (location.pathname === it.path || location.pathname.startsWith(it.path + '/'));
+              const expanded = subOpenItem === itKey;
+              return (
+                <div className="subgrp" key={itKey}>
+                  <div
+                    className={`submid ${isOn ? 'on' : ''} ${expanded && children.length > 0 ? 'expanded' : ''}`}
+                    onClick={() => {
+                      if (children.length > 0) setSubOpenItem(subOpenItem === itKey ? null : itKey);
+                      if (it.path) navigate(it.path);
+                    }}
+                  >
+                    <span>{it.label}</span>
+                    {it.tag && <span className="tag">{it.tag}</span>}
+                    {children.length > 0 && <span className="subcar">▸</span>}
+                  </div>
+                  {children.length > 0 && (
+                    <div className={`subsub-wrap ${expanded ? 'open' : ''}`}>
+                      {children.map((ch) => (
+                        <div
+                          key={ch.path}
+                          className={`subsub ${location.pathname === ch.path ? 'on' : ''}`}
+                          onClick={() => navigate(ch.path)}
+                        >
+                          {ch.label}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </nav>
+        )}
+
+        {/* Left Navigation Sidebar matching Image 2 — 모바일 햄버거 드로어 전용(데스크톱에서는 숨김) */}
         <aside className={`admin-sidebar ${isSidebarOpen ? 'open' : ''}`} style={{
           width: '260px',
           background: 'linear-gradient(185deg, #22337a, #172554)',

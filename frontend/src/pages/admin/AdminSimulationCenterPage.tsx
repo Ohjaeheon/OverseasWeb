@@ -3,7 +3,7 @@ import {
   ComposedChart, BarChart, AreaChart, Bar, Area, Line,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine
 } from 'recharts';
-import { CENTERS, CENTER_COLORS, MONTH_LABELS, calcGrowthRate, calcRegisteredFromRate } from '../../data/simulationData';
+import { CENTERS, CENTER_COLORS, MONTH_LABELS, calcGrowthRate, calcRegisteredFromRate, forecastLinear } from '../../data/simulationData';
 import { SimMonthlyData, SimBaseRegistered } from '../../services/simulationService';
 import { useSimulationData } from '../../hooks/useSimulationData';
 import { SimulationToolbar } from '../../components/admin/SimulationToolbar';
@@ -36,8 +36,11 @@ export const AdminSimulationCenterPage: React.FC = () => {
     CENTERS.forEach(c => {
       init[c] = {};
       const base = yearData.base[c] ?? 0;
-      const m6Reg = yearData.monthly[c]?.[6]?.registered ?? yearData.monthly[c]?.[yearData.actualMonths]?.registered ?? base;
-      const m6Rate = base > 0 ? parseFloat(calcGrowthRate(m6Reg, base).toFixed(2)) : 0;
+      // 실적 전체(1~actualMonths월)를 최소제곱 회귀로 적합 → 월별 추세 예측치 산출
+      const regVals: number[] = [];
+      for (let m = 1; m <= yearData.actualMonths; m++) {
+        regVals.push(yearData.monthly[c]?.[m]?.registered ?? base);
+      }
 
       for (let m = 1; m <= 12; m++) {
         const mv = yearData.monthly[c]?.[m];
@@ -55,9 +58,11 @@ export const AdminSimulationCenterPage: React.FC = () => {
               registered: mv.registered != null ? String(mv.registered) : '',
             };
           } else {
-            // 기본값: 6월 실적 성장율을 기본 추천값으로 채움
+            // 기본값: 회귀 추세로 해당 월의 예상 성장율을 추천 (모든 미래월에 6월값을 고정하지 않고 월별로 다르게 예측)
+            const estReg = forecastLinear(regVals, m);
+            const estRate = base > 0 ? parseFloat(calcGrowthRate(estReg, base).toFixed(2)) : 0;
             init[c][m] = {
-              growthRate: String(m6Rate),
+              growthRate: String(estRate),
               registered: '',
             };
           }
@@ -120,21 +125,21 @@ export const AdminSimulationCenterPage: React.FC = () => {
     setEdits(p => ({ ...p, [center]: { ...p[center], [m]: { ...p[center]?.[m], registered: val, growthRate: '' } } }));
   };
 
-  // 상반기 추세(월평균 성장율)로 7~12월 자동 채우기
+  // 1~6월 실적 전체를 최소제곱 회귀로 적합시켜 7~12월 자동 채우기
+  // (기존 방식: 1월·6월 두 지점의 기울기만 사용 → 중간월 이상치에 취약)
   const handleAutoFillTrend = () => {
     setEdits(p => {
       const next = { ...p };
       CENTERS.forEach(c => {
         const base = yearData.base[c] ?? 0;
-        const m6Reg = yearData.monthly[c]?.[6]?.registered ?? yearData.monthly[c]?.[yearData.actualMonths]?.registered ?? base;
-        const m1Reg = yearData.monthly[c]?.[1]?.registered ?? base;
-        // 1~6월 월평균 순증 성장율
-        const avgMonthlyGrowth = yearData.actualMonths > 1 ? (m6Reg - m1Reg) / (yearData.actualMonths - 1) : 0;
+        const regVals: number[] = [];
+        for (let m = 1; m <= yearData.actualMonths; m++) {
+          regVals.push(yearData.monthly[c]?.[m]?.registered ?? base);
+        }
 
         next[c] = { ...next[c] };
         for (let m = yearData.actualMonths + 1; m <= 12; m++) {
-          const step = m - yearData.actualMonths;
-          const estReg = Math.round(m6Reg + avgMonthlyGrowth * step);
+          const estReg = forecastLinear(regVals, m);
           const estRate = base > 0 ? parseFloat(calcGrowthRate(estReg, base).toFixed(2)) : 0;
           next[c][m] = { growthRate: String(estRate), registered: '' };
         }

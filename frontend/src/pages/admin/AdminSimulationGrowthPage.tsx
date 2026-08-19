@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine } from 'recharts';
-import { CENTERS, CENTER_COLORS, MONTH_LABELS, calcGrowthRate } from '../../data/simulationData';
+import { CENTERS, CENTER_COLORS, MONTH_LABELS, calcGrowthRate, forecastLinear } from '../../data/simulationData';
 import { SimMonthlyData } from '../../services/simulationService';
 import { useSimulationData } from '../../hooks/useSimulationData';
 import { SimulationToolbar } from '../../components/admin/SimulationToolbar';
@@ -30,8 +30,11 @@ export const AdminSimulationGrowthPage: React.FC = () => {
     CENTERS.forEach(c => {
       init[c] = {};
       const base = yearData.base[c] ?? 0;
-      const m6Reg = yearData.monthly[c]?.[6]?.registered ?? yearData.monthly[c]?.[yearData.actualMonths]?.registered ?? base;
-      const m6Rate = base > 0 ? parseFloat(calcGrowthRate(m6Reg, base).toFixed(2)) : 0;
+      // 실적 전체(1~actualMonths월)를 최소제곱 회귀로 적합 → 월별 추세 예측치 산출
+      const regVals: number[] = [];
+      for (let m = 1; m <= yearData.actualMonths; m++) {
+        regVals.push(yearData.monthly[c]?.[m]?.registered ?? base);
+      }
 
       for (let m = 1; m <= 12; m++) {
         const mv = yearData.monthly[c]?.[m];
@@ -41,7 +44,10 @@ export const AdminSimulationGrowthPage: React.FC = () => {
           if (mv?.growthRate != null) {
             init[c][m] = String(mv.growthRate);
           } else {
-            init[c][m] = String(m6Rate);
+            // 기본값: 회귀 추세로 해당 월의 예상 성장율을 추천 (모든 미래월에 마지막 실적월 값을 고정하지 않음)
+            const estReg = forecastLinear(regVals, m);
+            const estRate = base > 0 ? parseFloat(calcGrowthRate(estReg, base).toFixed(2)) : 0;
+            init[c][m] = String(estRate);
           }
         }
       }
