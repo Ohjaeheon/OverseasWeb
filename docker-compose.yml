@@ -28,5 +28,15 @@ services:
       - backend
     restart: always
 
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: Overseas_Portal-cloudflared
+    command: tunnel run
+    environment:
+      TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN}
+    depends_on:
+      - frontend
+    restart: always
+
 volumes:
   logs_data:

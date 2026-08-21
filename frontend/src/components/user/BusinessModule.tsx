@@ -1348,7 +1348,7 @@ export const BusinessModule: React.FC<BusinessModuleProps> = ({ initialTab = 'le
     }
 
     const proposalHtml = `
-      <div style="font-family: 'Malgun Gothic', '맑은 고딕', sans-serif; max-width: 210mm; margin: 0 auto; color: #000; padding: 20px;">
+      <div style="font-family: 'HY신명조', '함초롬바탕', Batang, '바탕', serif; max-width: 210mm; margin: 0 auto; color: #000; padding: 20px;">
         <div style="border: 2px solid #000000; padding: 0; width: 100%; display: flex; flex-direction: column; justify-content: space-between; box-sizing: border-box; min-height: 250mm;">
           
           <div>
@@ -1445,7 +1445,7 @@ export const BusinessModule: React.FC<BusinessModuleProps> = ({ initialTab = 'le
     `;
 
     const minutesHtml = `
-      <div style="font-family: 'Malgun Gothic', '맑은 고딕', sans-serif; max-width: 210mm; margin: 0 auto; color: #000; line-height: 2.0; padding: 20px;">
+      <div style="font-family: 'HY신명조', '함초롬바탕', Batang, '바탕', serif; max-width: 210mm; margin: 0 auto; color: #000; line-height: 2.0; padding: 20px;">
         <div style="border: 2px solid #000000; padding: 25px; display: flex; flex-direction: column; justify-content: space-between; box-sizing: border-box; min-height: 250mm;">
           <div>
             <div style="font-size: 24pt; font-weight: bold; text-align: center; margin-bottom: 35px; letter-spacing: 12px; text-decoration: underline; text-underline-position: under;">
@@ -1500,7 +1500,7 @@ export const BusinessModule: React.FC<BusinessModuleProps> = ({ initialTab = 'le
             </table>
 
             <h4 style="font-size: 11pt; font-weight: bold; margin: 0 0 10px 0; border-left: 4px solid #000; padding-left: 8px;">
-              3. 기타 사항 (보고 및 브리핑 등)
+              3. 기타 사항 (보고 및 브리핑, 건의 등)
             </h4>
             <table style="width: 100%; border-collapse: collapse; margin-bottom: 25px; border: 1.5px solid #000;">
               <tbody>
@@ -1525,7 +1525,7 @@ export const BusinessModule: React.FC<BusinessModuleProps> = ({ initialTab = 'le
           <div style="border-top: 1px solid #000000; padding-top: 15px;">
             <div style="font-size: 8.5pt; color: #475569; line-height: 1.6; margin-bottom: 20px;">
               <b>&lt;참석 중진 명단&gt;</b><br>
-              지파총무 ( ), 내무부장 ( ), 기획부장 ( ), 재정부장 ( ), 교육부장 ( ), 해외선교부장( ), 전도부장 ( ) 등 중진 부장 전원.
+              지파총무 (&nbsp;&nbsp;&nbsp;), 내무부장 (&nbsp;&nbsp;&nbsp;), 기획부장 (&nbsp;&nbsp;&nbsp;), 재정부장 (&nbsp;&nbsp;&nbsp;), 교육부장 (&nbsp;&nbsp;&nbsp;), 신학부장 (&nbsp;&nbsp;&nbsp;), 해외선교부장 (&nbsp;&nbsp;&nbsp;), 전도부장 (&nbsp;&nbsp;&nbsp;), 문화부장 (&nbsp;&nbsp;&nbsp;), 출판정보통신부장 (&nbsp;&nbsp;&nbsp;), 찬양부장 (&nbsp;&nbsp;&nbsp;), 섭외부장 (&nbsp;&nbsp;&nbsp;), 국내선교부장 (&nbsp;&nbsp;&nbsp;), 홍보부장 (&nbsp;&nbsp;&nbsp;), 법무부장 (&nbsp;&nbsp;&nbsp;), 건설부장 (&nbsp;&nbsp;&nbsp;), 체육부장 (&nbsp;&nbsp;&nbsp;), 사업부장 (&nbsp;&nbsp;&nbsp;), 보건후생복지부장 (&nbsp;&nbsp;&nbsp;), 봉사교통부장 (&nbsp;&nbsp;&nbsp;), 자문회장 (&nbsp;&nbsp;&nbsp;), 장년회장 (&nbsp;&nbsp;&nbsp;), 부녀회장 (&nbsp;&nbsp;&nbsp;), 청년회장 (&nbsp;&nbsp;&nbsp;), 학생회부장 (&nbsp;&nbsp;&nbsp;), 유년회부장 (&nbsp;&nbsp;&nbsp;), 국제부장 (&nbsp;&nbsp;&nbsp;)
             </div>
 
             <div style="text-align: right; font-size: 13pt; font-weight: bold; letter-spacing: 2px; margin-top: 15px;">
@@ -2032,8 +2032,8 @@ export const BusinessModule: React.FC<BusinessModuleProps> = ({ initialTab = 'le
           box-shadow: 0 0 0 1.5px #2563eb inset;
           outline: none;
         }
-        .hwp-document-font {
-          font-family: "Malgun Gothic", "맑은 고딕", Arial, sans-serif !important;
+        .hwp-document-font, .hwp-document-font * {
+          font-family: "HY신명조", "함초롬바탕", Batang, "바탕", serif !important;
         }
         @keyframes spin {
           0% { transform: rotate(0deg); }
@@ -2988,7 +2988,7 @@ export const BusinessModule: React.FC<BusinessModuleProps> = ({ initialTab = 'le
                         </table>
 
                         <h4 style={{ fontSize: '11pt', fontWeight: 'bold', margin: '0 0 10px 0', borderLeft: '4px solid #000000', paddingLeft: '8px' }}>
-                          3. 기타 사항 (보고 및 브리핑 등)
+                          3. 기타 사항 (보고 및 브리핑, 건의 등)
                         </h4>
                         <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '20px', border: '1.5px solid #000000' }}>
                           <tbody>
@@ -3026,7 +3026,7 @@ export const BusinessModule: React.FC<BusinessModuleProps> = ({ initialTab = 'le
                       <div style={{ borderTop: '1px solid #000000', paddingTop: '15px' }}>
                         <div style={{ fontSize: '8.5pt', color: '#64748b', lineHeight: 1.6, marginBottom: '15px' }}>
                           <b>&lt;참석 중진 명단&gt;</b><br/>
-                          지파총무 ( ), 내무부장 ( ), 기획부장 ( ), 재정부장 ( ), 교육부장 ( ), 해외선교부장( ), 전도부장 ( ) 등 중진 부장 전원.
+                          지파총무 (&nbsp;&nbsp;&nbsp;), 내무부장 (&nbsp;&nbsp;&nbsp;), 기획부장 (&nbsp;&nbsp;&nbsp;), 재정부장 (&nbsp;&nbsp;&nbsp;), 교육부장 (&nbsp;&nbsp;&nbsp;), 신학부장 (&nbsp;&nbsp;&nbsp;), 해외선교부장 (&nbsp;&nbsp;&nbsp;), 전도부장 (&nbsp;&nbsp;&nbsp;), 문화부장 (&nbsp;&nbsp;&nbsp;), 출판정보통신부장 (&nbsp;&nbsp;&nbsp;), 찬양부장 (&nbsp;&nbsp;&nbsp;), 섭외부장 (&nbsp;&nbsp;&nbsp;), 국내선교부장 (&nbsp;&nbsp;&nbsp;), 홍보부장 (&nbsp;&nbsp;&nbsp;), 법무부장 (&nbsp;&nbsp;&nbsp;), 건설부장 (&nbsp;&nbsp;&nbsp;), 체육부장 (&nbsp;&nbsp;&nbsp;), 사업부장 (&nbsp;&nbsp;&nbsp;), 보건후생복지부장 (&nbsp;&nbsp;&nbsp;), 봉사교통부장 (&nbsp;&nbsp;&nbsp;), 자문회장 (&nbsp;&nbsp;&nbsp;), 장년회장 (&nbsp;&nbsp;&nbsp;), 부녀회장 (&nbsp;&nbsp;&nbsp;), 청년회장 (&nbsp;&nbsp;&nbsp;), 학생회부장 (&nbsp;&nbsp;&nbsp;), 유년회부장 (&nbsp;&nbsp;&nbsp;), 국제부장 (&nbsp;&nbsp;&nbsp;)
                         </div>
 
                         <div style={{ 
