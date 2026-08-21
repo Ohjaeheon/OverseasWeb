@@ -44,6 +44,15 @@ public class I18nDictionary {
     @Builder.Default
     private String category = "GENERAL";
 
+    @Column(name = "use_yn", length = 1, nullable = false)
+    @Comment("사용여부 (Y/N)")
+    @Builder.Default
+    private String useYn = "Y";
+
+    @Column(name = "updated_by", length = 100)
+    @Comment("최종 수정자")
+    private String updatedBy;
+
     @UpdateTimestamp
     @Column(name = "updated_at")
     @Comment("수정 일시")

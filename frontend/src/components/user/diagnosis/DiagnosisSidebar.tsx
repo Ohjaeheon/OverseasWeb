@@ -3,7 +3,8 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { roleService } from '../../../services/roleService';
 import { sessionService } from '../../../services/sessionService';
 import { telegramService } from '../../../services/telegramService';
-import { SIDEBAR, isGroup, SidebarChild, SidebarItem, SidebarEntry } from './navGroups';
+import { SIDEBAR, isGroup, SidebarChild, SidebarItem, SidebarEntry, menuKeyForGroup, menuKeyForItem, menuKeyForChild } from './navGroups';
+import { useMessageDictionary } from '../../../contexts/MessageDictionaryContext';
 
 function getCurrentUserRole(): string {
   const userStr = localStorage.getItem('user');
@@ -25,6 +26,7 @@ export const DiagnosisSidebar: React.FC<DiagnosisSidebarProps> = ({ isOpen, onCl
   const navigate = useNavigate();
   const location = useLocation();
   const [openMenu, setOpenMenu] = useState<string | null>(null);
+  const { getMsg } = useMessageDictionary();
 
   const userRole = getCurrentUserRole();
   const isAdmin = userRole === 'ROLE_ADMIN' || userRole === 'ADMIN' || userRole === '관리자' || userRole === 'ROLE_관리자';
@@ -74,7 +76,7 @@ export const DiagnosisSidebar: React.FC<DiagnosisSidebarProps> = ({ isOpen, onCl
         </div>
         {filtered.map((entry, idx) => {
           if (isGroup(entry)) {
-            return <div className="grp" key={`grp-${idx}`}>{entry.grp}</div>;
+            return <div className="grp" key={`grp-${idx}`}>{getMsg(menuKeyForGroup(entry.grp.replace(/\s+/g, '')), entry.grp)}</div>;
           }
           const it = entry;
           const active = isItemActive(it);
@@ -88,7 +90,7 @@ export const DiagnosisSidebar: React.FC<DiagnosisSidebarProps> = ({ isOpen, onCl
                   else go(it.path);
                 }}
               >
-                <span className="ico">{it.ico}</span>{it.label}
+                <span className="ico">{it.ico}</span>{getMsg(menuKeyForItem(it), it.label)}
                 {it.tag && <span className="tag">{it.tag}</span>}
                 {it.children && <span style={{ marginLeft: 'auto', color: 'var(--muted)', fontSize: 11 }}>{expanded ? '▾' : '▸'}</span>}
               </div>
@@ -100,7 +102,7 @@ export const DiagnosisSidebar: React.FC<DiagnosisSidebarProps> = ({ isOpen, onCl
                       className={`mitem sub ${location.pathname === ch.path ? 'on' : ''}`}
                       onClick={() => go(ch.path)}
                     >
-                      {ch.label}
+                      {getMsg(menuKeyForChild(ch), ch.label)}
                     </div>
                   ))}
                 </div>

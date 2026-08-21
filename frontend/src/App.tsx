@@ -14,7 +14,6 @@ import { AdminUserPage } from './pages/admin/AdminUserPage';
 import { AdminFaithPage } from './pages/admin/AdminFaithPage';
 import { AdminRolePage } from './pages/admin/AdminRolePage';
 import { AdminPermissionPage } from './pages/admin/AdminPermissionPage';
-import { AdminI18nPage } from './pages/admin/AdminI18nPage';
 import { AdminSettingsPage } from './pages/admin/AdminSettingsPage';
 import { AdminMessagePage } from './pages/admin/AdminMessagePage';
 import { AdminLoginLogsPage } from './pages/admin/AdminLoginLogsPage';
@@ -40,6 +39,7 @@ import { AdminGraphManagementPage } from './pages/admin/AdminGraphManagementPage
 
 import { roleService } from './services/roleService';
 import { CountryFlagProvider } from './contexts/CountryFlagContext';
+import { MessageDictionaryProvider } from './contexts/MessageDictionaryContext';
 import { TelegramLifecycleHandler } from './components/TelegramLifecycleHandler';
 import { BackdoorIpSettingPage } from './pages/admin/BackdoorIpSettingPage';
 import { authService } from './services/authService';
@@ -118,6 +118,7 @@ export const App: React.FC = () => {
   return (
     <BrowserRouter basename="/OverseasPortal">
       <TelegramLifecycleHandler />
+      <MessageDictionaryProvider>
       <CountryFlagProvider>
       <Routes>
         {/* User Routes (Diagnosis Portal Sub-views with Explicit Route Links) */}
@@ -195,7 +196,6 @@ export const App: React.FC = () => {
 
             {/* 로그 및 시스템 */}
             <Route path="bot" element={<AdminBotPage />} />
-            <Route path="i18n" element={<AdminI18nPage />} />
             <Route path="settings" element={<AdminSettingsPage />} />
             <Route path="backdoor-ips" element={<BackdoorIpSettingPage />} />
             <Route path="messages" element={<AdminMessagePage />} />
@@ -210,6 +210,7 @@ export const App: React.FC = () => {
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
       </CountryFlagProvider>
+      </MessageDictionaryProvider>
     </BrowserRouter>
   );
 };

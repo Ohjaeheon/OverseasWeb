@@ -4,6 +4,7 @@ import { diagnosisService, DiagnosisRecord } from '../services/diagnosisService'
 import { buildCountryContMap } from '../utils/diagnosisMetrics';
 import { Lang } from '../utils/diagnosisI18n';
 import { filterByAssignedScope } from '../utils/accessScope';
+import i18n from '../i18n/i18n';
 
 // 지파 고정 색상 팔레트 (EvangelismModule.tsx CHURCH_COLOR_PALETTE와 동일 계열 사용).
 const JIPA_COLOR_PALETTE = [
@@ -185,6 +186,11 @@ async function syncEvangelismDbData(rawRecords: DiagnosisRecord[]): Promise<{ sy
   }
 }
 
+function normalizeLang(l: string | undefined): Lang {
+  const base = (l || 'ko').toLowerCase().split('-')[0];
+  return base === 'en' || base === 'zh' || base === 'ja' ? base : 'ko';
+}
+
 interface DiagnosisChurch { name: string; jipa: string; continent?: string; country?: string; sortOrder?: number; }
 
 interface DiagnosisDataContextValue {
@@ -225,7 +231,18 @@ export const DiagnosisDataProvider: React.FC<{ children: React.ReactNode; sectio
     setSectionMonths((prev) => ({ ...prev, [section]: m }));
   }, [section]);
   const [gubun, setGubun] = useState<string>('전체');
-  const [lang, setLang] = useState<Lang>('ko');
+  // i18next(LanguageDetector)는 이전 선택을 localStorage에 기억했다가 다음 접속 때 그대로 복원한다
+  // (영어권 사용자를 위해 의도된 동작) — 이 lang 상태를 'ko'로 하드코딩해버리면 실제 활성 언어(en)와
+  // 상단 셀렉터 표시가 어긋나(문구는 영어인데 셀렉터는 "한국어") 있는 것처럼 보이므로, 초기값을
+  // i18n.language에서 그대로 읽어와 항상 실제 활성 언어와 셀렉터가 일치하게 한다.
+  const [lang, setLangState] = useState<Lang>(() => normalizeLang(i18n.language));
+  // 메시지 사전(MessageDictionaryContext)을 포함한 react-i18next 기반 번역은 i18n.language를
+  // 구독한다 — 화면 상단 언어 선택(lang 상태)만 바뀌고 i18next는 그대로면 메뉴 등 사전 기반
+  // 텍스트가 전혀 갱신되지 않으므로, 여기서 함께 바꿔준다.
+  const setLang = useCallback((l: Lang) => {
+    setLangState(l);
+    i18n.changeLanguage(l);
+  }, []);
   const [reloadKey, setReloadKey] = useState(0);
 
   const load = useCallback(async () => {

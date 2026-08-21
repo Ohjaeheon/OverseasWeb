@@ -67,6 +67,14 @@ export const SIDEBAR: SidebarEntry[] = [
   { s: 'approvals/completed', ico: '📋', label: '결재 완료 건', path: '/approvals/completed' },
 ];
 
+// 메시지 사전(i18n_dictionary) 조회용 안정적인 키 도출 — 기존 s/grp/cat/tab 식별자를 그대로 재사용한다.
+export function menuKeyForGroup(groupKey: string): string { return `menu.user.grp.${groupKey}`; }
+export function menuKeyForItem(it: SidebarItem): string { return `menu.user.${it.s}`; }
+export function menuKeyForChild(ch: SidebarChild): string {
+  const id = ch.cat || ch.tab || ch.path.replace(/^\//, '').replace(/\//g, '.');
+  return `menu.user.child.${id}`;
+}
+
 export interface Major { key: string; label: string; items: SidebarItem[]; }
 
 /** SIDEBAR의 grp 마커를 경계로 대그룹 단위로 묶는다. grp 이전의 항목(홈·캘린더·조직도)은 plain. */

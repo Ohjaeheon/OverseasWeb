@@ -189,6 +189,8 @@ CREATE TABLE IF NOT EXISTS overseas.i18n_dictionary (
     lang_code VARCHAR(10) NOT NULL,
     message_value TEXT NOT NULL,
     category VARCHAR(50) DEFAULT 'GENERAL',
+    use_yn CHAR(1) NOT NULL DEFAULT 'Y',
+    updated_by VARCHAR(100),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT uq_key_lang UNIQUE (message_key, lang_code)
 );
@@ -199,6 +201,8 @@ COMMENT ON COLUMN overseas.i18n_dictionary.message_key IS '다국어 메시지 �
 COMMENT ON COLUMN overseas.i18n_dictionary.lang_code IS '언어 코드 (ko, en, th, zh, ja)';
 COMMENT ON COLUMN overseas.i18n_dictionary.message_value IS '번역 텍스트 값';
 COMMENT ON COLUMN overseas.i18n_dictionary.category IS '카테고리 (UI, DIAGNOSIS, ADMIN)';
+COMMENT ON COLUMN overseas.i18n_dictionary.use_yn IS '사용여부 (Y/N)';
+COMMENT ON COLUMN overseas.i18n_dictionary.updated_by IS '최종 수정자';
 
 -- 6. 시스템 설정 테이블
 CREATE TABLE IF NOT EXISTS overseas.system_config (

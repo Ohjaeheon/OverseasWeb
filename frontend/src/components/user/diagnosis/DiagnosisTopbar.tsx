@@ -4,7 +4,8 @@ import { sessionService } from '../../../services/sessionService';
 import { telegramService } from '../../../services/telegramService';
 import { roleService } from '../../../services/roleService';
 import { useDiagnosisData } from '../../../contexts/DiagnosisDataContext';
-import { groupSidebar, filterPlainForRole, filterMajorsForRole, findActiveMajor } from './navGroups';
+import { groupSidebar, filterPlainForRole, filterMajorsForRole, findActiveMajor, menuKeyForGroup, menuKeyForItem, menuKeyForChild } from './navGroups';
+import { useMessageDictionary } from '../../../contexts/MessageDictionaryContext';
 
 function getCurrentUserRole(): string {
   const userStr = localStorage.getItem('user');
@@ -23,6 +24,7 @@ export const DiagnosisTopbar: React.FC<DiagnosisTopbarProps> = ({ onToggleSideba
   const navigate = useNavigate();
   const location = useLocation();
   const { lang, setLang } = useDiagnosisData();
+  const { getMsg } = useMessageDictionary();
 
   const userRole = getCurrentUserRole();
   const { plain, majors } = groupSidebar();
@@ -45,7 +47,7 @@ export const DiagnosisTopbar: React.FC<DiagnosisTopbarProps> = ({ onToggleSideba
             key={m.key}
             className={`navitem${active?.major.key === m.key ? ' active' : ''}`}
           >
-            <span className="lbl">{m.label}</span>
+            <span className="lbl">{getMsg(menuKeyForGroup(m.key), m.label)}</span>
             <span className="car">▾</span>
             <div className="megamenu">
               {m.items.map((it) => (
@@ -54,7 +56,7 @@ export const DiagnosisTopbar: React.FC<DiagnosisTopbarProps> = ({ onToggleSideba
                   className="mm-row"
                   onClick={() => navigate(it.path)}
                 >
-                  <span>{it.label}</span>
+                  <span>{getMsg(menuKeyForItem(it), it.label)}</span>
                   {it.tag && <span className="tag">{it.tag}</span>}
                   {it.children && <span className="mm-chevron">›</span>}
                   {it.children && (
@@ -65,7 +67,7 @@ export const DiagnosisTopbar: React.FC<DiagnosisTopbarProps> = ({ onToggleSideba
                           className="mm-sub-row"
                           onClick={(e) => { e.stopPropagation(); navigate(ch.path); }}
                         >
-                          {ch.label}
+                          {getMsg(menuKeyForChild(ch), ch.label)}
                         </div>
                       ))}
                     </div>
@@ -80,7 +82,7 @@ export const DiagnosisTopbar: React.FC<DiagnosisTopbarProps> = ({ onToggleSideba
       <span className="spacer" />
 
       {iconLinks.map((it) => (
-        <button key={it.s} className="ticon" title={it.label} onClick={() => navigate(it.path)}>{it.ico}</button>
+        <button key={it.s} className="ticon" title={getMsg(menuKeyForItem(it), it.label)} onClick={() => navigate(it.path)}>{it.ico}</button>
       ))}
 
       <select className="langSel tb-langsel" value={lang} onChange={(e) => setLang(e.target.value as any)} title="Language / 语言 / 言語">

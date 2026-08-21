@@ -210,6 +210,7 @@ com\overseas\portal\domain\WeeklyWorshipHistory$WeeklyWorshipHistoryBuilder.clas
 com\overseas\portal\service\DiagnosisService$RecordDTO$RecordDTOBuilder.class
 com\overseas\portal\controller\BusinessLedgerController.class
 com\overseas\portal\service\HomeDashboardService$OverseasBoardRowDTO.class
+com\overseas\portal\controller\I18nController$MessageUpsertRequest.class
 com\overseas\portal\domain\EvangelismEditRequest$EvangelismEditRequestBuilder.class
 com\overseas\portal\controller\EvangelismMonthlyActivityController.class
 com\overseas\portal\controller\AdminController$ConfigUpdateRequest.class

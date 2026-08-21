@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { groupSidebar, filterMajorsForRole, visibleChildrenFor, findActiveMajor } from './navGroups';
+import { groupSidebar, filterMajorsForRole, visibleChildrenFor, findActiveMajor, menuKeyForGroup, menuKeyForItem, menuKeyForChild } from './navGroups';
+import { useMessageDictionary } from '../../../contexts/MessageDictionaryContext';
 
 function getCurrentUserRole(): string {
   const userStr = localStorage.getItem('user');
@@ -18,6 +19,7 @@ export const DiagnosisSubNav: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const userRole = getCurrentUserRole();
+  const { getMsg } = useMessageDictionary();
 
   const { majors } = groupSidebar();
   const filteredMajors = filterMajorsForRole(majors, userRole);
@@ -35,7 +37,7 @@ export const DiagnosisSubNav: React.FC = () => {
 
   return (
     <nav className="subnav">
-      <div className="subnav-head"><b>{active.major.label}</b></div>
+      <div className="subnav-head"><b>{getMsg(menuKeyForGroup(active.major.key), active.major.label)}</b></div>
       {active.major.items.map((it) => {
         const children = visibleChildrenFor(it, userRole);
         const isOn = children.length === 0 && (location.pathname === it.path || location.pathname.startsWith(it.path + '/'));
@@ -49,7 +51,7 @@ export const DiagnosisSubNav: React.FC = () => {
                 go(it.path);
               }}
             >
-              <span>{it.label}</span>
+              <span>{getMsg(menuKeyForItem(it), it.label)}</span>
               {it.tag && <span className="tag">{it.tag}</span>}
               {children.length > 0 && <span className="subcar">▸</span>}
             </div>
@@ -61,7 +63,7 @@ export const DiagnosisSubNav: React.FC = () => {
                     className={`subsub ${location.pathname === ch.path ? 'on' : ''}`}
                     onClick={() => go(ch.path)}
                   >
-                    {ch.label}
+                    {getMsg(menuKeyForChild(ch), ch.label)}
                   </div>
                 ))}
               </div>

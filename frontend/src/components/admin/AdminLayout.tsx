@@ -6,6 +6,7 @@ import { logService } from '../../services/logService';
 import { sessionService } from '../../services/sessionService';
 import { telegramService } from '../../services/telegramService';
 import { authService } from '../../services/authService';
+import { useMessageDictionary } from '../../contexts/MessageDictionaryContext';
 import {
   ChevronDown,
   ChevronRight,
@@ -75,9 +76,8 @@ const RAW_SIDEBAR: SidebarItem[] = [
 
   { grp: "로그 및 시스템" },
   { s: "admin_bot", ico: "🤖", label: "봇 연결 관리", path: "/adminsetting/bot" },
-  { s: "i18n", ico: "🌐", label: "다국어 사전 관리", path: "/adminsetting/i18n" },
   { s: "sys", ico: "⚙️", label: "시스템 설정", path: "/adminsetting/settings" },
-  { s: "messages", ico: "💬", label: "메세지 관리", path: "/adminsetting/messages" },
+  { s: "messages", ico: "💬", label: "메시지 관리", path: "/adminsetting/messages" },
   { s: "login_log", ico: "📥", label: "로그인 로그", path: "/adminsetting/login-logs" },
   { s: "access_log", ico: "📥", label: "접근로그", path: "/adminsetting/access-logs" },
   { s: "file_upload_logs", ico: "📥", label: "파일 업로드 로그", path: "/adminsetting/file-upload-logs" },
@@ -93,6 +93,14 @@ const RAW_SIDEBAR: SidebarItem[] = [
     ]
   }
 ];
+
+// 메시지 사전(i18n_dictionary) 조회용 안정적인 키 도출 — 기존 s/grp/cat 식별자를 그대로 재사용한다.
+function menuKeyForAdminGroup(groupKey: string): string { return `menu.admin.grp.${groupKey}`; }
+function menuKeyForAdminItem(it: SidebarItem): string { return `menu.admin.${it.s}`; }
+function menuKeyForAdminChild(ch: { cat?: string; label: string; path: string }): string {
+  const id = ch.cat || ch.path.replace(/^\//, '').replace(/\//g, '.');
+  return `menu.admin.child.${id}`;
+}
 
 interface AdminMajor { key: string; label: string; items: SidebarItem[]; }
 
@@ -129,6 +137,7 @@ export const AdminLayout: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { t } = useTranslation();
+  const { getMsg } = useMessageDictionary();
   // 그룹(children이 있는 항목)별로 펼침 상태를 독립적으로 관리 — item.s를 키로 사용.
   // 현재 경로가 속한 그룹은 처음부터 펼쳐진 채로 시작한다.
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => {
@@ -368,12 +377,12 @@ export const AdminLayout: React.FC = () => {
         <div className="navwrap">
           {adminMajors.map((m) => (
             <div key={m.key} className={`navitem${activeMajor?.major.key === m.key ? ' active' : ''}`}>
-              <span className="lbl">{m.label}</span>
+              <span className="lbl">{getMsg(menuKeyForAdminGroup(m.key), m.label)}</span>
               <span className="car">▾</span>
               <div className="megamenu">
                 {m.items.map((it) => (
                   <div key={it.s} className="mm-row" onClick={() => it.path && navigate(it.path)}>
-                    <span>{it.label}</span>
+                    <span>{getMsg(menuKeyForAdminItem(it), it.label || '')}</span>
                     {it.tag && <span className="tag">{it.tag}</span>}
                     {it.children && <span className="mm-chevron">›</span>}
                     {it.children && (
@@ -384,7 +393,7 @@ export const AdminLayout: React.FC = () => {
                             className="mm-sub-row"
                             onClick={(e) => { e.stopPropagation(); navigate(ch.path); }}
                           >
-                            {ch.label}
+                            {getMsg(menuKeyForAdminChild(ch), ch.label)}
                           </div>
                         ))}
                       </div>
@@ -455,7 +464,7 @@ export const AdminLayout: React.FC = () => {
         {/* 좌측 서브 내비게이션: 중그룹/소그룹 (데스크톱 전용, 대그룹 진입 시에만 표시) */}
         {activeMajor && (
           <nav className="subnav">
-            <div className="subnav-head"><b>{activeMajor.major.label}</b></div>
+            <div className="subnav-head"><b>{getMsg(menuKeyForAdminGroup(activeMajor.major.key), activeMajor.major.label)}</b></div>
             {activeMajor.major.items.map((it) => {
               const children = it.children || [];
               const itKey = it.s || it.path || '';
@@ -470,7 +479,7 @@ export const AdminLayout: React.FC = () => {
                       if (it.path) navigate(it.path);
                     }}
                   >
-                    <span>{it.label}</span>
+                    <span>{getMsg(menuKeyForAdminItem(it), it.label || '')}</span>
                     {it.tag && <span className="tag">{it.tag}</span>}
                     {children.length > 0 && <span className="subcar">▸</span>}
                   </div>
@@ -482,7 +491,7 @@ export const AdminLayout: React.FC = () => {
                           className={`subsub ${location.pathname === ch.path ? 'on' : ''}`}
                           onClick={() => navigate(ch.path)}
                         >
-                          {ch.label}
+                          {getMsg(menuKeyForAdminChild(ch), ch.label)}
                         </div>
                       ))}
                     </div>
@@ -516,7 +525,7 @@ export const AdminLayout: React.FC = () => {
                     padding: '16px 12px 6px 12px',
                     textTransform: 'uppercase'
                   }}>
-                    {item.grp}
+                    {getMsg(menuKeyForAdminGroup(item.grp.replace(/\s+/g, '')), item.grp)}
                   </div>
                 );
               }
@@ -546,7 +555,7 @@ export const AdminLayout: React.FC = () => {
                     >
                       <span style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                         <span style={{ fontSize: '1rem' }}>{item.ico}</span>
-                        <span>{item.label}</span>
+                        <span>{getMsg(menuKeyForAdminItem(item), item.label || '')}</span>
                       </span>
                       {isOpen ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
                     </div>
@@ -570,7 +579,7 @@ export const AdminLayout: React.FC = () => {
                                 borderLeft: isSubActive ? '3px solid #5fb0ff' : '3px solid transparent'
                               }}
                             >
-                              • {sub.label}
+                              • {getMsg(menuKeyForAdminChild(sub), sub.label)}
                             </div>
                           );
                         })}
@@ -602,7 +611,7 @@ export const AdminLayout: React.FC = () => {
                 >
                   <span style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                     <span style={{ fontSize: '1rem' }}>{item.ico}</span>
-                    <span>{item.label}</span>
+                    <span>{getMsg(menuKeyForAdminItem(item), item.label || '')}</span>
                   </span>
                   {item.tag && (
                     <span style={{

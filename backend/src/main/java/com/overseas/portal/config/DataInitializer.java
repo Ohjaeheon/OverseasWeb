@@ -47,6 +47,10 @@ public class DataInitializer implements CommandLineRunner {
                     "PRIMARY KEY (post_id, referrer_username)" +
                     ");");
             
+            // overseas.i18n_dictionary 컬럼 추가 (사용여부 / 최종수정자) — 기존 DB 업그레이드용
+            jdbcTemplate.execute("ALTER TABLE overseas.i18n_dictionary ADD COLUMN IF NOT EXISTS use_yn CHAR(1) NOT NULL DEFAULT 'Y';");
+            jdbcTemplate.execute("ALTER TABLE overseas.i18n_dictionary ADD COLUMN IF NOT EXISTS updated_by VARCHAR(100);");
+
             // overseas.churches 컬럼 추가 및 해선부 노드 처리
             jdbcTemplate.execute("ALTER TABLE overseas.churches ADD COLUMN IF NOT EXISTS is_exposed BOOLEAN DEFAULT TRUE;");
             jdbcTemplate.execute("ALTER TABLE overseas.churches ADD COLUMN IF NOT EXISTS is_org_only BOOLEAN DEFAULT FALSE;");
@@ -633,6 +637,114 @@ public class DataInitializer implements CommandLineRunner {
             }
             log.info("Successfully seeded {} evangelism report field mappings.", defaults.length);
         }
+
+        // 6. Seed menu message dictionary (i18n_dictionary) — 프론트 메뉴 대/중/소분류 라벨(한국어/영어)
+        //    이미 등록/수정된 키는 절대 덮어쓰지 않는다 (ON CONFLICT DO NOTHING).
+        String[][] menuSeeds = {
+                // {message_key, ko, en}
+                // 사용자 포탈 — 최상위(그룹 없음)
+                {"menu.user.home", "홈 (종합 현황)", "Home (Overview)"},
+                {"menu.user.calendar", "캘린더", "Calendar"},
+                {"menu.user.organization", "조직도", "Organization Chart"},
+                // 사용자 포탈 — 게시판
+                {"menu.user.grp.게시판", "게시판", "Board"},
+                {"menu.user.notice", "공지사항", "Notices"},
+                // 사용자 포탈 — 진단
+                {"menu.user.grp.진단", "진 단", "Diagnosis"},
+                {"menu.user.diag", "교회 진단서", "Church Diagnosis"},
+                {"menu.user.inspect", "점검 (양·질)", "Inspection (Quantity·Quality)"},
+                {"menu.user.funnel", "관문별 통과율", "Funnel Pass Rate"},
+                // 사용자 포탈 — 신앙 프로세스
+                {"menu.user.grp.신앙프로세스", "신앙 프로세스", "Faith Process"},
+                {"menu.user.p1", "전도·가개강", "Evangelism·Provisional Enrollment"},
+                {"menu.user.child.p1_check", "①-1. 교회별 데이터 확인", "①-1. Check by Church"},
+                {"menu.user.child.p1_agg", "①-2. 주간보고", "①-2. Weekly Report"},
+                {"menu.user.child.p1_plan", "①-3. 계획", "①-3. Plan"},
+                {"menu.user.child.p1_monthly", "①-4. 월간보고", "①-4. Monthly Report"},
+                {"menu.user.child.p1_report", "①-5. 월말보고서 출력", "①-5. Print Monthly Report"},
+                {"menu.user.p2", "센터", "Center"},
+                {"menu.user.p3", "내무", "Membership"},
+                {"menu.user.child.p3_check", "③-1. 교회별 데이터 확인", "③-1. Check by Church"},
+                {"menu.user.child.p3_input", "③-2. 월별 데이터 입력", "③-2. Monthly Data Entry"},
+                {"menu.user.p4", "예배", "Worship"},
+                // 사용자 포탈 — 업무
+                {"menu.user.grp.업무", "업 무", "Business"},
+                {"menu.user.business", "재정", "Finance"},
+                {"menu.user.child.ledger", "원장헌금", "Ledger Offering"},
+                {"menu.user.child.ledger_archive", "ㄴ 품의서 및 회의록", "└ Requisitions & Minutes"},
+                {"menu.user.child.ledger_report", "ㄴ 품의서 및 회의록 작성", "└ Write Requisitions & Minutes"},
+                {"menu.user.child.fruit", "열매헌금", "Fruit Offering"},
+                {"menu.user.child.fruit_archive", "ㄴ 품의서 및 회의록", "└ Requisitions & Minutes"},
+                {"menu.user.child.transport", "교통비", "Transportation"},
+                {"menu.user.child.transport_archive", "ㄴ 품의서 및 회의록", "└ Requisitions & Minutes"},
+                {"menu.user.child.mission", "선교비", "Mission Fund"},
+                {"menu.user.child.mission_archive", "ㄴ 품의서 및 회의록", "└ Requisitions & Minutes"},
+                // 사용자 포탈 — 보고
+                {"menu.user.grp.보고", "보 고", "Reports"},
+                {"menu.user.weekly_report_sub", "주간보고", "Weekly Report"},
+                {"menu.user.child.weekly_report_input", "보고입력", "Report Entry"},
+                // 사용자 포탈 — 결재
+                {"menu.user.grp.결재", "결 재", "Approvals"},
+                {"menu.user.approvals/pending", "결재 대기중인 건", "Pending Approvals"},
+                {"menu.user.approvals/completed", "결재 완료 건", "Completed Approvals"},
+
+                // 관리자 포탈 — 최상위(그룹 없음)
+                {"menu.admin.home", "홈 (종합 현황)", "Home (Overview)"},
+                // 관리자 포탈 — 교회/지역/개척지
+                {"menu.admin.grp.교회/지역/개척지", "교회/지역/개척지", "Churches/Regions/Church Plants"},
+                {"menu.admin.diag", "목록 및 설정", "List & Settings"},
+                {"menu.admin.inspect", "상세 점검 (양·질)", "Detailed Inspection (Quantity·Quality)"},
+                // 관리자 포탈 — 데이터 관리
+                {"menu.admin.grp.데이터관리", "데이터 관리", "Data Management"},
+                {"menu.admin.weekly_worship", "주간예배 출결", "Weekly Worship Attendance"},
+                {"menu.admin.child.adminsetting.weekly-worship", "자동 취합 실행", "Run Auto Aggregation"},
+                {"menu.admin.child.adminsetting.weekly-worship.history", "이전 데이터 확인", "View Past Data"},
+                {"menu.admin.child.adminsetting.weekly-worship.settings", "지역/양식 설정", "Region/Template Settings"},
+                {"menu.admin.weekly_report_status", "주간보고 관리", "Weekly Report Management"},
+                {"menu.admin.child.adminsetting.weekly-report-status", "제출 현황 확인", "Check Submission Status"},
+                {"menu.admin.child.adminsetting.weekly-report-schema", "주차별 양식 관리", "Weekly Template Management"},
+                {"menu.admin.evangelism_bulk", "전도 가개강 데이터 전체관리", "Evangelism Data Management"},
+                {"menu.admin.child.adminsetting.evangelism-bulk", "데이터 전체관리", "Manage All Data"},
+                {"menu.admin.child.adminsetting.evangelism-bulk.report-template", "월말보고서 양식관리", "Monthly Report Template"},
+                {"menu.admin.membership_bulk", "내무 데이터 전체관리", "Membership Data Management"},
+                {"menu.admin.overseas_board_manual", "현황판 등록·종강 수기입력", "Board Registration/Completion Manual Entry"},
+                {"menu.admin.dashboard_config", "메뉴 관리 (상세표·수식 설정)", "Menu Management (Table/Formula Settings)"},
+                {"menu.admin.graph_management", "그래프 관리", "Graph Management"},
+                {"menu.admin.child.adminsetting.graph-management.board", "현황판 그래프 관리", "Board Graph Management"},
+                // 관리자 포탈 — 회원 및 권한
+                {"menu.admin.grp.회원및권한", "회원 및 권한", "Members & Permissions"},
+                {"menu.admin.users", "회원 관리", "Member Management"},
+                {"menu.admin.roles", "권한 목록 및 소속 회원 관리", "Role Groups & Member Assignment"},
+                {"menu.admin.perm", "권한별 접근 메뉴 설정", "Menu Access Permission Settings"},
+                // 관리자 포탈 — 로그 및 시스템
+                {"menu.admin.grp.로그및시스템", "로그 및 시스템", "Logs & System"},
+                {"menu.admin.admin_bot", "봇 연결 관리", "Bot Connection Management"},
+                {"menu.admin.sys", "시스템 설정", "System Settings"},
+                {"menu.admin.messages", "메시지 관리", "Message Management"},
+                {"menu.admin.login_log", "로그인 로그", "Login Logs"},
+                {"menu.admin.access_log", "접근로그", "Access Logs"},
+                {"menu.admin.file_upload_logs", "파일 업로드 로그", "File Upload Logs"},
+                {"menu.admin.file_download_logs", "파일 다운로드 로그", "File Download Logs"},
+                {"menu.admin.backdoor_ips", "백도어 IP 관리", "Backdoor IP Management"},
+                // 관리자 포탈 — 등수예상 시뮬레이션
+                {"menu.admin.grp.등수예상시뮬레이션", "등수예상 시뮬레이션", "Ranking Prediction Simulation"},
+                {"menu.admin.simulation", "등수예상 시뮬레이션", "Ranking Prediction Simulation"},
+                {"menu.admin.child.adminsetting.simulation.center", "센터예상", "Center Prediction"},
+                {"menu.admin.child.adminsetting.simulation.termination", "종강수예상", "Completion Count Prediction"},
+                {"menu.admin.child.adminsetting.simulation.growth", "성장율예상", "Growth Rate Prediction"},
+        };
+        int menuSeedRows = 0;
+        for (String[] seed : menuSeeds) {
+            for (int langIdx = 0; langIdx < 2; langIdx++) {
+                String langCode = langIdx == 0 ? "ko" : "en";
+                jdbcTemplate.update(
+                        "INSERT INTO overseas.i18n_dictionary (message_key, lang_code, message_value, category, use_yn, updated_by, updated_at) " +
+                                "VALUES (?, ?, ?, 'MENU', 'Y', 'system', CURRENT_TIMESTAMP) ON CONFLICT (message_key, lang_code) DO NOTHING",
+                        seed[0], langCode, seed[langIdx + 1]);
+                menuSeedRows++;
+            }
+        }
+        log.info("Verified {} menu message dictionary seed entries (ko+en).", menuSeedRows);
 
         log.info("Demo data seeding disabled as per clean startup requirements.");
     }
