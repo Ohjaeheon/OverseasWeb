@@ -82,6 +82,55 @@ public class DataInitializer implements CommandLineRunner {
                     "updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP" +
                     ");");
 
+            // 조직 계층 관리 - 해외교회/지역/개척지(churches, /adminsetting/faith-records 목록) > 부서 > 팀 > 회원
+            // (결재 라우팅 등 향후 조직 기반 기능의 토대, 기존 권한 그룹/users.assigned_country와는 무관한 별개 개념).
+            // 국가별로 묶지 않고 그 목록의 개별 항목(church_id) 각각을 최상위 조직 단위로 사용한다.
+            jdbcTemplate.execute("CREATE TABLE IF NOT EXISTS overseas.departments (" +
+                    "id BIGSERIAL PRIMARY KEY, " +
+                    "church_id BIGINT NOT NULL, " +
+                    "name VARCHAR(100) NOT NULL, " +
+                    "leader_user_id BIGINT REFERENCES overseas.users(user_id) ON DELETE SET NULL, " +
+                    "created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP, " +
+                    "updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP" +
+                    ");");
+            // 개발 중 country(VARCHAR) 기준으로 먼저 만들어졌던 이전 버전을 church_id 기준으로 정리한다
+            // (아직 실 데이터가 쌓이기 전이라 컬럼 교체만으로 충분하다).
+            jdbcTemplate.execute("ALTER TABLE overseas.departments DROP CONSTRAINT IF EXISTS uq_department_country_name;");
+            jdbcTemplate.execute("ALTER TABLE overseas.departments DROP COLUMN IF EXISTS country;");
+            jdbcTemplate.execute("ALTER TABLE overseas.departments ADD COLUMN IF NOT EXISTS church_id BIGINT;");
+            jdbcTemplate.execute("CREATE TABLE IF NOT EXISTS overseas.teams (" +
+                    "id BIGSERIAL PRIMARY KEY, " +
+                    "department_id BIGINT NOT NULL REFERENCES overseas.departments(id) ON DELETE CASCADE, " +
+                    "name VARCHAR(100) NOT NULL, " +
+                    "leader_user_id BIGINT REFERENCES overseas.users(user_id) ON DELETE SET NULL, " +
+                    "created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP, " +
+                    "updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP, " +
+                    "CONSTRAINT uq_team_department_name UNIQUE (department_id, name)" +
+                    ");");
+            jdbcTemplate.execute("ALTER TABLE overseas.users ADD COLUMN IF NOT EXISTS department_id BIGINT;");
+            jdbcTemplate.execute("ALTER TABLE overseas.users ADD COLUMN IF NOT EXISTS team_id BIGINT;");
+            // ddl-auto:update가 CommandLineRunner보다 먼저 실행되며, departments/teams/users의 department_id·team_id
+            // 컬럼을 JPA 엔티티의 스칼라 Long 필드(@ManyToOne 미사용)만으로 먼저 만들어버릴 수 있다. 이 경우 위
+            // CREATE TABLE IF NOT EXISTS / ADD COLUMN IF NOT EXISTS에 적어둔 REFERENCES·UNIQUE 절은 전부 무시된다
+            // (컬럼/테이블이 이미 존재해 구문 자체가 스킵되기 때문). 그래서 FK/UNIQUE 제약은 존재 여부를 직접
+            // 확인한 뒤 없으면 추가하는 방식으로 별도 보장한다.
+            addConstraintIfMissing("uq_department_church_name",
+                    "ALTER TABLE overseas.departments ADD CONSTRAINT uq_department_church_name UNIQUE (church_id, name)");
+            addConstraintIfMissing("uq_team_department_name",
+                    "ALTER TABLE overseas.teams ADD CONSTRAINT uq_team_department_name UNIQUE (department_id, name)");
+            addConstraintIfMissing("fk_department_church",
+                    "ALTER TABLE overseas.departments ADD CONSTRAINT fk_department_church FOREIGN KEY (church_id) REFERENCES overseas.churches(church_id) ON DELETE CASCADE");
+            addConstraintIfMissing("fk_department_leader",
+                    "ALTER TABLE overseas.departments ADD CONSTRAINT fk_department_leader FOREIGN KEY (leader_user_id) REFERENCES overseas.users(user_id) ON DELETE SET NULL");
+            addConstraintIfMissing("fk_team_department",
+                    "ALTER TABLE overseas.teams ADD CONSTRAINT fk_team_department FOREIGN KEY (department_id) REFERENCES overseas.departments(id) ON DELETE CASCADE");
+            addConstraintIfMissing("fk_team_leader",
+                    "ALTER TABLE overseas.teams ADD CONSTRAINT fk_team_leader FOREIGN KEY (leader_user_id) REFERENCES overseas.users(user_id) ON DELETE SET NULL");
+            addConstraintIfMissing("fk_user_department",
+                    "ALTER TABLE overseas.users ADD CONSTRAINT fk_user_department FOREIGN KEY (department_id) REFERENCES overseas.departments(id) ON DELETE SET NULL");
+            addConstraintIfMissing("fk_user_team",
+                    "ALTER TABLE overseas.users ADD CONSTRAINT fk_user_team FOREIGN KEY (team_id) REFERENCES overseas.teams(id) ON DELETE SET NULL");
+
             // 해외선교부 현황판 카테고리의 기본 컬럼/수식 구성 시드 (이미 관리자가 저장했으면 건드리지 않음)
             String overseasBoardColumnsJson = """
                     [
@@ -716,6 +765,7 @@ public class DataInitializer implements CommandLineRunner {
                 {"menu.admin.users", "회원 관리", "Member Management"},
                 {"menu.admin.roles", "권한 목록 및 소속 회원 관리", "Role Groups & Member Assignment"},
                 {"menu.admin.perm", "권한별 접근 메뉴 설정", "Menu Access Permission Settings"},
+                {"menu.admin.org_structure", "조직 관리 (교회·부서·팀)", "Organization Management (Church/Dept/Team)"},
                 // 관리자 포탈 — 로그 및 시스템
                 {"menu.admin.grp.로그및시스템", "로그 및 시스템", "Logs & System"},
                 {"menu.admin.admin_bot", "봇 연결 관리", "Bot Connection Management"},
@@ -747,5 +797,19 @@ public class DataInitializer implements CommandLineRunner {
         log.info("Verified {} menu message dictionary seed entries (ko+en).", menuSeedRows);
 
         log.info("Demo data seeding disabled as per clean startup requirements.");
+    }
+
+    /**
+     * ddl-auto:update가 이 CommandLineRunner보다 먼저 실행되어 JPA 엔티티 메타데이터만으로 테이블/컬럼을
+     * 먼저 만들어버리면, 뒤이어 실행되는 CREATE TABLE IF NOT EXISTS / ADD COLUMN IF NOT EXISTS 문에 적어둔
+     * FK·UNIQUE 제약절은 조용히 무시된다(테이블/컬럼이 이미 존재해 문장 자체가 스킵되므로). 제약이 실제로
+     * 존재하는지 pg_constraint에서 직접 확인한 뒤 없을 때만 추가해 항상 보장되도록 한다.
+     */
+    private void addConstraintIfMissing(String constraintName, String alterStatement) {
+        Integer count = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM pg_constraint WHERE conname = ?", Integer.class, constraintName);
+        if (count == null || count == 0) {
+            jdbcTemplate.execute(alterStatement + ";");
+        }
     }
 }

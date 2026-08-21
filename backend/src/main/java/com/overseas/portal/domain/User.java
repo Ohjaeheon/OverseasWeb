@@ -77,6 +77,14 @@ public class User {
     @Builder.Default
     private Boolean isWorshipPermitted = false;
 
+    @Column(name = "department_id")
+    @Comment("조직 계층 - 소속 부서 department_id (결재 라우팅 기반, 널 허용, assigned_country와는 무관)")
+    private Long departmentId;
+
+    @Column(name = "team_id")
+    @Comment("조직 계층 - 소속 팀 team_id (널 허용, 부서에만 소속되고 팀은 없는 회원도 존재)")
+    private Long teamId;
+
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     @Comment("생성 일시")

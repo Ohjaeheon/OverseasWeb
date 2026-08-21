@@ -82,6 +82,7 @@ export const DEFAULT_MENUS: { menuKey: string; menuName: string; category: strin
   { menuKey: 'users', menuName: '🌍 회원 및 담당 범위 관리', category: '⚙️ 관리자 전용 (adminsetting)', path: '/adminsetting/users' },
   { menuKey: 'roles', menuName: '📈 권한 그룹 및 회원 할당', category: '⚙️ 관리자 전용 (adminsetting)', path: '/adminsetting/roles' },
   { menuKey: 'perm', menuName: '🔑 권한별 접근 메뉴 설정', category: '⚙️ 관리자 전용 (adminsetting)', path: '/adminsetting/permissions' },
+  { menuKey: 'org_structure', menuName: '🏢 조직 관리 (교회·부서·팀)', category: '⚙️ 관리자 전용 (adminsetting)', path: '/adminsetting/org-structure' },
   { menuKey: 'login_logs', menuName: '📥 로그인 로그 관리', category: '⚙️ 관리자 전용 (adminsetting)', path: '/adminsetting/login-logs' },
   { menuKey: 'access_logs', menuName: '📥 접근 로그 관리', category: '⚙️ 관리자 전용 (adminsetting)', path: '/adminsetting/access-logs' },
   { menuKey: 'file_upload_logs', menuName: '📥 파일 업로드 로그 관리', category: '⚙️ 관리자 전용 (adminsetting)', path: '/adminsetting/file-upload-logs' },

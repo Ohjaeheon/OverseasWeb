@@ -625,3 +625,47 @@ CREATE TABLE IF NOT EXISTS overseas.simulation_chart_settings (
 );
 
 COMMENT ON TABLE overseas.simulation_chart_settings IS '등수예상 시뮬레이션 차트/표시 설정 저장';
+
+-- 29. 조직 계층 관리 - 해외교회/지역/개척지(churches, /adminsetting/faith-records 목록) > 부서 > 팀 > 회원
+-- (결재 라우팅 등 향후 조직 기반 기능의 토대). 국가별로 묶지 않고 그 목록의 개별 항목(church_id) 각각을
+-- 최상위 조직 단위로 사용한다. 기존 권한 그룹(roleService.ts)이나 users.assigned_country(데이터 접근 범위)와는
+-- 무관한 별개 개념이다.
+CREATE TABLE IF NOT EXISTS overseas.departments (
+    id              BIGSERIAL PRIMARY KEY,
+    church_id       BIGINT NOT NULL REFERENCES overseas.churches(church_id) ON DELETE CASCADE,
+    name            VARCHAR(100) NOT NULL,
+    leader_user_id  BIGINT REFERENCES overseas.users(user_id) ON DELETE SET NULL,
+    created_at      TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at      TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT uq_department_church_name UNIQUE (church_id, name)
+);
+
+COMMENT ON TABLE overseas.departments IS '조직 계층 - 해외교회/지역/개척지 하위 부서';
+COMMENT ON COLUMN overseas.departments.church_id IS '소속 해외교회/지역/개척지 church_id (/adminsetting/faith-records 목록과 동일)';
+COMMENT ON COLUMN overseas.departments.leader_user_id IS '부서장 user_id (값은 서비스 계층에서 소속 검증)';
+
+-- 30. 조직 계층 관리 - 부서 하위 팀
+CREATE TABLE IF NOT EXISTS overseas.teams (
+    id              BIGSERIAL PRIMARY KEY,
+    department_id   BIGINT NOT NULL REFERENCES overseas.departments(id) ON DELETE CASCADE,
+    name            VARCHAR(100) NOT NULL,
+    leader_user_id  BIGINT REFERENCES overseas.users(user_id) ON DELETE SET NULL,
+    created_at      TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at      TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT uq_team_department_name UNIQUE (department_id, name)
+);
+
+COMMENT ON TABLE overseas.teams IS '조직 계층 - 부서 하위 팀 (팀 없이 부서에만 소속되는 회원도 존재 가능)';
+COMMENT ON COLUMN overseas.teams.leader_user_id IS '팀장 user_id (값은 서비스 계층에서 소속 검증)';
+
+-- overseas.users 조직 계층 소속 컬럼 (DataInitializer.java에서 ALTER TABLE ADD COLUMN IF NOT EXISTS로 추가됨)
+-- department_id BIGINT REFERENCES overseas.departments(id) ON DELETE SET NULL
+-- team_id       BIGINT REFERENCES overseas.teams(id) ON DELETE SET NULL
+--
+-- 주의: ddl-auto:update가 DataInitializer(CommandLineRunner)보다 먼저 실행되어 JPA 엔티티 메타데이터만으로
+-- departments/teams 테이블 및 users의 department_id/team_id 컬럼을 먼저 만들어버리는 경우, 위 CREATE TABLE /
+-- ALTER TABLE ADD COLUMN 문에 적어둔 FK(REFERENCES ... ON DELETE ...)와 UNIQUE 절은 전부 무시된다(테이블/컬럼이
+-- 이미 존재해 문장 자체가 스킵됨). 실제 제약 보장은 DataInitializer.java의 addConstraintIfMissing() 헬퍼가
+-- pg_constraint를 직접 조회해 없을 때만 ALTER TABLE ADD CONSTRAINT로 추가하는 방식으로 담당한다
+-- (fk_department_church, fk_department_leader, fk_team_department, fk_team_leader, fk_user_department,
+-- fk_user_team, uq_department_church_name, uq_team_department_name).

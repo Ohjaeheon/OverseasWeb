@@ -14,6 +14,7 @@ import { AdminUserPage } from './pages/admin/AdminUserPage';
 import { AdminFaithPage } from './pages/admin/AdminFaithPage';
 import { AdminRolePage } from './pages/admin/AdminRolePage';
 import { AdminPermissionPage } from './pages/admin/AdminPermissionPage';
+import { AdminOrgStructurePage } from './pages/admin/AdminOrgStructurePage';
 import { AdminSettingsPage } from './pages/admin/AdminSettingsPage';
 import { AdminMessagePage } from './pages/admin/AdminMessagePage';
 import { AdminLoginLogsPage } from './pages/admin/AdminLoginLogsPage';
@@ -193,6 +194,7 @@ export const App: React.FC = () => {
             <Route path="users" element={<AdminUserPage />} />
             <Route path="roles" element={<AdminRolePage />} />
             <Route path="permissions" element={<AdminPermissionPage />} />
+            <Route path="org-structure" element={<AdminOrgStructurePage />} />
 
             {/* 로그 및 시스템 */}
             <Route path="bot" element={<AdminBotPage />} />

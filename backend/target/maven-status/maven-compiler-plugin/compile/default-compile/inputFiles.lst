@@ -25,14 +25,17 @@ E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\controller\Evang
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\exception\GlobalExceptionHandler.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\repository\WeeklyReportSubmissionRepository.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\controller\WeeklyWorshipController.java
+E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\dto\TeamDto.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\service\DiagnosisService.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\service\FileLogService.java
+E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\repository\DepartmentRepository.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\service\BusinessLedgerService.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\domain\SystemConfig.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\controller\SystemLogController.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\domain\FileUploadLog.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\domain\MetricColumnConfig.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\domain\EvangelismReportFieldMapping.java
+E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\dto\DepartmentDto.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\domain\EvangelismEditRequest.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\service\TelegramBotPollingService.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\repository\WorshipRegionMappingRepository.java
@@ -54,6 +57,7 @@ E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\domain\HomeDashb
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\domain\GraphConfig.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\repository\WorshipTemplateRepository.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\repository\MembershipMonthlyRecordRepository.java
+E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\repository\TeamRepository.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\service\HomeDashboardManualMetricService.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\repository\SimulationInputRepository.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\dto\LedgerSaveRequest.java
@@ -73,6 +77,7 @@ E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\service\MetricCo
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\controller\HomeDashboardController.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\service\WeeklyReportSubmissionService.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\domain\BusinessLedgerRecord.java
+E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\service\OrgStructureService.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\config\DataInitializer.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\domain\EvangelismPlanItem.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\domain\EvangelismWeeklyRecord.java
@@ -92,6 +97,7 @@ E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\repository\Evang
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\domain\CountryFlag.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\controller\MembershipController.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\domain\SimulationInput.java
+E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\dto\OrgMemberDto.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\repository\WeeklyWorshipHistoryRepository.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\service\WeeklyWorshipService.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\domain\BusinessBoardAttachment.java
@@ -104,6 +110,7 @@ E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\repository\Busin
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\service\EvangelismReportService.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\repository\OrganizationChartRepository.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\repository\TelegramOtpLogRepository.java
+E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\domain\Department.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\domain\I18nDictionary.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\repository\LoginLogRepository.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\domain\WeeklyReportSubmission.java
@@ -127,9 +134,11 @@ E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\service\CountryF
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\domain\FaithProcessRecord.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\controller\AdminController.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\controller\EvangelismReportController.java
+E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\controller\OrgStructureController.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\security\SessionManager.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\controller\CountryFlagController.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\controller\DiagnosisController.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\domain\SimulationMonthlyData.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\repository\MembershipEditRequestRepository.java
+E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\domain\Team.java
 E:\poject\OverseasWeb\backend\src\main\java\com\overseas\portal\repository\CalendarEventRepository.java

@@ -1,14 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import { adminService, UserItem, ChurchItem } from '../../services/adminService';
 import { roleService, RoleDefinition } from '../../services/roleService';
+import { organizationStructureService, Department, Team } from '../../services/organizationStructureService';
 import defaultChurchesData from '../../assets/defaultChurches.json';
-import { UserPlus, Edit2, RotateCcw, Trash2, KeyRound, Globe, X, CheckCircle, XCircle, Building2 } from 'lucide-react';
+import { UserPlus, Edit2, RotateCcw, Trash2, KeyRound, Globe, X, CheckCircle, XCircle, Building2, Users2, Search } from 'lucide-react';
 
 export const AdminUserPage: React.FC = () => {
   const [users, setUsers] = useState<UserItem[]>([]);
   const [locations, setLocations] = useState<{ id: string; name: string; displayName: string }[]>([]);
   const [availableRoles, setAvailableRoles] = useState<RoleDefinition[]>([]);
+  const [orgDepartments, setOrgDepartments] = useState<Department[]>([]);
+  const [orgTeams, setOrgTeams] = useState<Team[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
+
+  // Search & Filter State
+  const [searchTerm, setSearchTerm] = useState<string>('');
+  const [filterRole, setFilterRole] = useState<string>('전체');
+  const [filterStatus, setFilterStatus] = useState<string>('전체');
 
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
@@ -59,6 +67,17 @@ export const AdminUserPage: React.FC = () => {
         });
       }
       setLocations(locList);
+
+      // 조직 관리(국가/부서/팀)에서 배정된 소속 정보 - 조회 실패해도 나머지 화면은 정상 동작해야 하므로 별도로 처리
+      try {
+        const directory = await organizationStructureService.getDirectory();
+        setOrgDepartments(directory.departments || []);
+        setOrgTeams(directory.teams || []);
+      } catch (orgErr) {
+        console.warn("조직 소속 정보 로드 실패:", orgErr);
+        setOrgDepartments([]);
+        setOrgTeams([]);
+      }
     } catch (err) {
       console.warn("API load failed, using client fallback:", err);
       setAvailableRoles(roleService.getRoles());
@@ -194,6 +213,35 @@ export const AdminUserPage: React.FC = () => {
     return rawRole;
   };
 
+  const getOrgLabel = (user: UserItem): string => {
+    if (!user.departmentId) return '미배정';
+    const dept = orgDepartments.find(d => d.id === user.departmentId);
+    const deptName = dept?.name || '(삭제된 부서)';
+    if (!user.teamId) return `${deptName} (팀 미배정)`;
+    const team = orgTeams.find(t => t.id === user.teamId);
+    return `${deptName} · ${team?.name || '(삭제된 팀)'}`;
+  };
+
+  const filteredUsers = users.filter((user) => {
+    const displayRole = getRoleDisplayName(user.role);
+    const matchesRole = filterRole === '전체' || displayRole === filterRole;
+    const matchesStatus =
+      filterStatus === '전체' ||
+      (filterStatus === '정상' && user.isActive !== false) ||
+      (filterStatus === '정지' && user.isActive === false);
+
+    const searchLow = searchTerm.trim().toLowerCase();
+    const matchesSearch =
+      !searchLow ||
+      user.name.toLowerCase().includes(searchLow) ||
+      user.username.toLowerCase().includes(searchLow) ||
+      (user.assignedCountry || '').toLowerCase().includes(searchLow) ||
+      getOrgLabel(user).toLowerCase().includes(searchLow) ||
+      (user.telegramId || '').toLowerCase().includes(searchLow);
+
+    return matchesRole && matchesStatus && matchesSearch;
+  });
+
   return (
     <div>
       {/* Header Bar */}
@@ -228,6 +276,101 @@ export const AdminUserPage: React.FC = () => {
         </button>
       </div>
 
+      {/* Control Bar: Filter Chips & Search Bar */}
+      <div style={{
+        background: '#ffffff',
+        border: '1px solid #e6edf8',
+        borderRadius: '16px',
+        padding: '16px 20px',
+        marginBottom: '20px',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        flexWrap: 'wrap',
+        gap: '16px',
+        boxShadow: '0 2px 8px rgba(20, 40, 90, 0.03)'
+      }}>
+        <div style={{ display: 'flex', gap: '16px', alignItems: 'center', flexWrap: 'wrap' }}>
+          {/* Status Chips */}
+          <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+            {['전체', '정상', '정지'].map((s) => {
+              const isSelected = filterStatus === s;
+              return (
+                <button
+                  key={s}
+                  onClick={() => setFilterStatus(s)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '8px 18px',
+                    borderRadius: '20px',
+                    border: isSelected ? '1px solid #c7d2fe' : '1px solid #e6edf8',
+                    background: isSelected ? '#e0e7ff' : '#ffffff',
+                    color: isSelected ? '#2563eb' : '#6b7a99',
+                    fontWeight: isSelected ? 700 : 600,
+                    fontSize: '0.9rem',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease',
+                    boxShadow: isSelected ? '0 2px 6px rgba(37,99,235,0.12)' : 'none'
+                  }}
+                >
+                  {s}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Role Filter */}
+          <select
+            value={filterRole}
+            onChange={(e) => setFilterRole(e.target.value)}
+            style={{
+              padding: '9px 14px',
+              border: '1px solid #e6edf8',
+              borderRadius: '10px',
+              color: '#334155',
+              fontWeight: 600,
+              fontSize: '0.86rem',
+              background: '#ffffff',
+              cursor: 'pointer'
+            }}
+          >
+            <option value="전체">권한 전체</option>
+            {availableRoles.map((r) => (
+              <option key={r.roleId} value={r.roleName}>{r.roleName}</option>
+            ))}
+          </select>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+          <span style={{ fontSize: '0.82rem', color: '#94a3b8', fontWeight: 600, whiteSpace: 'nowrap' }}>
+            {filteredUsers.length}명 표시 중 (전체 {users.length}명)
+          </span>
+
+          {/* Search Field */}
+          <div style={{ position: 'relative', minWidth: '280px' }}>
+            <Search size={18} color="#94a3b8" style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)' }} />
+            <input
+              type="text"
+              placeholder="이름, 아이디, 담당 범위, 소속 검색..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              style={{
+                width: '100%',
+                padding: '10px 14px 10px 40px',
+                background: '#ffffff',
+                border: '1px solid #dbe2ef',
+                borderRadius: '10px',
+                color: '#1f2a44',
+                fontSize: '0.88rem',
+                outline: 'none'
+              }}
+            />
+          </div>
+        </div>
+      </div>
+
       {/* Main Table */}
       <div style={{
         background: '#ffffff',
@@ -236,30 +379,38 @@ export const AdminUserPage: React.FC = () => {
         overflow: 'hidden',
         boxShadow: '0 4px 14px rgba(20, 40, 90, 0.04)'
       }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.88rem' }}>
+        <div style={{ overflowX: 'auto' }}>
+        <table style={{ width: '100%', minWidth: '1360px', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.88rem' }}>
           <thead>
             <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0', color: '#475569' }}>
-              <th style={{ padding: '14px 18px', fontWeight: 700 }}>ID</th>
-              <th style={{ padding: '14px 18px', fontWeight: 700 }}>로그인 아이디</th>
-              <th style={{ padding: '14px 18px', fontWeight: 700 }}>이름</th>
-              <th style={{ padding: '14px 18px', fontWeight: 700 }}>권한</th>
-              <th style={{ padding: '14px 18px', fontWeight: 700 }}>담당 교회 · 지역 · 개척지 (접근 범위)</th>
-              <th style={{ padding: '14px 18px', fontWeight: 700 }}>Telegram ID (@username)</th>
-              <th style={{ padding: '14px 18px', fontWeight: 700 }}>Telegram Chat ID</th>
-              <th style={{ padding: '14px 18px', fontWeight: 700 }}>상태</th>
-              <th style={{ padding: '14px 18px', fontWeight: 700 }}>OTP 예외</th>
-              <th style={{ padding: '14px 18px', fontWeight: 700 }}>예배 취합</th>
-              <th style={{ padding: '14px 18px', fontWeight: 700, textAlign: 'right' }}>관리</th>
+              <th style={{ padding: '14px 18px', fontWeight: 700, whiteSpace: 'nowrap' }}>ID</th>
+              <th style={{ padding: '14px 18px', fontWeight: 700, whiteSpace: 'nowrap' }}>로그인 아이디</th>
+              <th style={{ padding: '14px 18px', fontWeight: 700, whiteSpace: 'nowrap' }}>이름</th>
+              <th style={{ padding: '14px 18px', fontWeight: 700, whiteSpace: 'nowrap' }}>권한</th>
+              <th style={{ padding: '14px 18px', fontWeight: 700, whiteSpace: 'nowrap' }}>담당 교회 · 지역 · 개척지 (접근 범위)</th>
+              <th style={{ padding: '14px 18px', fontWeight: 700, whiteSpace: 'nowrap' }}>소속 (부서 · 팀)</th>
+              <th style={{ padding: '14px 18px', fontWeight: 700, whiteSpace: 'nowrap' }}>Telegram ID (@username)</th>
+              <th style={{ padding: '14px 18px', fontWeight: 700, whiteSpace: 'nowrap' }}>Telegram Chat ID</th>
+              <th style={{ padding: '14px 18px', fontWeight: 700, whiteSpace: 'nowrap' }}>상태</th>
+              <th style={{ padding: '14px 18px', fontWeight: 700, whiteSpace: 'nowrap' }}>OTP 예외</th>
+              <th style={{ padding: '14px 18px', fontWeight: 700, whiteSpace: 'nowrap' }}>예배 취합</th>
+              <th style={{ padding: '14px 18px', fontWeight: 700, textAlign: 'right', whiteSpace: 'nowrap' }}>관리</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={10} style={{ padding: '30px', textAlign: 'center', color: '#6b7a99' }}>
+                <td colSpan={11} style={{ padding: '30px', textAlign: 'center', color: '#6b7a99' }}>
                   사용자 목록을 불러오는 중입니다...
                 </td>
               </tr>
-            ) : users.map((user) => {
+            ) : filteredUsers.length === 0 ? (
+              <tr>
+                <td colSpan={11} style={{ padding: '30px', textAlign: 'center', color: '#94a3b8' }}>
+                  검색/필터 조건에 맞는 회원이 없습니다.
+                </td>
+              </tr>
+            ) : filteredUsers.map((user) => {
               const displayRole = getRoleDisplayName(user.role);
               const isAdmin = displayRole === '관리자' || user.role === 'ROLE_ADMIN';
 
@@ -286,9 +437,14 @@ export const AdminUserPage: React.FC = () => {
                       {displayRole}
                     </span>
                   </td>
-                  <td style={{ padding: '14px 18px', color: '#2563eb', fontWeight: 700 }}>
+                  <td style={{ padding: '14px 18px', color: '#2563eb', fontWeight: 700, whiteSpace: 'nowrap' }}>
                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
                       <Building2 size={14} /> {user.assignedCountry || '전체'}
+                    </span>
+                  </td>
+                  <td style={{ padding: '14px 18px', color: user.departmentId ? '#7c3aed' : '#94a3b8', fontWeight: user.departmentId ? 700 : 500, whiteSpace: 'nowrap' }}>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                      <Users2 size={14} /> {getOrgLabel(user)}
                     </span>
                   </td>
                   <td style={{ padding: '14px 18px', color: '#475569' }}>
@@ -390,6 +546,7 @@ export const AdminUserPage: React.FC = () => {
             })}
           </tbody>
         </table>
+        </div>
       </div>
 
       {/* Add / Edit User Modal */}

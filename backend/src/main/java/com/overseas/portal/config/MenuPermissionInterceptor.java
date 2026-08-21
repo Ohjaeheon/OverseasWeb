@@ -33,7 +33,7 @@ public class MenuPermissionInterceptor implements HandlerInterceptor {
     private static final List<String> ADMINSETTING_MENU_KEYS = List.of(
             "admin_dash", "admin_faith", "admin_detail", "weekly_worship", "weekly_worship_history",
             "weekly_report_status", "weekly_report_schema", "evangelism_bulk", "membership_bulk",
-            "users", "roles", "perm", "login_logs", "access_logs", "file_upload_logs", "file_download_logs",
+            "users", "roles", "perm", "org_structure", "login_logs", "access_logs", "file_upload_logs", "file_download_logs",
             "i18n", "sys", "admin_bot", "backdoor_ips", "admin_messages"
     );
 
