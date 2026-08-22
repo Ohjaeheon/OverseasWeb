@@ -43,6 +43,12 @@ public class DiagnosisService {
                 .orElse("");
     }
 
+    public String getUserMenuLayout() {
+        return systemConfigRepository.findByConfigKey("user_menu_layout")
+                .map(config -> config.getConfigValue())
+                .orElse("");
+    }
+
     @Data
     @Builder
     public static class RecordDTO {

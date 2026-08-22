@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { X, ChevronLeft, ChevronRight, Image as ImageIcon, Maximize, Minimize } from 'lucide-react';
+import { X, ChevronLeft, ChevronRight, Image as ImageIcon, Maximize, Minimize, FileDown, RefreshCw, ZoomIn, ZoomOut } from 'lucide-react';
 import { WeeklyReportSubmissionItem, WeeklyReportSchemaItem, FormSchema, FormPage } from '../../services/weeklyReportService';
 import { formatWeekLabel } from '../../utils/weekUtil';
+import { exportWeeklyReportPptx } from '../../utils/exportWeeklyReportPptx';
 
 interface Props {
   submissions: WeeklyReportSubmissionItem[];
@@ -44,6 +45,22 @@ const tdStyle: React.CSSProperties = { padding: 'clamp(6px,0.9vw,11px) clamp(6px
 export const WeeklyReportPresentationView: React.FC<Props> = ({ submissions, schemas, initialIndex = 0, hiddenSectionsByChurchId, onClose }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const [zoom, setZoom] = useState(1);
+  const zoomIn = useCallback(() => setZoom(z => Math.min(2, Math.round((z + 0.1) * 10) / 10)), []);
+  const zoomOut = useCallback(() => setZoom(z => Math.max(0.5, Math.round((z - 0.1) * 10) / 10)), []);
+  const zoomReset = useCallback(() => setZoom(1), []);
+
+  const handleExportPptx = async () => {
+    try {
+      setExporting(true);
+      await exportWeeklyReportPptx({ submissions, schemas, hiddenSectionsByChurchId });
+    } catch {
+      alert('PPT 내보내기에 실패했습니다.');
+    } finally {
+      setExporting(false);
+    }
+  };
 
   // ── 교회별 데이터 파싱 ──────────────────────────────────────────
   const parsedSubs: ParsedSub[] = useMemo(() => submissions.map(sub => {
@@ -86,13 +103,16 @@ export const WeeklyReportPresentationView: React.FC<Props> = ({ submissions, sch
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if (e.key === 'ArrowLeft' || e.key === 'PageUp') goPrev();
+      if ((e.ctrlKey || e.metaKey) && (e.key === '+' || e.key === '=')) { e.preventDefault(); zoomIn(); }
+      else if ((e.ctrlKey || e.metaKey) && e.key === '-') { e.preventDefault(); zoomOut(); }
+      else if ((e.ctrlKey || e.metaKey) && e.key === '0') { e.preventDefault(); zoomReset(); }
+      else if (e.key === 'ArrowLeft' || e.key === 'PageUp') goPrev();
       else if (e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === ' ') goNext();
       else if (e.key === 'Escape') onClose();
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [goPrev, goNext, onClose]);
+  }, [goPrev, goNext, onClose, zoomIn, zoomOut, zoomReset]);
 
   useEffect(() => {
     const onFsChange = () => setIsFullscreen(!!document.fullscreenElement);
@@ -148,6 +168,28 @@ export const WeeklyReportPresentationView: React.FC<Props> = ({ submissions, sch
             </div>
           )}
           <span style={{ color: '#94a3b8', fontWeight: 700, fontSize: '0.85rem' }}>{slideIndex + 1} / {total}</span>
+
+          {/* 화면 확대/축소 — PC 화면 크기에 따라 슬라이드가 너무 작거나 커 보일 때 조절 */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '2px', background: 'rgba(255,255,255,0.06)', borderRadius: '8px', padding: '2px' }}>
+            <button onClick={zoomOut} disabled={zoom <= 0.5} title="축소 (Ctrl -)"
+              style={{ background: 'transparent', border: 'none', color: zoom <= 0.5 ? '#475569' : '#e2e8f0', cursor: zoom <= 0.5 ? 'not-allowed' : 'pointer', padding: '7px', display: 'flex' }}>
+              <ZoomOut size={15} />
+            </button>
+            <button onClick={zoomReset} title="100%로 초기화 (Ctrl 0)"
+              style={{ background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: '0.78rem', fontWeight: 700, padding: '0 4px', minWidth: '40px', fontFamily: 'inherit' }}>
+              {Math.round(zoom * 100)}%
+            </button>
+            <button onClick={zoomIn} disabled={zoom >= 2} title="확대 (Ctrl +)"
+              style={{ background: 'transparent', border: 'none', color: zoom >= 2 ? '#475569' : '#e2e8f0', cursor: zoom >= 2 ? 'not-allowed' : 'pointer', padding: '7px', display: 'flex' }}>
+              <ZoomIn size={15} />
+            </button>
+          </div>
+
+          <button onClick={handleExportPptx} disabled={exporting} title="현재 목록 전체를 PPT 파일로 내보내기"
+            style={{ background: 'rgba(255,255,255,0.1)', border: 'none', borderRadius: '8px', color: exporting ? '#64748b' : '#e2e8f0', cursor: exporting ? 'not-allowed' : 'pointer', padding: '8px', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', fontWeight: 700, fontFamily: 'inherit' }}>
+            {exporting ? <RefreshCw size={16} style={{ animation: 'spin 1s linear infinite' }} /> : <FileDown size={16} />}
+            {exporting ? '내보내는 중...' : 'PPT 내보내기'}
+          </button>
           <button onClick={toggleFullscreen} style={{ background: 'rgba(255,255,255,0.1)', border: 'none', borderRadius: '8px', color: '#e2e8f0', cursor: 'pointer', padding: '8px', display: 'flex' }}>
             {isFullscreen ? <Minimize size={16} /> : <Maximize size={16} />}
           </button>
@@ -158,14 +200,14 @@ export const WeeklyReportPresentationView: React.FC<Props> = ({ submissions, sch
       </div>
 
       {/* 슬라이드 캔버스 */}
-      <div style={{ flex: 1, position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 70px', minHeight: 0 }}>
+      <div style={{ flex: 1, position: 'relative', display: 'flex', alignItems: zoom > 1 ? 'flex-start' : 'center', justifyContent: 'center', padding: '20px 70px', minHeight: 0, overflow: 'auto' }}>
         <button onClick={goPrev} disabled={slideIndex === 0}
           style={{ ...navBtnStyle, left: '10px', opacity: slideIndex === 0 ? 0.25 : 1, cursor: slideIndex === 0 ? 'not-allowed' : 'pointer' }}>
           <ChevronLeft size={20} />
         </button>
 
         <div key={slideIndex} style={{
-          width: 'min(1240px, 100%)', aspectRatio: '16 / 9', maxHeight: '100%',
+          width: `calc(min(1240px, 100%) * ${zoom})`, aspectRatio: '16 / 9', flexShrink: 0,
           background: '#ffffff', borderRadius: '18px', boxShadow: '0 30px 70px rgba(0,0,0,0.5)',
           overflow: 'auto', color: '#1e293b', animation: 'wr-slide-in 0.3s ease'
         }}>

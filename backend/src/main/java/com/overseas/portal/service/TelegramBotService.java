@@ -13,6 +13,7 @@ import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @Slf4j
@@ -86,6 +87,55 @@ public class TelegramBotService {
         } catch (Exception e) {
             log.error("Failed to send Telegram test message to Chat ID {}: {}", chatId, e.getMessage());
             return false;
+        }
+    }
+
+    /**
+     * 인라인 버튼(승인/반려 등)이 포함된 메시지 발송 - 결재 텔레그램 알림용.
+     * buttons: 각 행(row)이 [{text, callback_data}, ...] 형태인 버튼 목록.
+     */
+    public boolean sendMessageWithInlineKeyboard(String chatId, String text, List<List<Map<String, String>>> buttons, String token) {
+        if (chatId == null || chatId.isBlank()) {
+            log.warn("Telegram Chat ID is missing. Skipping Telegram notification.");
+            return false;
+        }
+
+        String targetToken = (token != null && !token.isBlank()) ? token : this.botToken;
+        String url = "https://api.telegram.org/bot" + targetToken + "/sendMessage";
+
+        Map<String, Object> replyMarkup = new HashMap<>();
+        replyMarkup.put("inline_keyboard", buttons);
+
+        Map<String, Object> body = new HashMap<>();
+        body.put("chat_id", chatId);
+        body.put("text", text);
+        body.put("reply_markup", replyMarkup);
+
+        try {
+            ResponseEntity<String> response = restTemplate.postForEntity(url, body, String.class);
+            log.info("Telegram message with inline keyboard sent to Chat ID {}: {}", chatId, response.getStatusCode());
+            return response.getStatusCode().is2xxSuccessful();
+        } catch (Exception e) {
+            log.error("Failed to send Telegram message with inline keyboard to Chat ID {}: {}", chatId, e.getMessage());
+            return false;
+        }
+    }
+
+    /** 인라인 버튼 클릭에 대한 응답 - 텔레그램 클라이언트의 로딩 스피너를 해제하고 짧은 토스트 메시지를 보여준다. */
+    public void answerCallbackQuery(String callbackQueryId, String text, String token) {
+        String targetToken = (token != null && !token.isBlank()) ? token : this.botToken;
+        String url = "https://api.telegram.org/bot" + targetToken + "/answerCallbackQuery";
+
+        Map<String, Object> body = new HashMap<>();
+        body.put("callback_query_id", callbackQueryId);
+        if (text != null && !text.isBlank()) {
+            body.put("text", text);
+        }
+
+        try {
+            restTemplate.postForEntity(url, body, String.class);
+        } catch (Exception e) {
+            log.error("Failed to answer Telegram callback query {}: {}", callbackQueryId, e.getMessage());
         }
     }
 

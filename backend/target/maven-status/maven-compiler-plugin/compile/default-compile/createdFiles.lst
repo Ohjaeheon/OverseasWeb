@@ -22,6 +22,7 @@ com\overseas\portal\controller\AdminController$TelegramMapRequest.class
 com\overseas\portal\repository\GraphConfigRepository.class
 com\overseas\portal\controller\AdminApprovalLineController$ApproverRequest.class
 com\overseas\portal\domain\EvangelismMonthlyActivity$EvangelismMonthlyActivityBuilder.class
+com\overseas\portal\service\ApprovalTelegramService$RequestSummary.class
 com\overseas\portal\config\MenuPermissionInterceptor.class
 com\overseas\portal\domain\SimulationMonthlyData$SimulationMonthlyDataBuilder.class
 com\overseas\portal\domain\Team$TeamBuilder.class
@@ -195,6 +196,7 @@ com\overseas\portal\domain\I18nDictionary$I18nDictionaryBuilder.class
 com\overseas\portal\controller\HomeDashboardController.class
 com\overseas\portal\domain\ApprovalLineStepApprover.class
 com\overseas\portal\controller\EvangelismMonthlyActivityController$SaveRequest.class
+com\overseas\portal\service\ApprovalTelegramService.class
 com\overseas\portal\service\OrgStructureService.class
 com\overseas\portal\controller\SimulationController.class
 com\overseas\portal\controller\AuthController$TelegramLoginRequest.class
@@ -233,6 +235,7 @@ com\overseas\portal\repository\TelegramOtpLogRepository.class
 com\overseas\portal\dto\LedgerSaveRequest.class
 com\overseas\portal\dto\DepartmentDto.class
 com\overseas\portal\repository\EvangelismMonthlyActivityEditRequestRepository.class
+com\overseas\portal\service\ApprovalTelegramService$1.class
 com\overseas\portal\service\WeeklyReportSchemaService.class
 com\overseas\portal\repository\SimulationChartSettingsRepository.class
 com\overseas\portal\repository\OrganizationChartRepository.class

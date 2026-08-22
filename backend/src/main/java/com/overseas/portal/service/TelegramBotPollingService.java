@@ -31,6 +31,7 @@ public class TelegramBotPollingService {
     private final SystemConfigRepository configRepository;
     private final TelegramBotService telegramBotService;
     private final WeeklyWorshipService weeklyWorshipService;
+    private final ApprovalTelegramService approvalTelegramService;
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final RestTemplate restTemplate = new RestTemplate();
 
@@ -92,6 +93,12 @@ public class TelegramBotPollingService {
 
     private void processSingleUpdate(Map<String, Object> update, TelegramBotConfig bot) {
         try {
+            Map<String, Object> callbackQuery = (Map<String, Object>) update.get("callback_query");
+            if (callbackQuery != null) {
+                handleApprovalCallback(callbackQuery, bot);
+                return;
+            }
+
             Map<String, Object> message = (Map<String, Object>) update.get("message");
             if (message == null) return;
 
@@ -164,6 +171,34 @@ public class TelegramBotPollingService {
             }
         } catch (Exception e) {
             log.error("Error processing telegram update: {}", e.getMessage());
+        }
+    }
+
+    /**
+     * 결재 텔레그램 알림의 [승인]/[반려] 인라인 버튼 클릭(callback_query) 처리.
+     * callback_data 형식: "appr|<targetType>|<requestId>|<A|R>"
+     */
+    private void handleApprovalCallback(Map<String, Object> callbackQuery, TelegramBotConfig bot) {
+        try {
+            String callbackId = (String) callbackQuery.get("id");
+            String data = (String) callbackQuery.get("data");
+            Map<String, Object> message = (Map<String, Object>) callbackQuery.get("message");
+            if (data == null || message == null) return;
+
+            Map<String, Object> chat = (Map<String, Object>) message.get("chat");
+            if (chat == null) return;
+            String chatId = String.valueOf(chat.get("id"));
+
+            String[] parts = data.split("\\|");
+            if (parts.length != 4 || !"appr".equals(parts[0])) return;
+            String targetType = parts[1];
+            Long requestId = Long.parseLong(parts[2]);
+            boolean approve = "A".equals(parts[3]);
+
+            String resultText = approvalTelegramService.handleDecisionCallback(targetType, requestId, chatId, approve);
+            telegramBotService.answerCallbackQuery(callbackId, resultText, bot.getBotToken());
+        } catch (Exception e) {
+            log.error("Error processing telegram approval callback: {}", e.getMessage());
         }
     }
 

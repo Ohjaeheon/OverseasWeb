@@ -75,6 +75,7 @@ export const ADMIN_MENU_CATALOG: SidebarItem[] = [
   { s: "sys", ico: "⚙️", label: "시스템 설정", path: "/adminsetting/settings" },
   { s: "messages", ico: "💬", label: "메시지 관리", path: "/adminsetting/messages" },
   { s: "menu_layout", ico: "🗂️", label: "메뉴 배치 관리", path: "/adminsetting/menu-layout" },
+  { s: "user_menu_layout", ico: "🗂️", label: "사용자 포탈 메뉴 배치 관리", path: "/adminsetting/user-menu-layout" },
   { s: "login_log", ico: "📥", label: "로그인 로그", path: "/adminsetting/login-logs" },
   { s: "access_log", ico: "📥", label: "접근로그", path: "/adminsetting/access-logs" },
   { s: "file_upload_logs", ico: "📥", label: "파일 업로드 로그", path: "/adminsetting/file-upload-logs" },

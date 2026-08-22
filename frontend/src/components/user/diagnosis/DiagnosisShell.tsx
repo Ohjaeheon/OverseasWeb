@@ -4,6 +4,7 @@ import { DiagnosisSubNav } from './DiagnosisSubNav';
 import { DiagnosisTopbar } from './DiagnosisTopbar';
 import { IntroGate } from './IntroGate';
 import { useDiagnosisData } from '../../../contexts/DiagnosisDataContext';
+import { userMenuLayoutService } from '../../../services/userMenuLayoutService';
 
 interface DiagnosisShellProps {
   showAdminBtn: boolean;
@@ -20,11 +21,21 @@ export const DiagnosisShell: React.FC<DiagnosisShellProps> = ({ showAdminBtn, sh
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [introVisible, setIntroVisible] = useState(true);
   const [showToTop, setShowToTop] = useState(false);
+  // 관리자가 /adminsetting/user-menu-layout에서 편집한 메뉴 배치를 DB에서 받아와 반영한다.
+  // navGroups.ts의 getSIDEBAR()는 호출 시점의 localStorage 캐시를 읽으므로, 조회가 끝난 뒤
+  // 이 트리를 한 번 더 리렌더시켜(useState tick) 하위 내비게이션 컴포넌트들이 최신 값을 읽게 한다.
+  const [, setMenuLayoutTick] = useState(0);
 
   useEffect(() => {
     const onScroll = () => setShowToTop(window.scrollY > 300);
     window.addEventListener('scroll', onScroll, { passive: true });
     return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+
+  useEffect(() => {
+    userMenuLayoutService.fetchUserMenuLayoutFromDb().then(() => {
+      setMenuLayoutTick((t) => t + 1);
+    });
   }, []);
 
   return (

@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { roleService } from '../../../services/roleService';
 import { sessionService } from '../../../services/sessionService';
 import { telegramService } from '../../../services/telegramService';
-import { SIDEBAR, isGroup, SidebarChild, SidebarItem, SidebarEntry, menuKeyForGroup, menuKeyForItem, menuKeyForChild } from './navGroups';
+import { getSIDEBAR, isGroup, SidebarChild, SidebarItem, SidebarEntry, menuKeyForGroup, menuKeyForItem, menuKeyForChild } from './navGroups';
 import { useMessageDictionary } from '../../../contexts/MessageDictionaryContext';
 
 function getCurrentUserRole(): string {
@@ -43,6 +43,7 @@ export const DiagnosisSidebar: React.FC<DiagnosisSidebarProps> = ({ isOpen, onCl
   };
 
   // 그룹 헤더는 뒤이어 보이는 항목이 하나라도 있을 때만 표시
+  const SIDEBAR = getSIDEBAR();
   const filtered: SidebarEntry[] = [];
   for (let i = 0; i < SIDEBAR.length; i++) {
     const item = SIDEBAR[i];

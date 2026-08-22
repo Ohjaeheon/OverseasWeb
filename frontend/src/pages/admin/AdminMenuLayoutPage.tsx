@@ -7,7 +7,8 @@ import {
   ADMIN_MENU_CATALOG,
   SidebarItem,
   menuKeyForAdminGroup,
-  menuKeyForAdminItem
+  menuKeyForAdminItem,
+  menuKeyForAdminChild
 } from '../../components/admin/adminMenuCatalog';
 
 interface EditorGroup {
@@ -49,9 +50,13 @@ function moveArrayItem<T>(arr: T[], from: number, to: number): T[] {
 type DragSource =
   | { kind: 'group'; groupIdx: number }
   | { kind: 'item'; groupIdx: number; itemIdx: number }
-  | { kind: 'catalog'; item: SidebarItem };
+  | { kind: 'catalog'; item: SidebarItem }
+  | { kind: 'child'; groupIdx: number; itemIdx: number; childIdx: number };
 
-type EditingKey = { kind: 'group'; groupIdx: number } | { kind: 'item'; groupIdx: number; itemIdx: number };
+type EditingKey =
+  | { kind: 'group'; groupIdx: number }
+  | { kind: 'item'; groupIdx: number; itemIdx: number }
+  | { kind: 'child'; groupIdx: number; itemIdx: number; childIdx: number };
 
 const cardStyle: React.CSSProperties = {
   background: '#ffffff',
@@ -68,6 +73,16 @@ export const AdminMenuLayoutPage: React.FC = () => {
   const [dropHint, setDropHint] = useState<string | null>(null);
   const [editing, setEditing] = useState<EditingKey | null>(null);
   const [editValue, setEditValue] = useState('');
+  const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
+
+  const toggleExpand = (groupIdx: number, itemIdx: number) => {
+    const key = `${groupIdx}:${itemIdx}`;
+    setExpandedItems((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      return next;
+    });
+  };
 
   const usedKeys = useMemo(() => {
     const set = new Set<string>();
@@ -94,6 +109,12 @@ export const AdminMenuLayoutPage: React.FC = () => {
     setEditing({ kind: 'item', groupIdx, itemIdx });
   };
 
+  const startEditChild = (groupIdx: number, itemIdx: number, childIdx: number) => {
+    const ch = groups[groupIdx].items[itemIdx].children![childIdx];
+    setEditValue(getMsg(menuKeyForAdminChild(ch), ch.label).replace(/^__/, ''));
+    setEditing({ kind: 'child', groupIdx, itemIdx, childIdx });
+  };
+
   const confirmEdit = async () => {
     if (!editing) return;
     const value = editValue.trim();
@@ -102,9 +123,12 @@ export const AdminMenuLayoutPage: React.FC = () => {
       if (editing.kind === 'group') {
         const g = groups[editing.groupIdx];
         await messageService.upsertMessage(menuKeyForAdminGroup(groupKeyOf(g.groupLabel)), 'ko', value, '관리자메뉴');
-      } else {
+      } else if (editing.kind === 'item') {
         const it = groups[editing.groupIdx].items[editing.itemIdx];
         await messageService.upsertMessage(menuKeyForAdminItem(it), 'ko', value, '관리자메뉴');
+      } else {
+        const ch = groups[editing.groupIdx].items[editing.itemIdx].children![editing.childIdx];
+        await messageService.upsertMessage(menuKeyForAdminChild(ch), 'ko', value, '관리자메뉴');
       }
       reload();
     } catch (e) {
@@ -135,7 +159,7 @@ export const AdminMenuLayoutPage: React.FC = () => {
   };
 
   const dropItemInto = (targetGroupIdx: number, targetItemIdx: number) => {
-    if (!dragSource || dragSource.kind === 'group') return;
+    if (!dragSource || dragSource.kind === 'group' || dragSource.kind === 'child') return;
     setGroups((prev) => {
       const next = prev.map((g) => ({ ...g, items: [...g.items] }));
       let movedItem: SidebarItem;
@@ -149,6 +173,27 @@ export const AdminMenuLayoutPage: React.FC = () => {
         movedItem = dragSource.item;
       }
       next[targetGroupIdx].items.splice(insertAt, 0, movedItem);
+      return next;
+    });
+    setDragSource(null);
+    setDropHint(null);
+  };
+
+  // 하위 메뉴는 소속된 상위 항목과 함께만 이동하므로(상위가 바뀌면 그룹 배치와 별개의 의미가 됨),
+  // 같은 상위 항목 안에서의 순서 변경만 허용한다.
+  const dropChildInto = (targetGroupIdx: number, targetItemIdx: number, targetChildIdx: number) => {
+    if (!dragSource || dragSource.kind !== 'child') return;
+    if (dragSource.groupIdx !== targetGroupIdx || dragSource.itemIdx !== targetItemIdx) return;
+    setGroups((prev) => {
+      const next = prev.map((g) => ({
+        ...g,
+        items: g.items.map((it) => (it.children ? { ...it, children: [...it.children] } : it))
+      }));
+      const children = next[targetGroupIdx].items[targetItemIdx].children!;
+      let insertAt = targetChildIdx;
+      const [moved] = children.splice(dragSource.childIdx, 1);
+      if (dragSource.childIdx < targetChildIdx) insertAt -= 1;
+      children.splice(insertAt, 0, moved);
       return next;
     });
     setDragSource(null);
@@ -287,37 +332,83 @@ export const AdminMenuLayoutPage: React.FC = () => {
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                {g.items.map((it, itemIdx) => (
-                  <div
-                    key={it.s || itemIdx}
-                    draggable
-                    onDragStart={() => setDragSource({ kind: 'item', groupIdx, itemIdx })}
-                    onDragEnd={() => { setDragSource(null); setDropHint(null); }}
-                    onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); if (dragSource) setDropHint(`item-${groupIdx}-${itemIdx}`); }}
-                    onDrop={(e) => { e.preventDefault(); e.stopPropagation(); dropItemInto(groupIdx, itemIdx); }}
-                    style={{
-                      display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 10px',
-                      borderRadius: '8px', cursor: 'grab', fontSize: '0.87rem', color: '#334155',
-                      background: dropHint === `item-${groupIdx}-${itemIdx}` ? '#eff6ff' : 'transparent',
-                      border: dropHint === `item-${groupIdx}-${itemIdx}` ? '1px dashed #2563eb' : '1px solid transparent'
-                    }}
-                  >
-                    <GripVertical size={14} color="#cbd5e1" />
-                    <span>{it.ico}</span>
-                    {editing?.kind === 'item' && editing.groupIdx === groupIdx && editing.itemIdx === itemIdx ? (
-                      rowLabelInput(editValue, confirmEdit)
-                    ) : (
-                      <>
-                        <span style={{ flex: 1 }}>{getMsg(menuKeyForAdminItem(it), it.label || '').replace(/^__/, '')}</span>
-                        {it.children && it.children.length > 0 && (
-                          <span style={{ fontSize: '0.72rem', color: '#94a3b8' }}>하위 {it.children.length}개 (함께 이동)</span>
+                {g.items.map((it, itemIdx) => {
+                  const hasChildren = !!it.children && it.children.length > 0;
+                  const expandKey = `${groupIdx}:${itemIdx}`;
+                  const isExpanded = expandedItems.has(expandKey);
+                  return (
+                    <div key={it.s || itemIdx}>
+                      <div
+                        draggable
+                        onDragStart={() => setDragSource({ kind: 'item', groupIdx, itemIdx })}
+                        onDragEnd={() => { setDragSource(null); setDropHint(null); }}
+                        onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); if (dragSource) setDropHint(`item-${groupIdx}-${itemIdx}`); }}
+                        onDrop={(e) => { e.preventDefault(); e.stopPropagation(); dropItemInto(groupIdx, itemIdx); }}
+                        style={{
+                          display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 10px',
+                          borderRadius: '8px', cursor: 'grab', fontSize: '0.87rem', color: '#334155',
+                          background: dropHint === `item-${groupIdx}-${itemIdx}` ? '#eff6ff' : 'transparent',
+                          border: dropHint === `item-${groupIdx}-${itemIdx}` ? '1px dashed #2563eb' : '1px solid transparent'
+                        }}
+                      >
+                        <GripVertical size={14} color="#cbd5e1" />
+                        <span>{it.ico}</span>
+                        {editing?.kind === 'item' && editing.groupIdx === groupIdx && editing.itemIdx === itemIdx ? (
+                          rowLabelInput(editValue, confirmEdit)
+                        ) : (
+                          <>
+                            <span style={{ flex: 1 }}>{getMsg(menuKeyForAdminItem(it), it.label || '').replace(/^__/, '')}</span>
+                            {hasChildren && (
+                              <button
+                                onClick={() => toggleExpand(groupIdx, itemIdx)}
+                                style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: '0.72rem', color: '#2563eb', fontWeight: 700 }}
+                              >
+                                {isExpanded ? '▾' : '▸'} 하위 {it.children!.length}개
+                              </button>
+                            )}
+                            <button onClick={() => startEditItem(groupIdx, itemIdx)} style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#94a3b8' }}><Pencil size={13} /></button>
+                            <button onClick={() => removeItem(groupIdx, itemIdx)} style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#ef4444' }}><Trash2 size={14} /></button>
+                          </>
                         )}
-                        <button onClick={() => startEditItem(groupIdx, itemIdx)} style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#94a3b8' }}><Pencil size={13} /></button>
-                        <button onClick={() => removeItem(groupIdx, itemIdx)} style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#ef4444' }}><Trash2 size={14} /></button>
-                      </>
-                    )}
-                  </div>
-                ))}
+                      </div>
+
+                      {hasChildren && isExpanded && (
+                        <div
+                          style={{ display: 'flex', flexDirection: 'column', gap: '2px', marginLeft: '30px', marginTop: '2px' }}
+                          onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                          onDrop={(e) => { e.preventDefault(); e.stopPropagation(); dropChildInto(groupIdx, itemIdx, it.children!.length); }}
+                        >
+                          {it.children!.map((ch, childIdx) => (
+                            <div
+                              key={childIdx}
+                              draggable
+                              onDragStart={() => setDragSource({ kind: 'child', groupIdx, itemIdx, childIdx })}
+                              onDragEnd={() => { setDragSource(null); setDropHint(null); }}
+                              onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); if (dragSource) setDropHint(`child-${groupIdx}-${itemIdx}-${childIdx}`); }}
+                              onDrop={(e) => { e.preventDefault(); e.stopPropagation(); dropChildInto(groupIdx, itemIdx, childIdx); }}
+                              style={{
+                                display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 10px',
+                                borderRadius: '8px', cursor: 'grab', fontSize: '0.82rem', color: '#475569',
+                                background: dropHint === `child-${groupIdx}-${itemIdx}-${childIdx}` ? '#eff6ff' : 'transparent',
+                                border: dropHint === `child-${groupIdx}-${itemIdx}-${childIdx}` ? '1px dashed #2563eb' : '1px solid transparent'
+                              }}
+                            >
+                              <GripVertical size={12} color="#cbd5e1" />
+                              {editing?.kind === 'child' && editing.groupIdx === groupIdx && editing.itemIdx === itemIdx && editing.childIdx === childIdx ? (
+                                rowLabelInput(editValue, confirmEdit)
+                              ) : (
+                                <>
+                                  <span style={{ flex: 1 }}>• {getMsg(menuKeyForAdminChild(ch), ch.label).replace(/^__/, '')}</span>
+                                  <button onClick={() => startEditChild(groupIdx, itemIdx, childIdx)} style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#94a3b8' }}><Pencil size={12} /></button>
+                                </>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
                 {g.items.length === 0 && (
                   <div style={{ fontSize: '0.8rem', color: '#cbd5e1', padding: '10px', border: '1px dashed #e2e8f0', borderRadius: '8px', textAlign: 'center' }}>
                     여기로 항목을 드래그해서 놓으세요

@@ -8,6 +8,7 @@ import com.overseas.portal.repository.EvangelismMonthlyActivityRepository;
 import com.overseas.portal.repository.EvangelismMonthlyActivityEditRequestRepository;
 import com.overseas.portal.repository.UserRepository;
 import com.overseas.portal.service.ApprovalInstanceService;
+import com.overseas.portal.service.ApprovalTelegramService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -34,6 +35,7 @@ public class EvangelismMonthlyActivityController {
     private final EvangelismMonthlyActivityEditRequestRepository editRequestRepository;
     private final UserRepository userRepository;
     private final ApprovalInstanceService approvalInstanceService;
+    private final ApprovalTelegramService approvalTelegramService;
     private final ObjectMapper objectMapper;
 
     private User currentUser() {
@@ -158,6 +160,7 @@ public class EvangelismMonthlyActivityController {
         try {
             ApprovalInstance instance = approvalInstanceService.createInstanceForRequest(APPROVAL_TARGET_TYPE, saved.getRequestId(), currentUser());
             syncRequestWithInstance(saved, instance);
+            approvalTelegramService.notifyAfterStateChange(APPROVAL_TARGET_TYPE, saved.getRequestId());
         } catch (IllegalStateException e) {
             // 결재라인 미구성 등으로 결재 인스턴스를 만들 수 없으면 신청 자체를 취소한다 (방금 저장한 요청 행도 함께 롤백)
             org.springframework.transaction.interceptor.TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
@@ -223,6 +226,7 @@ public class EvangelismMonthlyActivityController {
         try {
             ApprovalInstance instance = approvalInstanceService.decide(APPROVAL_TARGET_TYPE, id, currentUser().getUserId(), approve, comment);
             syncRequestWithInstance(req, instance);
+            approvalTelegramService.notifyAfterStateChange(APPROVAL_TARGET_TYPE, id);
             return encryptResponse(req);
         } catch (SecurityException e) {
             return ResponseEntity.status(403).body(Map.of("message", e.getMessage()));

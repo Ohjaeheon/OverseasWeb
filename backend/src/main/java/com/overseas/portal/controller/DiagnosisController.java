@@ -22,10 +22,12 @@ public class DiagnosisController {
         String permissions = diagnosisService.getMenuPermissions();
         String roleDefinitions = diagnosisService.getRoleDefinitions();
         String adminMenuLayout = diagnosisService.getAdminMenuLayout();
+        String userMenuLayout = diagnosisService.getUserMenuLayout();
         Map<String, String> response = new HashMap<>();
         response.put("permissions", permissions);
         response.put("roleDefinitions", roleDefinitions);
         response.put("adminMenuLayout", adminMenuLayout);
+        response.put("userMenuLayout", userMenuLayout);
         return ResponseEntity.ok(response);
     }
 

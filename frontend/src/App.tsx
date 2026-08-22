@@ -20,6 +20,7 @@ import { AdminApprovalLogPage } from './pages/admin/AdminApprovalLogPage';
 import { AdminSettingsPage } from './pages/admin/AdminSettingsPage';
 import { AdminMessagePage } from './pages/admin/AdminMessagePage';
 import { AdminMenuLayoutPage } from './pages/admin/AdminMenuLayoutPage';
+import { UserMenuLayoutPage } from './pages/admin/UserMenuLayoutPage';
 import { AdminLoginLogsPage } from './pages/admin/AdminLoginLogsPage';
 import { AdminAccessLogsPage } from './pages/admin/AdminAccessLogsPage';
 import { AdminFileUploadLogsPage } from './pages/admin/AdminFileUploadLogsPage';
@@ -209,6 +210,7 @@ export const App: React.FC = () => {
             <Route path="backdoor-ips" element={<BackdoorIpSettingPage />} />
             <Route path="messages" element={<AdminMessagePage />} />
             <Route path="menu-layout" element={<AdminMenuLayoutPage />} />
+            <Route path="user-menu-layout" element={<UserMenuLayoutPage />} />
             <Route path="login-logs" element={<AdminLoginLogsPage />} />
             <Route path="access-logs" element={<AdminAccessLogsPage />} />
             <Route path="file-upload-logs" element={<AdminFileUploadLogsPage />} />
