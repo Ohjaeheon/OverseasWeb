@@ -31,6 +31,12 @@ public class DiagnosisService {
                 .orElse("");
     }
 
+    public String getRoleDefinitions() {
+        return systemConfigRepository.findByConfigKey("role_definitions")
+                .map(config -> config.getConfigValue())
+                .orElse("");
+    }
+
     @Data
     @Builder
     public static class RecordDTO {

@@ -91,6 +91,7 @@ export const LoginPage: React.FC = () => {
               sessionService.startSession(userInfo, response.accessToken);
               try {
                 await roleService.fetchMenuPermissionsFromDb();
+                await roleService.fetchRolesFromDb();
               } catch (e) {
                 console.warn("Failed to fetch menu permissions on tg auto login", e);
               }
@@ -178,6 +179,7 @@ export const LoginPage: React.FC = () => {
 
         try {
           await roleService.fetchMenuPermissionsFromDb();
+          await roleService.fetchRolesFromDb();
         } catch (e) {
           console.warn("Failed to fetch menu permissions from DB on login", e);
         }
@@ -232,6 +234,7 @@ export const LoginPage: React.FC = () => {
 
         try {
           await roleService.fetchMenuPermissionsFromDb();
+          await roleService.fetchRolesFromDb();
         } catch (e) {
           console.warn("Failed to fetch menu permissions from DB on login", e);
         }
@@ -312,6 +315,7 @@ export const LoginPage: React.FC = () => {
 
         try {
           await roleService.fetchMenuPermissionsFromDb();
+          await roleService.fetchRolesFromDb();
         } catch (e) {
           console.warn("Failed to fetch menu permissions from DB on backdoor login", e);
         }

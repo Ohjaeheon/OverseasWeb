@@ -28,6 +28,9 @@ const ADMIN_ROUTE_MENU_KEYS: Record<string, string> = {
   'access-logs': 'access_logs',
   'file-upload-logs': 'file_upload_logs',
   'file-download-logs': 'file_download_logs',
+  'org-structure': 'org_structure',
+  'approval-line': 'approval_line',
+  'approval-log': 'approval_log',
 };
 
 export const AdminGuard: React.FC = () => {

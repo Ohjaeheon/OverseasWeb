@@ -9,14 +9,8 @@ import java.util.List;
 @Repository
 public interface MembershipEditRequestRepository extends JpaRepository<MembershipEditRequest, Long> {
 
-    List<MembershipEditRequest> findByStatus(String status);
-
-    List<MembershipEditRequest> findByStatusIn(List<String> statuses);
-
-    List<MembershipEditRequest> findByRequestedToAndStatus(String requestedTo, String status);
-
-    List<MembershipEditRequest> findByRequestedToAndStatusIn(String requestedTo, List<String> statuses);
-
     List<MembershipEditRequest> findByChurchNameAndYearStrAndMonthKeyAndStatus(
             String churchName, String yearStr, String monthKey, String status);
+
+    List<MembershipEditRequest> findByRequestedByOrderByRequestedAtDesc(String requestedBy);
 }

@@ -20,8 +20,10 @@ public class DiagnosisController {
     @GetMapping("/permissions")
     public ResponseEntity<Map<String, String>> getMenuPermissions() {
         String permissions = diagnosisService.getMenuPermissions();
+        String roleDefinitions = diagnosisService.getRoleDefinitions();
         Map<String, String> response = new HashMap<>();
         response.put("permissions", permissions);
+        response.put("roleDefinitions", roleDefinitions);
         return ResponseEntity.ok(response);
     }
 

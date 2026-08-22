@@ -15,6 +15,8 @@ import { AdminFaithPage } from './pages/admin/AdminFaithPage';
 import { AdminRolePage } from './pages/admin/AdminRolePage';
 import { AdminPermissionPage } from './pages/admin/AdminPermissionPage';
 import { AdminOrgStructurePage } from './pages/admin/AdminOrgStructurePage';
+import { AdminApprovalLinePage } from './pages/admin/AdminApprovalLinePage';
+import { AdminApprovalLogPage } from './pages/admin/AdminApprovalLogPage';
 import { AdminSettingsPage } from './pages/admin/AdminSettingsPage';
 import { AdminMessagePage } from './pages/admin/AdminMessagePage';
 import { AdminLoginLogsPage } from './pages/admin/AdminLoginLogsPage';
@@ -93,6 +95,7 @@ export const App: React.FC = () => {
     const syncPermissions = async () => {
       try {
         await roleService.fetchMenuPermissionsFromDb();
+        await roleService.fetchRolesFromDb();
       } catch (e) {
         console.warn("Failed to sync permissions on app start", e);
       }
@@ -156,6 +159,7 @@ export const App: React.FC = () => {
         <Route path="/business/mission/archive" element={<DiagnosisPage section="business/mission/archive" tab="mission_archive" />} />
         <Route path="/approvals/pending" element={<DiagnosisPage section="approvals/pending" />} />
         <Route path="/approvals/completed" element={<DiagnosisPage section="approvals/completed" />} />
+        <Route path="/approvals/submitted" element={<DiagnosisPage section="approvals/submitted" />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/profile" element={<DiagnosisPage section="profile" />} />
         <Route path="/weekly-report" element={<DiagnosisPage section="weekly-report" />} />
@@ -195,6 +199,8 @@ export const App: React.FC = () => {
             <Route path="roles" element={<AdminRolePage />} />
             <Route path="permissions" element={<AdminPermissionPage />} />
             <Route path="org-structure" element={<AdminOrgStructurePage />} />
+            <Route path="approval-line" element={<AdminApprovalLinePage />} />
+            <Route path="approval-log" element={<AdminApprovalLogPage />} />
 
             {/* 로그 및 시스템 */}
             <Route path="bot" element={<AdminBotPage />} />

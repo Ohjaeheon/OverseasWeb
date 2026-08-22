@@ -65,6 +65,7 @@ export const SIDEBAR: SidebarEntry[] = [
   { grp: '결 재' },
   { s: 'approvals/pending', ico: '📥', label: '결재 대기중인 건', path: '/approvals/pending' },
   { s: 'approvals/completed', ico: '📋', label: '결재 완료 건', path: '/approvals/completed' },
+  { s: 'approvals/submitted', ico: '📝', label: '결재 상신 내역', path: '/approvals/submitted' },
 ];
 
 // 메시지 사전(i18n_dictionary) 조회용 안정적인 키 도출 — 기존 s/grp/cat/tab 식별자를 그대로 재사용한다.

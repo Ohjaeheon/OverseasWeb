@@ -9,14 +9,8 @@ import java.util.List;
 @Repository
 public interface EvangelismEditRequestRepository extends JpaRepository<EvangelismEditRequest, Long> {
 
-    List<EvangelismEditRequest> findByStatus(String status);
-
-    List<EvangelismEditRequest> findByStatusIn(List<String> statuses);
-
-    List<EvangelismEditRequest> findByRequestedToAndStatus(String requestedTo, String status);
-
-    List<EvangelismEditRequest> findByRequestedToAndStatusIn(String requestedTo, List<String> statuses);
-
     List<EvangelismEditRequest> findByChurchNameAndYearStrAndWeekKeyAndStatus(
             String churchName, String yearStr, String weekKey, String status);
+
+    List<EvangelismEditRequest> findByRequestedByOrderByRequestedAtDesc(String requestedBy);
 }

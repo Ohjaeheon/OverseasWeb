@@ -1,0 +1,19 @@
+package com.overseas.portal.dto;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+import java.util.List;
+
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class ApprovalLineStepDto {
+    private Long id;
+    private Integer stepOrder;
+    private String name;
+    private List<ApprovalLineStepApproverDto> approvers;
+}

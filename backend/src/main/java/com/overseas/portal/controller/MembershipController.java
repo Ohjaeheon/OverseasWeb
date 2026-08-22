@@ -3,12 +3,17 @@ package com.overseas.portal.controller;
 import com.overseas.portal.domain.MembershipMonthlyRecord;
 import com.overseas.portal.domain.MembershipEditRequest;
 import com.overseas.portal.domain.EvangelismWeeklyRecord;
+import com.overseas.portal.domain.User;
+import com.overseas.portal.domain.ApprovalInstance;
 import com.overseas.portal.repository.MembershipMonthlyRecordRepository;
 import com.overseas.portal.repository.MembershipEditRequestRepository;
 import com.overseas.portal.repository.EvangelismWeeklyRecordRepository;
+import com.overseas.portal.repository.UserRepository;
+import com.overseas.portal.service.ApprovalInstanceService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import org.springframework.transaction.annotation.Transactional;
@@ -27,10 +32,36 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 @CrossOrigin(origins = "*")
 public class MembershipController {
 
+    private static final String APPROVAL_TARGET_TYPE = "MEMBERSHIP";
+
     private final MembershipMonthlyRecordRepository membershipMonthlyRecordRepository;
     private final MembershipEditRequestRepository membershipEditRequestRepository;
     private final EvangelismWeeklyRecordRepository evangelismWeeklyRecordRepository;
+    private final UserRepository userRepository;
+    private final ApprovalInstanceService approvalInstanceService;
     private final ObjectMapper objectMapper;
+
+    private User currentUser() {
+        String username = SecurityContextHolder.getContext().getAuthentication().getName();
+        return userRepository.findByUsername(username)
+                .orElseThrow(() -> new IllegalStateException("사용자를 찾을 수 없습니다."));
+    }
+
+    /** 결재 인스턴스 최신 상태를 MembershipEditRequest의 기존 status/approverComment/requestedTo 필드에 반영 (기존 화면 호환용). */
+    private void syncRequestWithInstance(MembershipEditRequest req, ApprovalInstance instance) {
+        if ("APPROVED".equals(instance.getStatus())) {
+            req.setStatus("APPROVED");
+            req.setApprovedAt(instance.getCompletedAt());
+        } else if ("REJECTED".equals(instance.getStatus())) {
+            req.setStatus("REJECTED");
+        }
+        String latestComment = approvalInstanceService.getLatestComment(instance.getId());
+        if (latestComment != null) {
+            req.setApproverComment(latestComment);
+        }
+        req.setRequestedTo(approvalInstanceService.describeCurrentState(instance));
+        membershipEditRequestRepository.save(req);
+    }
 
     private ResponseEntity<Map<String, Object>> encryptResponse(Object data) {
         Map<String, Object> response = new HashMap<>();
@@ -245,47 +276,48 @@ public class MembershipController {
     }
 
     @PostMapping("/edit-requests")
+    @Transactional
     public ResponseEntity<Map<String, Object>> createEditRequest(@RequestBody MembershipEditRequest request) {
         log.info("Creating membership edit request for church: {}, month: {}, by: {}", request.getChurchName(), request.getMonthKey(), request.getRequestedBy());
         request.setStatus("PENDING");
         request.setRequestedAt(ZonedDateTime.now());
+        request.setRequestedTo(""); // 결재라인 인스턴스 생성 후 아래에서 실제 대상으로 채워짐
         MembershipEditRequest saved = membershipEditRequestRepository.save(request);
+
+        try {
+            ApprovalInstance instance = approvalInstanceService.createInstanceForRequest(APPROVAL_TARGET_TYPE, saved.getRequestId(), currentUser());
+            syncRequestWithInstance(saved, instance);
+        } catch (IllegalStateException e) {
+            // 결재라인 미구성 등으로 결재 인스턴스를 만들 수 없으면 신청 자체를 취소한다 (방금 저장한 요청 행도 함께 롤백)
+            org.springframework.transaction.interceptor.TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+        }
+
         return encryptResponse(saved);
     }
 
-    private boolean isAdminRequest() {
-        org.springframework.security.core.Authentication auth =
-                org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
-        return auth != null && auth.getAuthorities().stream().anyMatch(a -> a.getAuthority().contains("ADMIN"));
-    }
-
     @GetMapping("/edit-requests/pending")
-    public ResponseEntity<Map<String, Object>> getPendingRequests(
-            @RequestParam(name = "username", required = false) String username,
-            @RequestParam(name = "name", required = false) String name) {
-        log.info("Fetching pending membership edit requests for name: {}", name);
-        List<MembershipEditRequest> list;
-        if (isAdminRequest()) {
-            list = membershipEditRequestRepository.findByStatus("PENDING");
-        } else {
-            list = membershipEditRequestRepository.findByRequestedToAndStatus(name != null ? name : "", "PENDING");
-        }
-        return encryptResponse(list);
+    public ResponseEntity<Map<String, Object>> getPendingRequests() {
+        User me = currentUser();
+        List<Long> targetIds = approvalInstanceService.getPendingTargetIdsForApprover(APPROVAL_TARGET_TYPE, me.getUserId());
+        return encryptResponse(membershipEditRequestRepository.findAllById(targetIds));
     }
 
     @GetMapping("/edit-requests/completed")
-    public ResponseEntity<Map<String, Object>> getCompletedRequests(
-            @RequestParam(name = "username", required = false) String username,
-            @RequestParam(name = "name", required = false) String name) {
-        log.info("Fetching completed membership edit requests for name: {}", name);
-        List<MembershipEditRequest> list;
+    public ResponseEntity<Map<String, Object>> getCompletedRequests() {
         List<String> completedStatuses = List.of("APPROVED", "REJECTED", "USED");
-        if (isAdminRequest()) {
-            list = membershipEditRequestRepository.findByStatusIn(completedStatuses);
-        } else {
-            list = membershipEditRequestRepository.findByRequestedToAndStatusIn(name != null ? name : "", completedStatuses);
-        }
+        User me = currentUser();
+        List<Long> targetIds = approvalInstanceService.getParticipatedTargetIds(APPROVAL_TARGET_TYPE, me.getUserId(), List.of("APPROVED", "REJECTED"));
+        List<MembershipEditRequest> list = membershipEditRequestRepository.findAllById(targetIds).stream()
+                .filter(r -> completedStatuses.contains(r.getStatus()))
+                .toList();
         return encryptResponse(list);
+    }
+
+    /** 결재 상신 내역 - 내가(신청자로서) 올린 요청 전체(진행 상태 무관). */
+    @GetMapping("/edit-requests/submitted")
+    public ResponseEntity<Map<String, Object>> getSubmittedRequests() {
+        return encryptResponse(membershipEditRequestRepository.findByRequestedByOrderByRequestedAtDesc(currentUser().getUsername()));
     }
 
     @PostMapping("/edit-requests/{id}/approve")
@@ -293,13 +325,7 @@ public class MembershipController {
             @PathVariable(name = "id") Long id,
             @RequestParam(name = "comment", required = false) String comment) {
         log.info("Approving membership edit request ID: {}, comment: {}", id, comment);
-        return membershipEditRequestRepository.findById(id).map(req -> {
-            req.setStatus("APPROVED");
-            req.setApprovedAt(ZonedDateTime.now());
-            req.setApproverComment(comment);
-            membershipEditRequestRepository.save(req);
-            return encryptResponse(req);
-        }).orElseGet(() -> ResponseEntity.notFound().build());
+        return decideRequest(id, true, comment);
     }
 
     @PostMapping("/edit-requests/{id}/reject")
@@ -307,12 +333,40 @@ public class MembershipController {
             @PathVariable(name = "id") Long id,
             @RequestParam(name = "comment", required = false) String comment) {
         log.info("Rejecting membership edit request ID: {}, comment: {}", id, comment);
-        return membershipEditRequestRepository.findById(id).map(req -> {
-            req.setStatus("REJECTED");
+        return decideRequest(id, false, comment);
+    }
+
+    private ResponseEntity<Map<String, Object>> decideRequest(Long id, boolean approve, String comment) {
+        MembershipEditRequest req = membershipEditRequestRepository.findById(id).orElse(null);
+        if (req == null) {
+            return ResponseEntity.notFound().build();
+        }
+
+        // 이 결재 건에 결재 인스턴스가 없으면(결재라인 연동 이전에 이미 대기 중이던 레거시 요청) 예전 방식(1차 결재로 즉시 종료)으로 처리한다.
+        if (approvalInstanceService.findInstance(APPROVAL_TARGET_TYPE, id).isEmpty()) {
+            req.setStatus(approve ? "APPROVED" : "REJECTED");
+            if (approve) req.setApprovedAt(ZonedDateTime.now());
             req.setApproverComment(comment);
             membershipEditRequestRepository.save(req);
             return encryptResponse(req);
-        }).orElseGet(() -> ResponseEntity.notFound().build());
+        }
+
+        try {
+            ApprovalInstance instance = approvalInstanceService.decide(APPROVAL_TARGET_TYPE, id, currentUser().getUserId(), approve, comment);
+            syncRequestWithInstance(req, instance);
+            return encryptResponse(req);
+        } catch (SecurityException e) {
+            return ResponseEntity.status(403).body(Map.of("message", e.getMessage()));
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+        }
+    }
+
+    @GetMapping("/edit-requests/{id}/approval-progress")
+    public ResponseEntity<Map<String, Object>> getApprovalProgress(@PathVariable(name = "id") Long id) {
+        return approvalInstanceService.getInstanceDto(APPROVAL_TARGET_TYPE, id)
+                .map(this::encryptResponse)
+                .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
     @GetMapping("/edit-requests/check")

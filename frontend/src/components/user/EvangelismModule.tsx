@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { logService } from '../../services/logService';
-import { adminService, UserItem } from '../../services/adminService';
+import { adminService } from '../../services/adminService';
 import { diagnosisService } from '../../services/diagnosisService';
 import defaultChurchesData from '../../assets/defaultChurches.json';
 import { Building2, Calendar, Lock, Send, CheckCircle2, Filter, HelpCircle, Plus, Pencil, Trash2, PieChart, TrendingUp, Activity, LayoutDashboard, X } from 'lucide-react';
 import { EvangelismPlanTab } from './EvangelismPlanTab';
 import { EvangelismMonthlyReportTab } from './EvangelismMonthlyReportTab';
 import { EvangelismMonthlyReportExportTab } from './EvangelismMonthlyReportExportTab';
+import { approvalLineService, ApprovalLinePreview, APPROVAL_RESOLVER_TYPE_LABELS } from '../../services/approvalLineService';
 
 import api from '../../services/api';
 
@@ -597,14 +598,22 @@ export const EvangelismModule: React.FC<EvangelismModuleProps> = ({ initialTab =
     setSelectedWeekAgg(config.currentWeekKey);
   }, [selectedYear]);
 
-  // 5. Admin Users list for Modal
-  const [adminUsers, setAdminUsers] = useState<UserItem[]>([]);
-
   // 6. Unlock Request Modal State
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [requestWeek, setRequestWeek] = useState<string>('7월2주차');
   const [requestReason, setRequestReason] = useState<string>('');
-  const [requestAdminUser, setRequestAdminUser] = useState<string>('');
+  const [approvalPreview, setApprovalPreview] = useState<ApprovalLinePreview | null>(null);
+  const [approvalPreviewLoading, setApprovalPreviewLoading] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (!isModalOpen) return;
+    setApprovalPreview(null);
+    setApprovalPreviewLoading(true);
+    approvalLineService.previewForCurrentUser('evangelism')
+      .then(setApprovalPreview)
+      .catch(() => setApprovalPreview(null))
+      .finally(() => setApprovalPreviewLoading(false));
+  }, [isModalOpen]);
 
   const [hasEditPermission, setHasEditPermission] = useState<boolean>(false);
   const [hasPrevEditPermission, setHasPrevEditPermission] = useState<boolean>(false);
@@ -778,25 +787,6 @@ export const EvangelismModule: React.FC<EvangelismModuleProps> = ({ initialTab =
       }
     };
     loadAvailableChurches();
-
-    // Load Overseas Admin Users for Modal
-    const loadUsers = async () => {
-      try {
-        const users = await adminService.getUsers();
-        const admins = users.filter(u => u.role === 'ROLE_USER' || u.role === 'ROLE_ADMIN');
-        setAdminUsers(admins);
-        if (admins.length > 0) {
-          setRequestAdminUser(admins[0].name);
-        }
-      } catch (e) {
-        setAdminUsers([
-          { username: 'user', name: '해외선교부 담당자', role: 'ROLE_USER' },
-          { username: 'admin', name: '최고 관리자', role: 'ROLE_ADMIN' }
-        ]);
-        setRequestAdminUser('해외선교부 담당자');
-      }
-    };
-    loadUsers();
   }, []);
 
   // Sync inputs with DB values on active week selection change
@@ -971,19 +961,18 @@ export const EvangelismModule: React.FC<EvangelismModuleProps> = ({ initialTab =
         yearStr: selectedYear,
         weekKey: requestWeek,
         reason: requestReason,
-        requestedBy: username,
-        requestedTo: requestAdminUser
+        requestedBy: username
       });
       logService.addAccessLog(
         `🔒 이전 주차 수정 요청 (${requestWeek})`,
         `/evangelism/request?week=${requestWeek}&reason=${encodeURIComponent(requestReason)}`
       );
-      alert(`[${requestWeek}] 데이터 수정 요청이 ${requestAdminUser} 담당자에게 성공적으로 전송되었습니다!\n승인 후 해당 주차 수정이 활성화됩니다.`);
+      alert(`[${requestWeek}] 데이터 수정 요청이 결재라인에 따라 담당자에게 성공적으로 전송되었습니다!\n승인 후 해당 주차 수정이 활성화됩니다.`);
       setIsModalOpen(false);
       setRequestReason('');
       window.dispatchEvent(new Event('refreshEditRequests'));
-    } catch (e) {
-      alert('수정 요청 전송 중 오류가 발생했습니다.');
+    } catch (e: any) {
+      alert(e?.response?.data?.message || '수정 요청 전송 중 오류가 발생했습니다.');
     }
   };
 
@@ -2207,32 +2196,38 @@ export const EvangelismModule: React.FC<EvangelismModuleProps> = ({ initialTab =
                 />
               </div>
 
-              {/* Admin User Target Field */}
+              {/* Resolved Approver Preview */}
               <div>
                 <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 800, color: '#334155', marginBottom: '6px' }}>
-                  요청 대상 담당자 (해외선교부)
+                  결재자
                 </label>
-                <select
-                  value={requestAdminUser}
-                  onChange={(e) => setRequestAdminUser(e.target.value)}
-                  style={{
-                    width: '100%',
-                    padding: '10px 14px',
-                    borderRadius: '10px',
-                    border: '1px solid #cbd5e1',
-                    fontSize: '0.88rem',
-                    fontWeight: 700,
-                    color: '#0f172a',
-                    outline: 'none',
-                    boxSizing: 'border-box'
-                  }}
-                >
-                  {adminUsers.map((u, i) => (
-                    <option key={i} value={u.name}>
-                      {u.name} ({u.username} · {u.role === 'ROLE_ADMIN' ? '최고 관리자' : '해외선교부 담당자'})
-                    </option>
-                  ))}
-                </select>
+                {approvalPreviewLoading ? (
+                  <div style={{ fontSize: '0.8rem', color: '#94a3b8', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '10px 14px' }}>
+                    결재자를 확인하는 중입니다...
+                  </div>
+                ) : !approvalPreview || approvalPreview.errorMessage ? (
+                  <div style={{ fontSize: '0.8rem', color: '#b91c1c', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '10px', padding: '10px 14px' }}>
+                    {approvalPreview?.errorMessage || '결재자 정보를 불러오지 못했습니다. 관리자에게 문의해주세요.'}
+                  </div>
+                ) : (
+                  <div style={{ fontSize: '0.8rem', color: '#334155', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '10px 14px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    {(approvalPreview.steps || []).map((step) => (
+                      <div key={step.stepOrder}>
+                        <span style={{ fontWeight: 800, color: '#0f172a' }}>{step.stepOrder}차 · {step.name}</span>
+                        {': '}
+                        {step.approvers.map((a, i) => (
+                          <span key={i} style={{ marginRight: '8px' }}>
+                            {a.error ? (
+                              <span style={{ color: '#dc2626' }}>[{APPROVAL_RESOLVER_TYPE_LABELS[a.resolverType]}: {a.error}]</span>
+                            ) : (
+                              <span>{a.resolvedUserName || '알 수 없음'}<span style={{ color: '#94a3b8' }}>({APPROVAL_RESOLVER_TYPE_LABELS[a.resolverType]})</span></span>
+                            )}
+                          </span>
+                        ))}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
 

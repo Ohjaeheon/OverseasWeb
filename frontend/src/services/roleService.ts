@@ -60,6 +60,7 @@ export const DEFAULT_MENUS: { menuKey: string; menuName: string; category: strin
   { menuKey: 'business_mission_archive', menuName: '     ㄴ 품의서 및 회의록 보관', category: '🖥️ 일반 사용자 진단서 포탈', path: '/business/mission/archive' },
   { menuKey: 'approvals_pending', menuName: '📥 결재 대기중인 건', category: '🖥️ 일반 사용자 진단서 포탈', path: '/approvals/pending' },
   { menuKey: 'approvals_completed', menuName: '📋 결재 완료 건', category: '🖥️ 일반 사용자 진단서 포탈', path: '/approvals/completed' },
+  { menuKey: 'approvals_submitted', menuName: '📝 결재 상신 내역', category: '🖥️ 일반 사용자 진단서 포탈', path: '/approvals/submitted' },
   { menuKey: 'weekly_report_root', menuName: '📋 업무', category: '🖥️ 일반 사용자 진단서 포탈', path: '/weekly-report' },
   { menuKey: 'weekly_report_sub', menuName: '   ㄴ 주간보고', category: '🖥️ 일반 사용자 진단서 포탈', path: '/weekly-report' },
   { menuKey: 'weekly_report_input', menuName: '     ㄴ 보고입력', category: '🖥️ 일반 사용자 진단서 포탈', path: '/weekly-report/input' },
@@ -83,6 +84,8 @@ export const DEFAULT_MENUS: { menuKey: string; menuName: string; category: strin
   { menuKey: 'roles', menuName: '📈 권한 그룹 및 회원 할당', category: '⚙️ 관리자 전용 (adminsetting)', path: '/adminsetting/roles' },
   { menuKey: 'perm', menuName: '🔑 권한별 접근 메뉴 설정', category: '⚙️ 관리자 전용 (adminsetting)', path: '/adminsetting/permissions' },
   { menuKey: 'org_structure', menuName: '🏢 조직 관리 (교회·부서·팀)', category: '⚙️ 관리자 전용 (adminsetting)', path: '/adminsetting/org-structure' },
+  { menuKey: 'approval_line', menuName: '📋 결재라인 관리', category: '⚙️ 관리자 전용 (adminsetting)', path: '/adminsetting/approval-line' },
+  { menuKey: 'approval_log', menuName: '🗒️ 통합결재 로그', category: '⚙️ 관리자 전용 (adminsetting)', path: '/adminsetting/approval-log' },
   { menuKey: 'login_logs', menuName: '📥 로그인 로그 관리', category: '⚙️ 관리자 전용 (adminsetting)', path: '/adminsetting/login-logs' },
   { menuKey: 'access_logs', menuName: '📥 접근 로그 관리', category: '⚙️ 관리자 전용 (adminsetting)', path: '/adminsetting/access-logs' },
   { menuKey: 'file_upload_logs', menuName: '📥 파일 업로드 로그 관리', category: '⚙️ 관리자 전용 (adminsetting)', path: '/adminsetting/file-upload-logs' },
@@ -116,10 +119,29 @@ export const roleService = {
   },
 
   saveRoles: (roles: RoleDefinition[]) => {
+    const jsonStr = JSON.stringify(roles);
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(roles));
+      localStorage.setItem(STORAGE_KEY, jsonStr);
     } catch (e) {
       console.warn("Failed to save roles to localStorage", e);
+    }
+    // 권한 목록은 브라우저별 localStorage에만 있으면 다른 브라우저/기기에서 사라진 것처럼 보이므로 DB에도 동기화한다.
+    api.put('/admin/configs', {
+      configKey: 'role_definitions',
+      configValue: jsonStr
+    }).catch((e) => {
+      console.warn("Failed to save role definitions to DB", e);
+    });
+  },
+
+  fetchRolesFromDb: async (): Promise<void> => {
+    try {
+      const res = await api.get<{ roleDefinitions: string }>('/diagnosis/permissions');
+      if (res.data && res.data.roleDefinitions) {
+        localStorage.setItem(STORAGE_KEY, res.data.roleDefinitions);
+      }
+    } catch (e) {
+      console.warn("Failed to fetch role definitions from DB", e);
     }
   },
 
@@ -298,6 +320,7 @@ export const roleService = {
     if (menuKey === 'business') normKey = 'business';
     if (menuKey === 'approvals/pending') normKey = 'approvals_pending';
     if (menuKey === 'approvals/completed') normKey = 'approvals_completed';
+    if (menuKey === 'approvals/submitted') normKey = 'approvals_submitted';
 
     const permissions = roleService.getMenuPermissions();
     const matchedMenu = permissions.find(m => m.menuKey === normKey || m.path.includes(normKey));

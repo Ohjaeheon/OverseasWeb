@@ -74,6 +74,8 @@ const RAW_SIDEBAR: SidebarItem[] = [
   { s: "roles", ico: "📈", label: "권한 목록 및 소속 회원 관리", path: "/adminsetting/roles" },
   { s: "perm", ico: "🔑", label: "권한별 접근 메뉴 설정", path: "/adminsetting/permissions" },
   { s: "org_structure", ico: "🏢", label: "조직 관리 (교회·부서·팀)", path: "/adminsetting/org-structure" },
+  { s: "approval_line", ico: "📋", label: "결재라인 관리", path: "/adminsetting/approval-line" },
+  { s: "approval_log", ico: "🗒️", label: "통합결재 로그", path: "/adminsetting/approval-log" },
 
   { grp: "로그 및 시스템" },
   { s: "admin_bot", ico: "🤖", label: "봇 연결 관리", path: "/adminsetting/bot" },

@@ -53,7 +53,7 @@ const SECTION_TO_MENU_KEY: Record<string, string> = {
   'business/fruit': 'business_fruit', 'business/fruit/archive': 'business_fruit_archive',
   'business/transport': 'business_transport', 'business/transport/archive': 'business_transport_archive',
   'business/mission': 'business_mission', 'business/mission/archive': 'business_mission_archive',
-  'approvals/pending': 'approvals_pending', 'approvals/completed': 'approvals_completed',
+  'approvals/pending': 'approvals_pending', 'approvals/completed': 'approvals_completed', 'approvals/submitted': 'approvals_submitted',
   'weekly-report': 'weekly_report_sub', 'weekly-report/input': 'weekly_report_input',
 };
 
@@ -230,7 +230,10 @@ export const DiagnosisPage: React.FC<DiagnosisPageProps> = ({ section = 'home', 
     if (section === 'business' || section.startsWith('business/')) return <BusinessModule initialTab={tab as any} />;
     if (section === 'weekly-report') return <UnderConstructionNotice title="주간보고" description="전도·가개강처럼 표와 그래프로 볼 수 있는 주간보고 통계 대시보드가 추후 제공됩니다. 지금은 좌측 하위 메뉴의 '보고입력'에서 주간보고를 입력할 수 있습니다." />;
     if (section === 'weekly-report/input') return <WeeklyReportPage />;
-    if (section === 'approvals/pending' || section === 'approvals/completed') return <ApprovalModule mode={section === 'approvals/pending' ? 'pending' : 'completed'} />;
+    if (section === 'approvals/pending' || section === 'approvals/completed' || section === 'approvals/submitted') {
+      const approvalMode = section === 'approvals/pending' ? 'pending' : section === 'approvals/completed' ? 'completed' : 'submitted';
+      return <ApprovalModule mode={approvalMode} />;
+    }
 
     if (section === 'home') return <HomePage />;
     if (section === 'diag') return <DiagPage />;

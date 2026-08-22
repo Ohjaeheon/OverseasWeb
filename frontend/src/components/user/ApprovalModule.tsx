@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Check, X, RefreshCw, Clock, CheckCircle2, AlertTriangle, User, Calendar, MapPin, MessageSquare, Info } from 'lucide-react';
+import { Check, X, RefreshCw, Clock, CheckCircle2, AlertTriangle, User, Calendar, MapPin, MessageSquare, Info, ArrowRight } from 'lucide-react';
 import api from '../../services/api';
 
 interface EditRequest {
@@ -18,6 +18,36 @@ interface EditRequest {
   type: 'evangelism' | 'membership' | 'monthlyActivity';
 }
 
+interface ApprovalProgressApprover {
+  userId?: number;
+  userName?: string;
+  resolverType: 'TEAM_LEADER' | 'DEPARTMENT_LEADER' | 'SPECIFIC_USER';
+  decision?: 'APPROVED' | 'REJECTED' | null;
+  decidedAt?: string;
+  comment?: string;
+  selfApproved: boolean;
+}
+
+interface ApprovalProgressStep {
+  stepOrder: number;
+  name?: string;
+  status: 'PENDING' | 'APPROVED' | 'REJECTED';
+  approvers: ApprovalProgressApprover[];
+}
+
+interface ApprovalProgress {
+  status: 'PENDING' | 'APPROVED' | 'REJECTED';
+  currentStepOrder?: number;
+  steps: ApprovalProgressStep[];
+}
+
+// 결재라인 엔진이 연동된 결재 유형만 진행 현황을 보여준다
+const PROGRESS_API_PATHS: Partial<Record<EditRequest['type'], string>> = {
+  evangelism: 'evangelism',
+  membership: 'membership',
+  monthlyActivity: 'evangelism/monthly-activity',
+};
+
 const TYPE_LABELS: Record<EditRequest['type'], string> = {
   evangelism: '전도', membership: '내무', monthlyActivity: '전도(월간보고)',
 };
@@ -31,8 +61,33 @@ const TYPE_BADGE_COLORS: Record<EditRequest['type'], { bg: string; fg: string }>
 };
 
 interface ApprovalModuleProps {
-  mode: 'pending' | 'completed';
+  mode: 'pending' | 'completed' | 'submitted';
 }
+
+const MODE_ENDPOINT_SUFFIX: Record<ApprovalModuleProps['mode'], string> = {
+  pending: 'pending', completed: 'completed', submitted: 'submitted',
+};
+
+const MODE_TITLES: Record<ApprovalModuleProps['mode'], string> = {
+  pending: '📥 실적 수정 결재 대기함',
+  completed: '📋 실적 수정 결재 완료함',
+  submitted: '📝 결재 상신 내역',
+};
+const MODE_DESCRIPTIONS: Record<ApprovalModuleProps['mode'], string> = {
+  pending: '현재 내가 결재해야 할 실적 수정 요청 목록입니다. (목록을 누르면 세부 내용을 확인하고 결재할 수 있습니다.)',
+  completed: '내가 승인 또는 반려 처리한 결재 이력 목록입니다. (목록을 누르면 결재 상세 정보를 확인할 수 있습니다.)',
+  submitted: '내가 상신한 실적 수정 요청 전체 목록입니다. (목록을 누르면 진행 상황을 확인할 수 있습니다.)',
+};
+const MODE_EMPTY_TITLES: Record<ApprovalModuleProps['mode'], string> = {
+  pending: '대기 중인 결재 건이 없습니다.',
+  completed: '완료된 결재 이력이 없습니다.',
+  submitted: '상신한 결재 건이 없습니다.',
+};
+const MODE_EMPTY_DESCRIPTIONS: Record<ApprovalModuleProps['mode'], string> = {
+  pending: '내가 결재해야 할 실적 수정 요청이 없습니다.',
+  completed: '내가 결재를 처리하면 이곳에 이력이 표시됩니다.',
+  submitted: '실적 수정 요청을 상신하면 이곳에 이력이 표시됩니다.',
+};
 
 export const ApprovalModule: React.FC<ApprovalModuleProps> = ({ mode }) => {
   const [requests, setRequests] = useState<EditRequest[]>([]);
@@ -41,25 +96,19 @@ export const ApprovalModule: React.FC<ApprovalModuleProps> = ({ mode }) => {
   const [actionLoadingId, setActionLoadingId] = useState<number | null>(null);
   const [selectedRequest, setSelectedRequest] = useState<EditRequest | null>(null);
   const [opinion, setOpinion] = useState<string>('');
+  const [progress, setProgress] = useState<ApprovalProgress | null>(null);
+  const [progressLoading, setProgressLoading] = useState<boolean>(false);
 
   const fetchRequests = async () => {
     setLoading(true);
     setError(null);
     try {
-      const userStr = localStorage.getItem('user');
-      if (!userStr) {
-        setError('로그인 사용자 정보를 찾을 수 없습니다.');
-        setLoading(false);
-        return;
-      }
-      const u = JSON.parse(userStr);
-      const suffix = mode === 'pending' ? 'pending' : 'completed';
-      const queryParams = `?username=${u.username}&role=${u.role}&name=${encodeURIComponent(u.name)}`;
+      const suffix = MODE_ENDPOINT_SUFFIX[mode];
 
       const [evangRes, memberRes, monthlyRes] = await Promise.all([
-        api.get<any>(`/evangelism/edit-requests/${suffix}${queryParams}`),
-        api.get<any>(`/membership/edit-requests/${suffix}${queryParams}`),
-        api.get<any>(`/evangelism/monthly-activity/edit-requests/${suffix}${queryParams}`),
+        api.get<any>(`/evangelism/edit-requests/${suffix}`),
+        api.get<any>(`/membership/edit-requests/${suffix}`),
+        api.get<any>(`/evangelism/monthly-activity/edit-requests/${suffix}`),
       ]);
 
       const evangList = (evangRes.data || []).map((r: any) => ({ ...r, type: 'evangelism' }));
@@ -83,6 +132,16 @@ export const ApprovalModule: React.FC<ApprovalModuleProps> = ({ mode }) => {
 
   useEffect(() => {
     setOpinion('');
+    setProgress(null);
+
+    const progressPath = selectedRequest ? PROGRESS_API_PATHS[selectedRequest.type] : undefined;
+    if (!selectedRequest || !progressPath) return;
+
+    setProgressLoading(true);
+    api.get<ApprovalProgress>(`/${progressPath}/edit-requests/${selectedRequest.requestId}/approval-progress`)
+      .then(res => setProgress(res.data))
+      .catch(() => setProgress(null)) // 결재라인 연동 이전 레거시 요청 등 인스턴스가 없으면 조용히 생략
+      .finally(() => setProgressLoading(false));
   }, [selectedRequest]);
 
   const handleApprove = async (id: number, type: EditRequest['type'], comment: string) => {
@@ -170,12 +229,10 @@ export const ApprovalModule: React.FC<ApprovalModuleProps> = ({ mode }) => {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '14px' }}>
         <div>
           <h2 style={{ fontSize: '1.3rem', fontWeight: 800, color: '#0f172a', margin: 0, display: 'flex', alignItems: 'center', gap: '10px' }}>
-            {mode === 'pending' ? '📥 실적 수정 결재 대기함' : '📋 실적 수정 결재 완료함'}
+            {MODE_TITLES[mode]}
           </h2>
           <p style={{ color: '#64748b', fontSize: '0.85rem', margin: '6px 0 0 0' }}>
-            {mode === 'pending' 
-              ? '지사 및 교회 담당자가 요청한 주차별 전도 실적 수정 요청 목록입니다. (목록을 누르면 세부 내용을 확인하고 결재할 수 있습니다.)' 
-              : '과거에 승인 완료 또는 반려 처리된 결재 이력 목록입니다. (목록을 누르면 결재 상세 정보를 확인할 수 있습니다.)'}
+            {MODE_DESCRIPTIONS[mode]}
           </p>
         </div>
         <button
@@ -216,10 +273,10 @@ export const ApprovalModule: React.FC<ApprovalModuleProps> = ({ mode }) => {
         <div style={{ padding: '80px 0', textAlign: 'center', border: '2px dashed #e2e8f0', borderRadius: '16px', background: '#fafafa' }}>
           <Clock size={48} style={{ color: '#94a3b8', marginBottom: '16px' }} />
           <p style={{ fontWeight: 800, fontSize: '1rem', color: '#334155', margin: '0 0 6px 0' }}>
-            {mode === 'pending' ? '대기 중인 결재 건이 없습니다.' : '완료된 결재 이력이 없습니다.'}
+            {MODE_EMPTY_TITLES[mode]}
           </p>
           <p style={{ fontSize: '0.82rem', color: '#64748b', margin: 0 }}>
-            {mode === 'pending' ? '모든 실적 수정 요청에 대한 결재가 완료되었습니다.' : '결재가 처리되면 이곳에 이력이 표시됩니다.'}
+            {MODE_EMPTY_DESCRIPTIONS[mode]}
           </p>
         </div>
       ) : (
@@ -227,24 +284,24 @@ export const ApprovalModule: React.FC<ApprovalModuleProps> = ({ mode }) => {
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem', textAlign: 'left' }}>
             <thead>
               <tr style={{ background: '#f8fafc', borderBottom: '2px solid #cbd5e1' }}>
-                 <th style={{ padding: '14px', fontWeight: 800, color: '#334155' }}>신청 교회</th>
-                <th style={{ padding: '14px', fontWeight: 800, color: '#334155' }}>대상 주차/월</th>
-                <th style={{ padding: '14px', fontWeight: 800, color: '#334155' }}>수정 사유</th>
-                <th style={{ padding: '14px', fontWeight: 800, color: '#334155' }}>요청자</th>
-                <th style={{ padding: '14px', fontWeight: 800, color: '#334155' }}>결재선(대상)</th>
-                <th style={{ padding: '14px', fontWeight: 800, color: '#334155' }}>신청 일시</th>
+                 <th style={{ padding: '14px', fontWeight: 800, color: '#334155', textAlign: 'left' }}>신청 교회</th>
+                <th style={{ padding: '14px', fontWeight: 800, color: '#334155', textAlign: 'left' }}>대상 주차/월</th>
+                <th style={{ padding: '14px', fontWeight: 800, color: '#334155', textAlign: 'left' }}>수정 사유</th>
+                <th style={{ padding: '14px', fontWeight: 800, color: '#334155', textAlign: 'left' }}>요청자</th>
+                <th style={{ padding: '14px', fontWeight: 800, color: '#334155', textAlign: 'left' }}>결재선(대상)</th>
+                <th style={{ padding: '14px', fontWeight: 800, color: '#334155', textAlign: 'left' }}>신청 일시</th>
                 <th style={{ padding: '14px', fontWeight: 800, color: '#334155', textAlign: 'center' }}>상태/작업</th>
               </tr>
             </thead>
             <tbody>
               {requests.map((req) => (
-                <tr 
-                  key={req.requestId} 
+                <tr
+                  key={`${req.type}-${req.requestId}`}
                   onClick={() => setSelectedRequest(req)}
                   style={{ borderBottom: '1px solid #f1f5f9', transition: 'background 0.2s', cursor: 'pointer' }} 
                   className="table-row-hover"
                 >
-                  <td style={{ padding: '14px', fontWeight: 700, color: '#0f172a' }}>
+                  <td style={{ padding: '14px', fontWeight: 700, color: '#0f172a', textAlign: 'left' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                       <span style={{ fontSize: '0.7rem', fontWeight: 800, background: TYPE_BADGE_COLORS[req.type].bg, color: TYPE_BADGE_COLORS[req.type].fg, padding: '2px 6px', borderRadius: '4px' }}>
                         {TYPE_LABELS[req.type]}
@@ -253,28 +310,28 @@ export const ApprovalModule: React.FC<ApprovalModuleProps> = ({ mode }) => {
                       {req.churchName}
                     </div>
                   </td>
-                  <td style={{ padding: '14px', color: '#334155', fontWeight: 700 }}>
+                  <td style={{ padding: '14px', color: '#334155', fontWeight: 700, textAlign: 'left' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                       <Calendar size={14} style={{ color: '#64748b' }} />
                       {req.yearStr} {req.type === 'evangelism' ? req.weekKey : req.monthKey}
                     </div>
                   </td>
-                  <td style={{ padding: '14px', color: '#475569', maxWidth: '260px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  <td style={{ padding: '14px', color: '#475569', maxWidth: '260px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textAlign: 'left' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                       <MessageSquare size={14} style={{ color: '#94a3b8', flexShrink: 0 }} />
                       <span>{req.reason}</span>
                     </div>
                   </td>
-                  <td style={{ padding: '14px', color: '#475569' }}>
+                  <td style={{ padding: '14px', color: '#475569', textAlign: 'left' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                       <User size={14} style={{ color: '#94a3b8' }} />
                       {req.requestedBy}
                     </div>
                   </td>
-                  <td style={{ padding: '14px', color: '#64748b', fontSize: '0.8rem' }}>
+                  <td style={{ padding: '14px', color: '#64748b', fontSize: '0.8rem', textAlign: 'left' }}>
                     {req.requestedTo}
                   </td>
-                  <td style={{ padding: '14px', color: '#64748b', fontSize: '0.8rem' }}>
+                  <td style={{ padding: '14px', color: '#64748b', fontSize: '0.8rem', textAlign: 'left' }}>
                     {formatDate(req.requestedAt)}
                   </td>
                   <td style={{ padding: '14px', textAlign: 'center' }} onClick={(e) => e.stopPropagation()}>
@@ -431,6 +488,54 @@ export const ApprovalModule: React.FC<ApprovalModuleProps> = ({ mode }) => {
                   <div>{getStatusBadge(selectedRequest.status)}</div>
                 </div>
               </div>
+
+              {/* 결재라인 단계별 진행 현황 (결재 엔진이 연동된 유형만) */}
+              {progressLoading ? (
+                <div style={{ fontSize: '0.8rem', color: '#94a3b8', textAlign: 'center' }}>결재 진행 현황을 불러오는 중...</div>
+              ) : progress && (
+                <div style={{ border: '1px solid #e2e8f0', borderRadius: '12px', padding: '16px' }}>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.78rem', color: '#475569', fontWeight: 800, marginBottom: '10px' }}>
+                    <Info size={14} style={{ color: '#3b82f6' }} /> 결재라인 진행 현황
+                  </span>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    {progress.steps.map((step, idx) => {
+                      const isCurrent = progress.status === 'PENDING' && step.stepOrder === progress.currentStepOrder;
+                      return (
+                        <div key={step.stepOrder} style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                          {idx > 0 && <ArrowRight size={14} style={{ color: '#cbd5e1', marginTop: '4px', flexShrink: 0 }} />}
+                          <div
+                            style={{
+                              flex: 1,
+                              background: isCurrent ? '#eff6ff' : '#f8fafc',
+                              border: '1px solid ' + (isCurrent ? '#bfdbfe' : '#f1f5f9'),
+                              borderRadius: '10px',
+                              padding: '10px 12px',
+                            }}
+                          >
+                            <div style={{ fontSize: '0.78rem', fontWeight: 800, color: '#1f2a44', marginBottom: '6px' }}>
+                              {step.stepOrder}차 · {step.name}
+                              {step.status === 'APPROVED' && <span style={{ color: '#16a34a', marginLeft: '6px' }}>✓ 승인완료</span>}
+                              {step.status === 'REJECTED' && <span style={{ color: '#dc2626', marginLeft: '6px' }}>반려</span>}
+                            </div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                              {step.approvers.map((a, i) => (
+                                <div key={i} style={{ fontSize: '0.78rem', color: '#334155', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                  <span>{a.userName || '미지정'}</span>
+                                  {a.decision === 'APPROVED' && (
+                                    <span style={{ color: '#16a34a', fontWeight: 700 }}>{a.selfApproved ? '자가승인' : '승인'}</span>
+                                  )}
+                                  {a.decision === 'REJECTED' && <span style={{ color: '#dc2626', fontWeight: 700 }}>반려</span>}
+                                  {!a.decision && <span style={{ color: '#94a3b8' }}>대기중</span>}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
 
               {/* Targets and Requesters */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>

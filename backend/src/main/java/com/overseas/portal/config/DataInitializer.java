@@ -131,6 +131,82 @@ public class DataInitializer implements CommandLineRunner {
             addConstraintIfMissing("fk_user_team",
                     "ALTER TABLE overseas.users ADD CONSTRAINT fk_user_team FOREIGN KEY (team_id) REFERENCES overseas.teams(id) ON DELETE SET NULL");
 
+            // 결재라인(결재 고도화 1단계) - 관리자가 미리 구성하는 다단계 결재라인 템플릿.
+            // 기존 3개 결재 플로우(전도/내무/월간활동 실적수정)는 이 단계에서는 아직 연동하지 않는다 - 순수 추가.
+            jdbcTemplate.execute("CREATE TABLE IF NOT EXISTS overseas.approval_line (" +
+                    "id BIGSERIAL PRIMARY KEY, " +
+                    "target_type VARCHAR(50) NOT NULL, " +
+                    "church_id BIGINT, " +
+                    "department_id BIGINT, " +
+                    "name VARCHAR(100) NOT NULL, " +
+                    "is_active BOOLEAN NOT NULL DEFAULT TRUE, " +
+                    "created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP, " +
+                    "updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP" +
+                    ");");
+            jdbcTemplate.execute("CREATE TABLE IF NOT EXISTS overseas.approval_line_step (" +
+                    "id BIGSERIAL PRIMARY KEY, " +
+                    "approval_line_id BIGINT NOT NULL, " +
+                    "step_order INT NOT NULL, " +
+                    "name VARCHAR(100), " +
+                    "created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP" +
+                    ");");
+            jdbcTemplate.execute("CREATE TABLE IF NOT EXISTS overseas.approval_line_step_approver (" +
+                    "id BIGSERIAL PRIMARY KEY, " +
+                    "step_id BIGINT NOT NULL, " +
+                    "resolver_type VARCHAR(30) NOT NULL, " +
+                    "specific_user_id BIGINT" +
+                    ");");
+            addConstraintIfMissing("fk_approval_line_church",
+                    "ALTER TABLE overseas.approval_line ADD CONSTRAINT fk_approval_line_church FOREIGN KEY (church_id) REFERENCES overseas.churches(church_id) ON DELETE CASCADE");
+            addConstraintIfMissing("fk_approval_line_department",
+                    "ALTER TABLE overseas.approval_line ADD CONSTRAINT fk_approval_line_department FOREIGN KEY (department_id) REFERENCES overseas.departments(id) ON DELETE CASCADE");
+            addConstraintIfMissing("fk_approval_line_step_line",
+                    "ALTER TABLE overseas.approval_line_step ADD CONSTRAINT fk_approval_line_step_line FOREIGN KEY (approval_line_id) REFERENCES overseas.approval_line(id) ON DELETE CASCADE");
+            addConstraintIfMissing("fk_approval_line_step_approver_step",
+                    "ALTER TABLE overseas.approval_line_step_approver ADD CONSTRAINT fk_approval_line_step_approver_step FOREIGN KEY (step_id) REFERENCES overseas.approval_line_step(id) ON DELETE CASCADE");
+            addConstraintIfMissing("fk_approval_line_step_approver_user",
+                    "ALTER TABLE overseas.approval_line_step_approver ADD CONSTRAINT fk_approval_line_step_approver_user FOREIGN KEY (specific_user_id) REFERENCES overseas.users(user_id) ON DELETE CASCADE");
+
+            // 결재 엔진(결재 고도화 2단계) - 신청 시점에 결재라인을 스냅샷으로 고정하는 실제 결재 인스턴스.
+            // 전도/내무/월간활동보고 실적수정 3개 플로우 모두 이 엔진을 공유한다.
+            jdbcTemplate.execute("CREATE TABLE IF NOT EXISTS overseas.approval_instance (" +
+                    "id BIGSERIAL PRIMARY KEY, " +
+                    "target_type VARCHAR(50) NOT NULL, " +
+                    "target_id BIGINT NOT NULL, " +
+                    "approval_line_id BIGINT, " +
+                    "status VARCHAR(20) NOT NULL, " +
+                    "current_step_order INT, " +
+                    "created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP, " +
+                    "completed_at TIMESTAMP WITH TIME ZONE, " +
+                    "CONSTRAINT uq_approval_instance_target UNIQUE (target_type, target_id)" +
+                    ");");
+            jdbcTemplate.execute("CREATE TABLE IF NOT EXISTS overseas.approval_instance_step (" +
+                    "id BIGSERIAL PRIMARY KEY, " +
+                    "instance_id BIGINT NOT NULL, " +
+                    "step_order INT NOT NULL, " +
+                    "name VARCHAR(100), " +
+                    "status VARCHAR(20) NOT NULL" +
+                    ");");
+            jdbcTemplate.execute("CREATE TABLE IF NOT EXISTS overseas.approval_instance_approver (" +
+                    "id BIGSERIAL PRIMARY KEY, " +
+                    "instance_step_id BIGINT NOT NULL, " +
+                    "resolver_type VARCHAR(30) NOT NULL, " +
+                    "user_id BIGINT, " +
+                    "user_name VARCHAR(100), " +
+                    "decision VARCHAR(20), " +
+                    "decided_at TIMESTAMP WITH TIME ZONE, " +
+                    "comment TEXT, " +
+                    "is_self_approved BOOLEAN NOT NULL DEFAULT FALSE" +
+                    ");");
+            addConstraintIfMissing("fk_approval_instance_line",
+                    "ALTER TABLE overseas.approval_instance ADD CONSTRAINT fk_approval_instance_line FOREIGN KEY (approval_line_id) REFERENCES overseas.approval_line(id) ON DELETE SET NULL");
+            addConstraintIfMissing("fk_approval_instance_step_instance",
+                    "ALTER TABLE overseas.approval_instance_step ADD CONSTRAINT fk_approval_instance_step_instance FOREIGN KEY (instance_id) REFERENCES overseas.approval_instance(id) ON DELETE CASCADE");
+            addConstraintIfMissing("fk_approval_instance_approver_step",
+                    "ALTER TABLE overseas.approval_instance_approver ADD CONSTRAINT fk_approval_instance_approver_step FOREIGN KEY (instance_step_id) REFERENCES overseas.approval_instance_step(id) ON DELETE CASCADE");
+            addConstraintIfMissing("fk_approval_instance_approver_user",
+                    "ALTER TABLE overseas.approval_instance_approver ADD CONSTRAINT fk_approval_instance_approver_user FOREIGN KEY (user_id) REFERENCES overseas.users(user_id) ON DELETE SET NULL");
+
             // 해외선교부 현황판 카테고리의 기본 컬럼/수식 구성 시드 (이미 관리자가 저장했으면 건드리지 않음)
             String overseasBoardColumnsJson = """
                     [
