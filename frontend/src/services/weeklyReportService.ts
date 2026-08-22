@@ -95,6 +95,12 @@ export interface ChurchOption {
   country: string;
   jipa: string;
   gubun: string;
+  /** 주간보고 발표 보기 노출 여부 (false시 발표 보기 목록에서 제외). 값이 없으면(구버전 데이터) true로 취급 */
+  weeklyReportVisible?: boolean;
+  /** 발표 보기 전용 표시 이름 (없으면 name 사용) */
+  weeklyReportDisplayName?: string | null;
+  /** 이 교회에서 발표 보기 시 숨길 sectionId 목록 (JSON 배열 문자열) */
+  weeklyReportHiddenSections?: string | null;
 }
 
 // ─── API 함수 ────────────────────────────────────────────
@@ -219,5 +225,14 @@ export const weeklyReportService = {
   // 관리자: 제출 삭제
   deleteSubmission: async (submissionId: number): Promise<void> => {
     await api.delete(`/admin/weekly-report/submissions/${submissionId}`);
+  },
+
+  // 관리자: 교회별 "발표 보기" 노출 설정 저장 (표시 여부 / 발표용 표시 이름 / 숨길 표)
+  updateChurchPresentationSettings: async (
+    churchId: number,
+    settings: { visible: boolean; displayName: string | null; hiddenSectionIds: string[] }
+  ): Promise<ChurchOption> => {
+    const res = await api.put<ChurchOption>(`/admin/weekly-report/churches/${churchId}/presentation-settings`, settings);
+    return res.data;
   },
 };

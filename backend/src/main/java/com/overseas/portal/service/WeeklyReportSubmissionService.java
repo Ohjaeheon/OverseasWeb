@@ -1,5 +1,6 @@
 package com.overseas.portal.service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.overseas.portal.domain.Church;
 import com.overseas.portal.domain.User;
 import com.overseas.portal.domain.WeeklyReportSchema;
@@ -26,6 +27,7 @@ public class WeeklyReportSubmissionService {
     private final WeeklyReportSchemaRepository schemaRepository;
     private final UserRepository userRepository;
     private final ChurchRepository churchRepository;
+    private final ObjectMapper objectMapper;
 
     /**
      * 현재 로그인 사용자가 접근할 수 있는 교회 목록 반환.
@@ -137,6 +139,30 @@ public class WeeklyReportSubmissionService {
     public void deleteSubmission(Long submissionId) {
         WeeklyReportSubmission sub = getSubmission(submissionId);
         submissionRepository.delete(sub);
+    }
+
+    /**
+     * 교회별 주간보고 "발표 보기" 노출 설정 저장 (관리자용)
+     * - visible: 발표 보기 목록에 표시할지 여부
+     * - displayName: 발표용으로 대신 표시할 이름 (null/빈 문자열이면 원래 name 사용)
+     * - hiddenSectionIds: 이 교회에서만 숨길 섹션 sectionId 목록
+     */
+    public Church updateWeeklyReportPresentationSettings(Long churchId, Boolean visible, String displayName, List<String> hiddenSectionIds) {
+        Church church = churchRepository.findById(churchId)
+                .orElseThrow(() -> new IllegalArgumentException("교회를 찾을 수 없습니다. ID: " + churchId));
+
+        if (visible != null) church.setWeeklyReportVisible(visible);
+        church.setWeeklyReportDisplayName(displayName == null || displayName.isBlank() ? null : displayName);
+        try {
+            church.setWeeklyReportHiddenSections(
+                    hiddenSectionIds == null || hiddenSectionIds.isEmpty()
+                            ? null
+                            : objectMapper.writeValueAsString(hiddenSectionIds));
+        } catch (Exception e) {
+            throw new IllegalArgumentException("hiddenSectionIds 직렬화에 실패했습니다.");
+        }
+
+        return churchRepository.save(church);
     }
 
     // ──────────────────────────────────────────────

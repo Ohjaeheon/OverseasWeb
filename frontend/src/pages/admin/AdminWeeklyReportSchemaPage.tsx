@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   Plus, Edit2, Trash2, ChevronDown, ChevronRight,
-  FileText, ToggleLeft, ToggleRight, Eye, Save, X, AlertCircle, Smartphone
+  FileText, ToggleLeft, ToggleRight, Eye, Save, X, AlertCircle, Smartphone, Presentation, GripVertical
 } from 'lucide-react';
 import { weeklyReportService, WeeklyReportSchemaItem, FormSchema, FormSection, ChurchOption } from '../../services/weeklyReportService';
 import { DEFAULT_SCHEMA } from '../../data/weeklyReportDefaultSchema';
 import { getCurrentWeek, weeksInMonth, formatWeekLabel } from '../../utils/weekUtil';
 import { PageRenderer, NotesCardEntry, generateCardId } from '../../components/weeklyReport/FormRenderer';
+import { CoverSlide, PageSlide } from '../../components/weeklyReport/WeeklyReportPresentationView';
 
 interface BuilderFormData { weekLabel: string; startYear: number; startMonth: number; startWeekOfMonth: number; schema: FormSchema }
 
@@ -28,8 +29,10 @@ export const AdminWeeklyReportSchemaPage: React.FC = () => {
   const [editingSchema, setEditingSchema] = useState<WeeklyReportSchemaItem | null>(null);
   const [formData, setFormData] = useState<BuilderFormData>(buildDefaultFormData());
   const [saving, setSaving] = useState(false);
-  const [previewMode, setPreviewMode] = useState<'none' | 'json' | 'form'>('none');
+  const [previewMode, setPreviewMode] = useState<'none' | 'json' | 'form' | 'ppt'>('none');
   const [expandedPage, setExpandedPage] = useState<string | null>('page2');
+  const [dragLeaf, setDragLeaf] = useState<{ pageIdx: number; secIdx: number; idx: number } | null>(null);
+  const [dragCol, setDragCol] = useState<{ pageIdx: number; secIdx: number; idx: number } | null>(null);
 
   const loadSchemas = useCallback(async () => {
     try {
@@ -166,6 +169,15 @@ export const AdminWeeklyReportSchemaPage: React.FC = () => {
       return { ...s, leafColumns: leaves };
     });
   };
+  const moveLeafColumn = (pageIdx: number, secIdx: number, fromIdx: number, toIdx: number) => {
+    if (fromIdx === toIdx) return;
+    updateSection(pageIdx, secIdx, s => {
+      const leaves = [...(s.leafColumns || [])];
+      const [moved] = leaves.splice(fromIdx, 1);
+      leaves.splice(toIdx, 0, moved);
+      return { ...s, leafColumns: leaves };
+    });
+  };
 
   // dynamic_table: 컬럼 편집
   const updateColumnName = (pageIdx: number, secIdx: number, colIdx: number, value: string) => {
@@ -183,6 +195,15 @@ export const AdminWeeklyReportSchemaPage: React.FC = () => {
       const cols = [...(s.columns || [])];
       if (cols.length <= 1) return s;
       cols.splice(colIdx, 1);
+      return { ...s, columns: cols };
+    });
+  };
+  const moveColumn = (pageIdx: number, secIdx: number, fromIdx: number, toIdx: number) => {
+    if (fromIdx === toIdx) return;
+    updateSection(pageIdx, secIdx, s => {
+      const cols = [...(s.columns || [])];
+      const [moved] = cols.splice(fromIdx, 1);
+      cols.splice(toIdx, 0, moved);
       return { ...s, columns: cols };
     });
   };
@@ -288,6 +309,11 @@ export const AdminWeeklyReportSchemaPage: React.FC = () => {
                   style={{ padding: '7px 14px', background: previewMode === 'form' ? 'rgba(99,102,241,0.25)' : 'rgba(51,65,85,0.5)', border: `1px solid ${previewMode === 'form' ? 'rgba(99,102,241,0.6)' : 'rgba(71,85,105,0.5)'}`, borderRadius: '8px', color: previewMode === 'form' ? '#c7d2fe' : '#94a3b8', cursor: 'pointer', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '5px' }}>
                   <Smartphone size={13} /> 폼 미리보기
                 </button>
+                <button onClick={() => setPreviewMode(m => m === 'ppt' ? 'none' : 'ppt')}
+                  title="관리자 발표 보기 화면에서 실제로 어떻게 보일지 미리 확인합니다"
+                  style={{ padding: '7px 14px', background: previewMode === 'ppt' ? 'rgba(99,102,241,0.25)' : 'rgba(51,65,85,0.5)', border: `1px solid ${previewMode === 'ppt' ? 'rgba(99,102,241,0.6)' : 'rgba(71,85,105,0.5)'}`, borderRadius: '8px', color: previewMode === 'ppt' ? '#c7d2fe' : '#94a3b8', cursor: 'pointer', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                  <Presentation size={13} /> 발표 미리보기
+                </button>
                 <button onClick={() => setPreviewMode(m => m === 'json' ? 'none' : 'json')}
                   style={{ padding: '7px 14px', background: previewMode === 'json' ? 'rgba(99,102,241,0.25)' : 'rgba(51,65,85,0.5)', border: `1px solid ${previewMode === 'json' ? 'rgba(99,102,241,0.6)' : 'rgba(71,85,105,0.5)'}`, borderRadius: '8px', color: previewMode === 'json' ? '#c7d2fe' : '#94a3b8', cursor: 'pointer', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '5px' }}>
                   <Eye size={13} /> JSON 미리보기
@@ -298,7 +324,7 @@ export const AdminWeeklyReportSchemaPage: React.FC = () => {
               </div>
             </div>
 
-            <div style={{ padding: '24px 28px', display: 'grid', gridTemplateColumns: previewMode !== 'none' ? '1fr 1fr' : '1fr', gap: '24px' }}>
+            <div style={{ padding: '24px 28px' }}>
               <div>
                 {/* 적용 시작 주차 설정 */}
                 <div style={{ marginBottom: '24px', background: 'rgba(30,41,59,0.6)', borderRadius: '12px', padding: '18px' }}>
@@ -360,9 +386,23 @@ export const AdminWeeklyReportSchemaPage: React.FC = () => {
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                                   {section.leafColumns.map((leaf, leafIdx) => {
                                     const otherKeys = section.leafColumns!.filter((_, i) => i !== leafIdx).map(l => l.key).filter(Boolean);
+                                    const isDragging = dragLeaf?.pageIdx === pageIdx && dragLeaf?.secIdx === secIdx && dragLeaf?.idx === leafIdx;
                                     return (
-                                      <div key={leafIdx} style={{ background: 'rgba(30,41,59,0.4)', borderRadius: '8px', padding: '8px', border: '1px solid rgba(51,65,85,0.4)' }}>
+                                      <div key={leafIdx}
+                                        draggable
+                                        onDragStart={() => setDragLeaf({ pageIdx, secIdx, idx: leafIdx })}
+                                        onDragEnd={() => setDragLeaf(null)}
+                                        onDragOver={e => e.preventDefault()}
+                                        onDrop={e => {
+                                          e.preventDefault();
+                                          if (dragLeaf && dragLeaf.pageIdx === pageIdx && dragLeaf.secIdx === secIdx) {
+                                            moveLeafColumn(pageIdx, secIdx, dragLeaf.idx, leafIdx);
+                                          }
+                                          setDragLeaf(null);
+                                        }}
+                                        style={{ background: 'rgba(30,41,59,0.4)', borderRadius: '8px', padding: '8px', border: '1px solid rgba(51,65,85,0.4)', opacity: isDragging ? 0.4 : 1 }}>
                                         <div style={{ display: 'flex', gap: '6px', alignItems: 'center', marginBottom: '6px' }}>
+                                          <GripVertical size={14} color="#64748b" style={{ flexShrink: 0, cursor: 'grab' }} />
                                           <input value={leaf.groupLabel || ''} placeholder="그룹라벨 (선택)"
                                             onChange={e => updateLeafGroup(pageIdx, secIdx, leafIdx, e.target.value)}
                                             style={{ ...inputSm, width: '140px' }} />
@@ -405,8 +445,23 @@ export const AdminWeeklyReportSchemaPage: React.FC = () => {
                               <div>
                                 <div style={{ fontSize: '0.75rem', color: '#64748b', marginBottom: '6px' }}>컬럼 (사용자가 화면에서 행을 자유롭게 추가/삭제합니다)</div>
                                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                                  {section.columns.map((col, colIdx) => (
-                                    <div key={colIdx} style={{ display: 'flex', alignItems: 'center', background: 'rgba(30,41,59,0.8)', borderRadius: '6px', overflow: 'hidden', border: '1px solid rgba(51,65,85,0.5)' }}>
+                                  {section.columns.map((col, colIdx) => {
+                                    const isDragging = dragCol?.pageIdx === pageIdx && dragCol?.secIdx === secIdx && dragCol?.idx === colIdx;
+                                    return (
+                                    <div key={colIdx}
+                                      draggable
+                                      onDragStart={() => setDragCol({ pageIdx, secIdx, idx: colIdx })}
+                                      onDragEnd={() => setDragCol(null)}
+                                      onDragOver={e => e.preventDefault()}
+                                      onDrop={e => {
+                                        e.preventDefault();
+                                        if (dragCol && dragCol.pageIdx === pageIdx && dragCol.secIdx === secIdx) {
+                                          moveColumn(pageIdx, secIdx, dragCol.idx, colIdx);
+                                        }
+                                        setDragCol(null);
+                                      }}
+                                      style={{ display: 'flex', alignItems: 'center', background: 'rgba(30,41,59,0.8)', borderRadius: '6px', overflow: 'hidden', border: '1px solid rgba(51,65,85,0.5)', opacity: isDragging ? 0.4 : 1 }}>
+                                      <GripVertical size={12} color="#64748b" style={{ flexShrink: 0, marginLeft: '5px', cursor: 'grab' }} />
                                       <input value={col} onChange={e => updateColumnName(pageIdx, secIdx, colIdx, e.target.value)}
                                         style={{ background: 'transparent', border: 'none', color: '#e2e8f0', padding: '5px 8px', fontSize: '0.8rem', width: '100px' }} />
                                       {section.columns!.length > 1 && (
@@ -416,7 +471,8 @@ export const AdminWeeklyReportSchemaPage: React.FC = () => {
                                         </button>
                                       )}
                                     </div>
-                                  ))}
+                                  );
+                                  })}
                                   <button onClick={() => addColumn(pageIdx, secIdx)} style={{ padding: '5px 10px', background: 'rgba(99,102,241,0.1)', border: '1px dashed rgba(99,102,241,0.3)', borderRadius: '6px', color: '#818cf8', cursor: 'pointer', fontSize: '0.75rem' }}>
                                     + 컬럼
                                   </button>
@@ -445,24 +501,6 @@ export const AdminWeeklyReportSchemaPage: React.FC = () => {
                   </div>
                 ))}
               </div>
-
-              {previewMode === 'json' && (
-                <div style={{ background: 'rgba(15,23,42,0.8)', borderRadius: '12px', padding: '16px', border: '1px solid rgba(51,65,85,0.4)' }}>
-                  <div style={{ fontSize: '0.75rem', color: '#64748b', marginBottom: '8px' }}>JSON Schema 미리보기</div>
-                  <pre style={{ color: '#86efac', fontSize: '0.72rem', overflowY: 'auto', maxHeight: '500px', margin: 0, lineHeight: 1.5 }}>
-                    {JSON.stringify(formData.schema, null, 2)}
-                  </pre>
-                </div>
-              )}
-
-              {previewMode === 'form' && (
-                <div style={{ background: '#f8fafc', borderRadius: '12px', padding: '16px', border: '1px solid rgba(51,65,85,0.4)', maxHeight: '620px', overflowY: 'auto' }}>
-                  <div style={{ fontSize: '0.75rem', color: '#64748b', marginBottom: '10px' }}>
-                    사용자에게 실제로 보이는 화면과 동일합니다 (직접 입력해볼 수 있으며, 여기서 입력한 값은 저장되지 않습니다).
-                  </div>
-                  <FormPreview schema={formData.schema} />
-                </div>
-              )}
             </div>
 
             <div style={{ padding: '20px 28px', borderTop: '1px solid rgba(51,65,85,0.5)', display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
@@ -476,6 +514,76 @@ export const AdminWeeklyReportSchemaPage: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* ── 미리보기 전용 모달 (폼/발표/JSON) — 편집창을 가리지 않도록 별도 창으로 띄운다 ── */}
+      {previewMode !== 'none' && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', zIndex: 1100, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '24px', overflowY: 'auto' }}>
+          <div style={{ background: previewMode === 'ppt' ? '#0b1220' : '#0f172a', border: '1px solid rgba(99,102,241,0.3)', borderRadius: '20px', width: '100%', maxWidth: previewMode === 'ppt' ? '1100px' : '820px', maxHeight: '92vh', display: 'flex', flexDirection: 'column', boxShadow: '0 25px 60px rgba(0,0,0,0.5)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 24px', borderBottom: '1px solid rgba(51,65,85,0.5)', flexShrink: 0 }}>
+              <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: '#f1f5f9' }}>
+                {previewMode === 'form' ? '📱 폼 미리보기' : previewMode === 'ppt' ? '🖥️ 발표 미리보기' : '👁️ JSON 미리보기'}
+              </h3>
+              <button onClick={() => setPreviewMode('none')} style={{ padding: '7px 12px', background: 'rgba(51,65,85,0.5)', border: '1px solid rgba(71,85,105,0.5)', borderRadius: '8px', color: '#94a3b8', cursor: 'pointer' }}>
+                <X size={16} />
+              </button>
+            </div>
+
+            <div style={{ padding: '20px 24px', overflowY: 'auto' }}>
+              {previewMode === 'json' && (
+                <pre style={{ color: '#86efac', fontSize: '0.78rem', margin: 0, lineHeight: 1.6 }}>
+                  {JSON.stringify(formData.schema, null, 2)}
+                </pre>
+              )}
+
+              {previewMode === 'form' && (
+                <div style={{ background: '#f8fafc', borderRadius: '12px', padding: '18px' }}>
+                  <div style={{ fontSize: '0.78rem', color: '#64748b', marginBottom: '12px' }}>
+                    사용자에게 실제로 보이는 화면과 동일합니다 (직접 입력해볼 수 있으며, 여기서 입력한 값은 저장되지 않습니다).
+                  </div>
+                  <FormPreview schema={formData.schema} />
+                </div>
+              )}
+
+              {previewMode === 'ppt' && (
+                <div>
+                  <div style={{ fontSize: '0.78rem', color: '#94a3b8', marginBottom: '14px' }}>
+                    관리자 "발표 보기"에서 실제로 뜨는 슬라이드 화면입니다. (교회명/보고일만 있는 페이지는 표지와 겹쳐 발표에서 자동으로 빠집니다)
+                  </div>
+                  <PresentationPreview schema={formData.schema} weekLabel={formData.weekLabel} />
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ─── 발표 미리보기 — 관리자 "발표 보기"와 동일한 슬라이드 컴포넌트를 재사용해
+// 표지 + 표가 있는 페이지들을 실제 발표 화면 그대로 스크롤로 쭉 보여준다 ──────────
+const PresentationPreview: React.FC<{ schema: FormSchema; weekLabel: string }> = ({ schema, weekLabel }) => {
+  const visiblePages = schema.pages.filter(p => (p.sections?.length ?? 0) > 0);
+  const mockChurchName = '(미리보기 교회)';
+  const slideBoxStyle: React.CSSProperties = {
+    aspectRatio: '16 / 9', borderRadius: '14px', overflow: 'auto',
+    background: '#ffffff', boxShadow: '0 12px 30px rgba(0,0,0,0.4)'
+  };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
+      <div style={slideBoxStyle}>
+        <CoverSlide sub={{ churchName: mockChurchName, submittedBy: '', status: 'SUBMITTED' }} weekLabel={weekLabel || '2026년 1월 1주차'} topPhotos={[]} />
+      </div>
+      {visiblePages.length === 0 ? (
+        <div style={{ color: '#64748b', fontSize: '0.8rem', textAlign: 'center', padding: '20px' }}>
+          표(section)가 있는 페이지가 없어 표지만 발표됩니다.
+        </div>
+      ) : visiblePages.map(page => (
+        <div key={page.pageId} style={slideBoxStyle}>
+          <PageSlide page={page} data={{}} churchName={mockChurchName} weekLabel={weekLabel || '2026년 1월 1주차'} />
+        </div>
+      ))}
     </div>
   );
 };

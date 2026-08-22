@@ -104,6 +104,19 @@ public class Church {
     @Comment("출력 정렬 순서 (오름차순)")
     private Integer sortOrder;
 
+    @Column(name = "weekly_report_visible")
+    @Comment("주간보고 발표 보기 노출 여부 (false시 발표 보기 목록에서 제외)")
+    @Builder.Default
+    private Boolean weeklyReportVisible = true;
+
+    @Column(name = "weekly_report_display_name", length = 150)
+    @Comment("주간보고 발표 보기 전용 표시 이름 (비어있으면 name 사용)")
+    private String weeklyReportDisplayName;
+
+    @Column(name = "weekly_report_hidden_sections", columnDefinition = "TEXT")
+    @Comment("이 교회에서 주간보고 발표 보기 시 숨길 sectionId 목록 (JSON 배열 문자열)")
+    private String weeklyReportHiddenSections;
+
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     @Comment("생성 일시")

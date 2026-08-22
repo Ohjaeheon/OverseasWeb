@@ -124,6 +124,19 @@ public class WeeklyReportSubmissionController {
         return ResponseEntity.ok().build();
     }
 
+    /** 교회별 주간보고 "발표 보기" 노출 설정 저장 (관리자용) */
+    @PutMapping("/api/v1/admin/weekly-report/churches/{churchId}/presentation-settings")
+    @SuppressWarnings("unchecked")
+    public ResponseEntity<Church> updatePresentationSettings(
+            @PathVariable Long churchId, @RequestBody Map<String, Object> body) {
+        Boolean visible = body.get("visible") == null ? null : Boolean.valueOf(body.get("visible").toString());
+        String displayName = body.get("displayName") == null ? null : body.get("displayName").toString();
+        List<String> hiddenSectionIds = body.get("hiddenSectionIds") == null
+                ? List.of()
+                : (List<String>) body.get("hiddenSectionIds");
+        return ResponseEntity.ok(submissionService.updateWeeklyReportPresentationSettings(churchId, visible, displayName, hiddenSectionIds));
+    }
+
     /** 내 교회의 전체 제출 이력 (주차 선택기에서 제출/잠금 여부 표시용) */
     @GetMapping("/api/v1/weekly-report/my-submissions")
     public ResponseEntity<List<WeeklyReportSubmission>> getMySubmissions(@RequestParam Long churchId) {

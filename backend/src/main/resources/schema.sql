@@ -19,6 +19,9 @@ CREATE TABLE IF NOT EXISTS overseas.churches (
     lat NUMERIC(10, 7),
     lon NUMERIC(10, 7),
     is_active BOOLEAN DEFAULT TRUE,
+    weekly_report_visible BOOLEAN DEFAULT TRUE,
+    weekly_report_display_name VARCHAR(150),
+    weekly_report_hidden_sections TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
@@ -34,6 +37,9 @@ COMMENT ON COLUMN overseas.churches.founding_date IS '설립일 (그레고리력
 COMMENT ON COLUMN overseas.churches.lat IS '위도 (Latitude)';
 COMMENT ON COLUMN overseas.churches.lon IS '경도 (Longitude)';
 COMMENT ON COLUMN overseas.churches.is_active IS '활성화 여부';
+COMMENT ON COLUMN overseas.churches.weekly_report_visible IS '주간보고 발표 보기 노출 여부 (false시 발표 보기 목록에서 제외)';
+COMMENT ON COLUMN overseas.churches.weekly_report_display_name IS '주간보고 발표 보기 전용 표시 이름 (비어있으면 name 사용)';
+COMMENT ON COLUMN overseas.churches.weekly_report_hidden_sections IS '이 교회에서 주간보고 발표 보기 시 숨길 sectionId 목록 (JSON 배열 문자열)';
 COMMENT ON COLUMN overseas.churches.created_at IS '생성 일시';
 COMMENT ON COLUMN overseas.churches.updated_at IS '수정 일시';
 
