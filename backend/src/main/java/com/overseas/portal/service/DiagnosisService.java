@@ -37,6 +37,12 @@ public class DiagnosisService {
                 .orElse("");
     }
 
+    public String getAdminMenuLayout() {
+        return systemConfigRepository.findByConfigKey("admin_menu_layout")
+                .map(config -> config.getConfigValue())
+                .orElse("");
+    }
+
     @Data
     @Builder
     public static class RecordDTO {

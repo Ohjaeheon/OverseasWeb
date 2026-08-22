@@ -5,6 +5,8 @@ import api from '../services/api';
 interface MessageDictionaryContextValue {
   /** 사전에 값이 있으면 그 값을, 없으면 "__" + fallback을 반환한다 (미등록 상태 표시). */
   getMsg: (key: string, fallback: string) => string;
+  /** 사전 값을 DB에서 다시 불러온다 — 관리자가 메시지를 직접 수정한 직후 화면에 즉시 반영할 때 사용. */
+  reload: () => void;
 }
 
 const MessageDictionaryContext = createContext<MessageDictionaryContextValue | null>(null);
@@ -36,8 +38,12 @@ export const MessageDictionaryProvider: React.FC<{ children: React.ReactNode }> 
     return value && value.trim().length > 0 ? value : `__${fallback}`;
   }, [dict]);
 
+  const reload = useCallback(() => {
+    load(i18n.language);
+  }, [load, i18n.language]);
+
   return (
-    <MessageDictionaryContext.Provider value={{ getMsg }}>
+    <MessageDictionaryContext.Provider value={{ getMsg, reload }}>
       {children}
     </MessageDictionaryContext.Provider>
   );

@@ -21,9 +21,11 @@ public class DiagnosisController {
     public ResponseEntity<Map<String, String>> getMenuPermissions() {
         String permissions = diagnosisService.getMenuPermissions();
         String roleDefinitions = diagnosisService.getRoleDefinitions();
+        String adminMenuLayout = diagnosisService.getAdminMenuLayout();
         Map<String, String> response = new HashMap<>();
         response.put("permissions", permissions);
         response.put("roleDefinitions", roleDefinitions);
+        response.put("adminMenuLayout", adminMenuLayout);
         return ResponseEntity.ok(response);
     }
 

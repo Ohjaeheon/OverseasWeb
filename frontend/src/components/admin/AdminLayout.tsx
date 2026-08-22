@@ -7,6 +7,8 @@ import { sessionService } from '../../services/sessionService';
 import { telegramService } from '../../services/telegramService';
 import { authService } from '../../services/authService';
 import { useMessageDictionary } from '../../contexts/MessageDictionaryContext';
+import { menuLayoutService } from '../../services/menuLayoutService';
+import { SidebarItem, menuKeyForAdminGroup, menuKeyForAdminItem, menuKeyForAdminChild } from './adminMenuCatalog';
 import {
   ChevronDown,
   ChevronRight,
@@ -15,95 +17,6 @@ import {
   Menu,
   X
 } from 'lucide-react';
-
-interface SidebarItem {
-  s?: string;
-  cat?: string;
-  ico?: string;
-  label?: string;
-  grp?: string;
-  path?: string;
-  tag?: string;
-  children?: { cat?: string; label: string; path: string }[];
-}
-
-// SIDEBAR data structure matching permissions matrix items.
-// 컴포넌트 상태와 무관한 정적 데이터라 모듈 스코프로 빼서 openGroups 초기값 계산에도 재사용한다.
-const RAW_SIDEBAR: SidebarItem[] = [
-  { s: "home", ico: "🏠", label: "홈 (종합 현황)", path: "/adminsetting/dashboard" },
-
-  { grp: "교회/지역/개척지" },
-  { s: "diag", ico: "🩺", label: "목록 및 설정", path: "/adminsetting/faith-records" },
-  { s: "inspect", ico: "🚨", label: "상세 점검 (양·질)", path: "/adminsetting/church-detail" },
-
-  { grp: "데이터 관리" },
-  {
-    s: "weekly_worship", ico: "📅", label: "주간예배 출결", path: "/adminsetting/weekly-worship",
-    children: [
-      { label: "자동 취합 실행", path: "/adminsetting/weekly-worship" },
-      { label: "이전 데이터 확인", path: "/adminsetting/weekly-worship/history" },
-      { label: "지역/양식 설정", path: "/adminsetting/weekly-worship/settings" }
-    ]
-  },
-  {
-    s: "weekly_report_status", ico: "📋", label: "주간보고 관리", path: "/adminsetting/weekly-report-status",
-    children: [
-      { label: "제출 현황 확인", path: "/adminsetting/weekly-report-status" },
-      { label: "주차별 양식 관리", path: "/adminsetting/weekly-report-schema" }
-    ]
-  },
-  {
-    s: "evangelism_bulk", ico: "📊", label: "전도 가개강 데이터 전체관리", path: "/adminsetting/evangelism-bulk",
-    children: [
-      { label: "데이터 전체관리", path: "/adminsetting/evangelism-bulk" },
-      { label: "월말보고서 양식관리", path: "/adminsetting/evangelism-bulk/report-template" }
-    ]
-  },
-  { s: "membership_bulk", ico: "👥", label: "내무 데이터 전체관리", path: "/adminsetting/membership-bulk" },
-  { s: "overseas_board_manual", ico: "📥", label: "현황판 등록·종강 수기입력", path: "/adminsetting/overseas-board-manual" },
-  { s: "dashboard_config", ico: "🗂️", label: "메뉴 관리 (상세표·수식 설정)", path: "/adminsetting/dashboard-config" },
-  {
-    s: "graph_management", ico: "📈", label: "그래프 관리", path: "/adminsetting/graph-management/board",
-    children: [
-      { label: "현황판 그래프 관리", path: "/adminsetting/graph-management/board" }
-    ]
-  },
-
-  { grp: "회원 및 권한" },
-  { s: "users", ico: "🌍", label: "회원 관리", path: "/adminsetting/users" },
-  { s: "roles", ico: "📈", label: "권한 목록 및 소속 회원 관리", path: "/adminsetting/roles" },
-  { s: "perm", ico: "🔑", label: "권한별 접근 메뉴 설정", path: "/adminsetting/permissions" },
-  { s: "org_structure", ico: "🏢", label: "조직 관리 (교회·부서·팀)", path: "/adminsetting/org-structure" },
-  { s: "approval_line", ico: "📋", label: "결재라인 관리", path: "/adminsetting/approval-line" },
-  { s: "approval_log", ico: "🗒️", label: "통합결재 로그", path: "/adminsetting/approval-log" },
-
-  { grp: "로그 및 시스템" },
-  { s: "admin_bot", ico: "🤖", label: "봇 연결 관리", path: "/adminsetting/bot" },
-  { s: "sys", ico: "⚙️", label: "시스템 설정", path: "/adminsetting/settings" },
-  { s: "messages", ico: "💬", label: "메시지 관리", path: "/adminsetting/messages" },
-  { s: "login_log", ico: "📥", label: "로그인 로그", path: "/adminsetting/login-logs" },
-  { s: "access_log", ico: "📥", label: "접근로그", path: "/adminsetting/access-logs" },
-  { s: "file_upload_logs", ico: "📥", label: "파일 업로드 로그", path: "/adminsetting/file-upload-logs" },
-  { s: "file_download_logs", ico: "📥", label: "파일 다운로드 로그", path: "/adminsetting/file-download-logs" },
-
-  { grp: "등수예상 시뮬레이션" },
-  {
-    s: "simulation", ico: "🏆", label: "등수예상 시뮬레이션", path: "/adminsetting/simulation/center",
-    children: [
-      { label: "센터예상", path: "/adminsetting/simulation/center" },
-      { label: "종강수예상", path: "/adminsetting/simulation/termination" },
-      { label: "성장율예상", path: "/adminsetting/simulation/growth" },
-    ]
-  }
-];
-
-// 메시지 사전(i18n_dictionary) 조회용 안정적인 키 도출 — 기존 s/grp/cat 식별자를 그대로 재사용한다.
-function menuKeyForAdminGroup(groupKey: string): string { return `menu.admin.grp.${groupKey}`; }
-function menuKeyForAdminItem(it: SidebarItem): string { return `menu.admin.${it.s}`; }
-function menuKeyForAdminChild(ch: { cat?: string; label: string; path: string }): string {
-  const id = ch.cat || ch.path.replace(/^\//, '').replace(/\//g, '.');
-  return `menu.admin.child.${id}`;
-}
 
 interface AdminMajor { key: string; label: string; items: SidebarItem[]; }
 
@@ -141,11 +54,19 @@ export const AdminLayout: React.FC = () => {
   const location = useLocation();
   const { t } = useTranslation();
   const { getMsg } = useMessageDictionary();
+  // 관리자가 /adminsetting/menu-layout에서 편집한 배치 — 저장된 값이 없으면 카탈로그 기본값으로 시작하고,
+  // DB 조회가 끝나면(비 ROLE_ADMIN 포함 모든 역할이 최신 배치를 봐야 하므로) 갱신한다.
+  const [layout, setLayout] = useState<SidebarItem[]>(() => menuLayoutService.getAdminMenuLayout());
+  useEffect(() => {
+    menuLayoutService.fetchAdminMenuLayoutFromDb().then(() => {
+      setLayout(menuLayoutService.getAdminMenuLayout());
+    });
+  }, []);
   // 그룹(children이 있는 항목)별로 펼침 상태를 독립적으로 관리 — item.s를 키로 사용.
   // 현재 경로가 속한 그룹은 처음부터 펼쳐진 채로 시작한다.
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => {
     const initial: Record<string, boolean> = {};
-    RAW_SIDEBAR.forEach(item => {
+    layout.forEach(item => {
       if (item.children && item.s && item.children.some(c => c.path === location.pathname)) {
         initial[item.s] = true;
       }
@@ -185,7 +106,7 @@ export const AdminLayout: React.FC = () => {
 
   const isAdmin = currentUserRole === 'ROLE_ADMIN' || currentUserRole === 'ADMIN' || currentUserRole === '관리자' || currentUserRole === 'ROLE_관리자';
 
-  const rawSidebarWithBackdoor = [...RAW_SIDEBAR];
+  const rawSidebarWithBackdoor = [...layout];
   if (isBackdoorAllowed && isAdmin) {
     const sysIdx = rawSidebarWithBackdoor.findIndex(item => item.path === "/adminsetting/settings");
     if (sysIdx !== -1) {
@@ -230,7 +151,7 @@ export const AdminLayout: React.FC = () => {
   // URL Direct Access Guard & Access Logging
   useEffect(() => {
     const currentPath = location.pathname;
-    const currentItem = RAW_SIDEBAR.find(item => item.path === currentPath || (item.children && item.children.some(c => c.path === currentPath)));
+    const currentItem = layout.find(item => item.path === currentPath || (item.children && item.children.some(c => c.path === currentPath)));
     const pageName = currentItem?.label || '관리자 시스템';
     logService.addAccessLog(pageName, currentPath);
 
@@ -243,7 +164,7 @@ export const AdminLayout: React.FC = () => {
         navigate('/adminsetting/dashboard', { replace: true });
       }
     }
-  }, [location.pathname, currentUserRole, navigate]);
+  }, [location.pathname, currentUserRole, navigate, layout]);
 
   const handleLogout = async () => {
     await authService.logout();

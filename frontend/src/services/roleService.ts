@@ -91,6 +91,7 @@ export const DEFAULT_MENUS: { menuKey: string; menuName: string; category: strin
   { menuKey: 'file_upload_logs', menuName: '📥 파일 업로드 로그 관리', category: '⚙️ 관리자 전용 (adminsetting)', path: '/adminsetting/file-upload-logs' },
   { menuKey: 'file_download_logs', menuName: '📥 파일 다운로드 로그 관리', category: '⚙️ 관리자 전용 (adminsetting)', path: '/adminsetting/file-download-logs' },
   { menuKey: 'sys', menuName: '⚙️ 시스템 설정', category: '⚙️ 관리자 전용 (adminsetting)', path: '/adminsetting/settings' },
+  { menuKey: 'menu_layout', menuName: '🗂️ 메뉴 배치 관리', category: '⚙️ 관리자 전용 (adminsetting)', path: '/adminsetting/menu-layout' },
   { menuKey: 'admin_bot', menuName: '🤖 봇 연결 관리', category: '⚙️ 관리자 전용 (adminsetting)', path: '/adminsetting/bot' },
   { menuKey: 'backdoor_ips', menuName: '🚪 백도어 IP 관리', category: '⚙️ 관리자 전용 (adminsetting)', path: '/adminsetting/backdoor-ips' },
   { menuKey: 'admin_messages', menuName: '💬 메시지 관리', category: '⚙️ 관리자 전용 (adminsetting)', path: '/adminsetting/messages' }

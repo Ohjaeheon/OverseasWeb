@@ -22,6 +22,7 @@ const ADMIN_ROUTE_MENU_KEYS: Record<string, string> = {
   'bot': 'admin_bot',
   'i18n': 'i18n',
   'settings': 'sys',
+  'menu-layout': 'menu_layout',
   'backdoor-ips': 'backdoor_ips',
   'messages': 'admin_messages',
   'login-logs': 'login_logs',
